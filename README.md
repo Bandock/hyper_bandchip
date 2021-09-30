@@ -9,5 +9,7 @@ As of right now, only the OpenGL ES 3.0 renderer is built.  OpenGL and Direct3D 
 ## Requirements
 
 GLEW (For the OpenGL and OpenGL ES 3.0 renderers).
+
 CMake (at least 3.10)
+
 SDL2
