@@ -13,3 +13,5 @@ GLEW (For the OpenGL and OpenGL ES 3.0 renderers).
 CMake (at least 3.10)
 
 SDL2
+
+C++ Compiler with C++20 Support (mainly for Concepts and some other features)
