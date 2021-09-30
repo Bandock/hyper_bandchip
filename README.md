@@ -6,9 +6,23 @@ as the original CHIP-8 and SuperCHIP.
 
 As of right now, only the OpenGL ES 3.0 renderer is built.  OpenGL and Direct3D renderers should be built in the near future.
 
-## Requirements
+## Requirements for Compiling
 
-- GLEW (For the OpenGL and OpenGL ES 3.0 renderers).
 - CMake (at least 3.10)
-- SDL2
+- GLEW (If you're compiling with OpenGL or OpenGL ES 3.0 renderer support)
+- SDL2 (Latest stable development versions should work fine)
 - C++ Compiler with C++20 Support (mainly for Concepts and some other features)
+
+## How to use
+
+To get started with this current build of the emulator, simply go to the Configuration menu and change the Core (using left/right 
+arrow keys or even return) to either CHIP-8 or SuperCHIP (HyperCHIP-64 is a WIP).  Next is to alter the behaviors through the 
+Behaviors menu (which varies depending on the core selected).  Might want to toy with different behaviors due to games that take 
+advantage of these quirks.
+
+Next to thing to do is return to the main menu and select Load Program.  White items in that menu are directories, yellow items 
+are files, and red indicates the current selected item.  Make sure when you select the file that it is a valid CHIP-8 program.
+Go ahead and select it, let it load.  If successful, you should be able to run it now.  Be aware that programs may error out
+during execution.  Error messages will be implemented in the near future.
+
+That should get you started.  This little guide is likely to change as new features get added.
