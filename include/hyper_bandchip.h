@@ -38,6 +38,7 @@ namespace Hyper_BandCHIP
 	{
 		const TextItem Title = { "Hyper BandCHIP V0.4", 220, 20, false };
 		const TextItem Author = { "By Joshua Moss", 250, 34, false };
+		StatusTextItem CurrentProgram = { "Current Program", 160, 60, "None", false };
 		const ButtonItem RunProgram = { "Run Program", 200, 100, static_cast<unsigned int>(MainMenuEvent::RunProgram), false };
 		const ButtonItem LoadProgram = { "Load Program", 200, 114, static_cast<unsigned int>(MainMenuEvent::LoadProgram), false };
 		const ButtonItem Configuration = { "Configuration", 200, 128, static_cast<unsigned int>(MainMenuEvent::Configuration), false };

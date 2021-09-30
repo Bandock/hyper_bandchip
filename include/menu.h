@@ -71,7 +71,16 @@ namespace Hyper_BandCHIP
 	};
 
 	template <typename T>
+	concept HasStatus = requires(T obj)
+	{
+		obj.Status;
+	};
+
+	template <typename T>
 	concept DisplayableText = HasText<T> && HasCoordinates<T> && HasHidden<T>;
+
+	template <typename T>
+	concept DisplayableStatus = HasText<T> && HasStatus<T> && HasCoordinates<T> && HasHidden<T>;
 
 	template <typename T>
 	concept DisplayableOptions = HasText<T> && HasCoordinates<T> && HasHidden<T> && HasOptionSupport<T>;
@@ -82,25 +91,20 @@ namespace Hyper_BandCHIP
 	template <typename T>
 	concept DisplayableValue = HasText<T> && HasValue<T> && HasCoordinates<T> && HasHidden<T>;
 
-	/*
-	struct MenuItem
-	{
-		std::string Text;
-		MenuItemType Type;
-		std::vector<std::string> Options;
-		unsigned short x;
-		unsigned short y;
-		unsigned int current_option;
-		unsigned int event_id;
-		bool hidden;
-	};
-	*/
-
 	struct TextItem
 	{
 		std::string Text;
 		unsigned short x;
 		unsigned short y;
+		bool hidden;
+	};
+
+	struct StatusTextItem
+	{
+		std::string Text;
+		unsigned short x;
+		unsigned short y;
+		std::string Status;
 		bool hidden;
 	};
 
@@ -153,6 +157,16 @@ namespace Hyper_BandCHIP
 		}
 	}
 
+	template <DisplayableStatus T>
+	void DisplayItem(Renderer &renderer, T &item, unsigned char color)
+	{
+		if (!item.hidden)
+		{
+			std::string CurrentText = item.Text + ": " + item.Status;
+			renderer.OutputStringToMenu(CurrentText, item.x, item.y, color);
+		}
+	}
+
 	template <DisplayableOptions T>
 	void DisplayItem(Renderer &renderer, T &item, unsigned char color)
 	{
@@ -189,25 +203,6 @@ namespace Hyper_BandCHIP
 			renderer.OutputStringToMenu(c_strstream.str(), item.x, item.y, color);
 		}
 	}
-
-	/*
-	class Menu
-	{
-		public:
-			Menu(std::string title);
-			~Menu();
-			std::string GetTitle();
-			void AddMenuItem(MenuItem item);
-			void SetCurrentMenuItemId(unsigned int id);
-			unsigned int GetCurrentMenuItemId() const;
-			unsigned int GetMenuItemCount() const;
-			MenuItem &operator[](unsigned int id);
-		private:
-			unsigned int CurrentMenuItemId;
-			std::string MenuTitle;
-			std::vector<MenuItem> MenuItems;
-	};
-	*/
 }
 
 #endif
