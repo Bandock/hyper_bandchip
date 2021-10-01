@@ -86,6 +86,15 @@ namespace Hyper_BandCHIP
 		unsigned short operand;
 	};
 
+	struct MachineState
+	{
+		unsigned char V[0x10];
+		unsigned short PC;
+		unsigned short I;
+		unsigned char DT;
+		unsigned char ST;
+	};
+
 	class Machine
 	{
 		public:
@@ -109,6 +118,7 @@ namespace Hyper_BandCHIP
 			bool IsPaused() const;
 			MachineCore GetMachineCore() const;
 			MachineError GetErrorState() const;
+			MachineState GetMachineState();
 			void SetCurrentTime(const high_resolution_clock::time_point current_tp);
 			void ExecuteInstructions();
 			void RunDelayTimer();

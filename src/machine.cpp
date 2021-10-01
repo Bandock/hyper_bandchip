@@ -328,6 +328,17 @@ Hyper_BandCHIP::MachineError Hyper_BandCHIP::Machine::GetErrorState() const
 	return error_state;
 }
 
+Hyper_BandCHIP::MachineState Hyper_BandCHIP::Machine::GetMachineState()
+{
+	MachineState State;
+	memcpy (State.V, V, 0x10);
+	State.PC = PC;
+	State.I = I;
+	State.DT = delay_timer;
+	State.ST = sound_timer;
+	return State;
+}
+
 void Hyper_BandCHIP::Machine::SetCurrentTime(const high_resolution_clock::time_point current_tp)
 {
 	this->current_tp = current_tp;
@@ -498,7 +509,7 @@ void Hyper_BandCHIP::InstructionData<Hyper_BandCHIP::MachineCore::BandCHIP_CHIP8
 			}
 			case 0x2:
 			{
-				if (TargetMachine->SP < sizeof(TargetMachine->stack))
+				if (TargetMachine->SP < (sizeof(TargetMachine->stack) / sizeof(unsigned short)))
 				{
 					TargetMachine->stack[TargetMachine->SP++] = TargetMachine->PC + 2;
 					TargetMachine->PC = (operand & 0xFFF);
@@ -1249,7 +1260,7 @@ void Hyper_BandCHIP::InstructionData<Hyper_BandCHIP::MachineCore::BandCHIP_Super
 			}
 			case 0x2:
 			{
-				if (TargetMachine->SP < sizeof(TargetMachine->stack))
+				if (TargetMachine->SP < (sizeof(TargetMachine->stack) / sizeof(unsigned short)))
 				{
 					TargetMachine->stack[TargetMachine->SP++] = TargetMachine->PC + 2;
 					TargetMachine->PC = (operand & 0xFFF);
@@ -2167,7 +2178,7 @@ void Hyper_BandCHIP::InstructionData<Hyper_BandCHIP::MachineCore::BandCHIP_Hyper
 			}
 			case 0x2:
 			{
-				if (TargetMachine->SP < sizeof(TargetMachine->stack))
+				if (TargetMachine->SP < (sizeof(TargetMachine->stack) / sizeof(unsigned short)))
 				{
 					TargetMachine->stack[TargetMachine->SP++] = TargetMachine->PC + 2;
 					TargetMachine->PC = (operand & 0xFFF);

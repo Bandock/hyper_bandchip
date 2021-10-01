@@ -24,7 +24,7 @@ namespace Hyper_BandCHIP
 	};
 
 	enum class OperationMode { Menu = 0, Emulator = 1 };
-	enum class MenuDisplay { Main, LoadProgram, Configuration, LoadProgramDisplay, Behaviors };
+	enum class MenuDisplay { Main, LoadProgram, Configuration, LoadProgramDisplay, Behaviors, ErrorDisplay };
 
 	enum class DirEntryType { Directory, File };
 
@@ -91,6 +91,32 @@ namespace Hyper_BandCHIP
 		unsigned int CurrentSelectableItemId = 0;
 	};
 
+	struct ErrorDisplayData
+	{
+		StatusTextItem Error = { "Error", 100, 20, "", false };
+		ValueItem RegisterValue[0x10] = {
+			{ "V0", 100, 60, ValueBaseType::Hex, 0x00, false },
+			{ "V1", 100, 74, ValueBaseType::Hex, 0x00, false },
+			{ "V2", 100, 88, ValueBaseType::Hex, 0x00, false },
+			{ "V3", 100, 102, ValueBaseType::Hex, 0x00, false },
+			{ "V4", 100, 116, ValueBaseType::Hex, 0x00, false },
+			{ "V5", 100, 130, ValueBaseType::Hex, 0x00, false },
+			{ "V6", 100, 144, ValueBaseType::Hex, 0x00, false },
+			{ "V7", 100, 158, ValueBaseType::Hex, 0x00, false },
+			{ "V8", 100, 172, ValueBaseType::Hex, 0x00, false },
+			{ "V9", 100, 186, ValueBaseType::Hex, 0x00, false },
+			{ "VA", 100, 200, ValueBaseType::Hex, 0x00, false },
+			{ "VB", 100, 214, ValueBaseType::Hex, 0x00, false },
+			{ "VC", 100, 228, ValueBaseType::Hex, 0x00, false },
+			{ "VD", 100, 242, ValueBaseType::Hex, 0x00, false },
+			{ "VE", 100, 256, ValueBaseType::Hex, 0x00, false },
+			{ "VF", 100, 270, ValueBaseType::Hex, 0x00, false }};
+		ValueItem ProgramCounterValue = { "PC", 300, 60, ValueBaseType::Hex, 0x0000, false };
+		ValueItem AddressRegisterValue = { "I", 300, 74, ValueBaseType::Hex, 0x0000, false };
+		ValueItem DelayTimerValue = { "DT", 300, 88, ValueBaseType::Dec, 0, false };
+		ValueItem SoundTimerValue = { "ST", 300, 102, ValueBaseType::Dec, 0, false };
+	};
+
 	class Application
 	{
 		public:
@@ -115,6 +141,7 @@ namespace Hyper_BandCHIP
 			ConfigurationMenuData ConfigurationMenu;
 			LoadProgramDisplayData LoadProgramDisplay;
 			BehaviorsMenuData BehaviorsMenu;
+			ErrorDisplayData ErrorDisplay;
 			Font<5, 16> *CHIP8_Fonts;
 			Font<10, 10> *SuperCHIP_Fonts;
 			Machine *CurrentMachine;

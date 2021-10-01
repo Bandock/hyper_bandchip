@@ -12,7 +12,7 @@
 
 namespace Hyper_BandCHIP
 {
-	enum class MenuItemType { Text, Button, Toggle, MultiChoice };
+	enum class ValueBaseType { Dec, Hex };
 
 	template <typename T>
 	concept HasText = requires(T obj)
@@ -71,6 +71,12 @@ namespace Hyper_BandCHIP
 	};
 
 	template <typename T>
+	concept HasValueBaseType = requires(T obj)
+	{
+		obj.value_base_type;
+	};
+
+	template <typename T>
 	concept HasStatus = requires(T obj)
 	{
 		obj.Status;
@@ -89,7 +95,7 @@ namespace Hyper_BandCHIP
 	concept DisplayableToggle = HasText<T> && HasCoordinates<T> && HasHidden<T> && HasToggleSupport<T>;
 
 	template <typename T>
-	concept DisplayableValue = HasText<T> && HasValue<T> && HasCoordinates<T> && HasHidden<T>;
+	concept DisplayableValue = HasText<T> && HasValue<T> && HasValueBaseType<T> && HasCoordinates<T> && HasHidden<T>;
 
 	struct TextItem
 	{
@@ -137,13 +143,24 @@ namespace Hyper_BandCHIP
 		bool hidden;
 	};
 
-	struct LeftRightNumberItem
+	struct ValueItem
+	{
+		std::string Text;
+		unsigned short x;
+		unsigned short y;
+		const ValueBaseType value_base_type;
+		unsigned int value;
+		bool hidden;
+	};
+
+	struct LeftRightValueItem
 	{
 		std::string Text;
 		unsigned short x;
 		unsigned short y;
 		const unsigned int min;
 		const unsigned int max;
+		const ValueBaseType value_base_type;
 		unsigned int value;
 		bool hidden;
 	};
@@ -199,7 +216,21 @@ namespace Hyper_BandCHIP
 		if (!item.hidden)
 		{
 			std::ostringstream c_strstream;
-			c_strstream << item.Text << ": " << item.value;
+			c_strstream << item.Text << ": ";
+			switch (item.value_base_type)
+			{
+				case ValueBaseType::Dec:
+				{
+					c_strstream << std::dec;
+					break;
+				}
+				case ValueBaseType::Hex:
+				{
+					c_strstream << std::hex;
+					break;
+				}
+			}
+			c_strstream << item.value;
 			renderer.OutputStringToMenu(c_strstream.str(), item.x, item.y, color);
 		}
 	}

@@ -967,6 +967,12 @@ Hyper_BandCHIP::Application::Application() : MainWindow(nullptr), MainRenderer(n
 													ShowMenu(CurrentMenu);
 													break;
 												}
+												case MenuDisplay::ErrorDisplay:
+												{
+													CurrentMenu = MenuDisplay::Main;
+													ShowMenu(CurrentMenu);
+													break;
+												}
 											}
 											break;
 										}
@@ -1047,6 +1053,46 @@ Hyper_BandCHIP::Application::Application() : MainWindow(nullptr), MainRenderer(n
 				unsigned short display_height = 0;
 				CurrentMachine->GetDisplay(&display, &display_width, &display_height);
 				MainRenderer->WriteToDisplay(display, display_width, display_height);
+				MachineError Error = CurrentMachine->GetErrorState();
+				if (Error != MachineError::NoError)
+				{
+					MachineState State = CurrentMachine->GetMachineState();
+					switch (Error)
+					{
+						case MachineError::InvalidInstruction:
+						{
+							ErrorDisplay.Error.Status = "Invalid Instruction";
+							break;
+						}
+						case MachineError::StackOverflow:
+						{
+							ErrorDisplay.Error.Status = "Stack Overflow";
+							break;
+						}
+						case MachineError::StackUnderflow:
+						{
+							ErrorDisplay.Error.Status = "Stack Underflow";
+							break;
+						}
+						case MachineError::MachineInstructionsUnsupported:
+						{
+							ErrorDisplay.Error.Status = "Machine Instructions Unsupported";
+							break;
+						}
+					}
+					for (unsigned char i = 0x00; i < 0x10; ++i)
+					{
+						ErrorDisplay.RegisterValue[i].value = State.V[i];
+					}
+					ErrorDisplay.ProgramCounterValue.value = State.PC;
+					ErrorDisplay.AddressRegisterValue.value = State.I;
+					ErrorDisplay.DelayTimerValue.value = State.DT;
+					ErrorDisplay.SoundTimerValue.value = State.ST;
+					CurrentOperationMode = OperationMode::Menu;
+					CurrentMenu = MenuDisplay::ErrorDisplay;
+					MainRenderer->SetDisplayMode(DisplayMode::Menu);
+					ShowMenu(CurrentMenu);
+				}
 			}
 		}
 		std::chrono::duration<double> delta_time = current_tp - refresh_tp;
@@ -2615,6 +2661,19 @@ void Hyper_BandCHIP::Application::ShowMenu(Hyper_BandCHIP::MenuDisplay Menu)
 					break;
 				}
 			}
+			break;
+		}
+		case MenuDisplay::ErrorDisplay:
+		{
+			DisplayItem(*MainRenderer, ErrorDisplay.Error, 1);
+			for (unsigned char i = 0x00; i < 0x10; ++i)
+			{
+				DisplayItem(*MainRenderer, ErrorDisplay.RegisterValue[i], 1);
+			}
+			DisplayItem(*MainRenderer, ErrorDisplay.ProgramCounterValue, 1);
+			DisplayItem(*MainRenderer, ErrorDisplay.AddressRegisterValue, 1);
+			DisplayItem(*MainRenderer, ErrorDisplay.DelayTimerValue, 1);
+			DisplayItem(*MainRenderer, ErrorDisplay.SoundTimerValue, 1);
 			break;
 		}
 	}
