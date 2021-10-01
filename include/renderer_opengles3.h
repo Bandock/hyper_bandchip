@@ -30,6 +30,13 @@ namespace Hyper_BandCHIP
 		unsigned int FontColor;
 	};
 
+	struct RGBColorData
+	{
+		unsigned char r;
+		unsigned char g;
+		unsigned char b;
+	};
+
 	class Renderer
 	{
 		public:
@@ -42,6 +49,8 @@ namespace Hyper_BandCHIP
 			void ClearMenu();
 			void OutputStringToMenu(std::string str, unsigned short x, unsigned short y, unsigned char color);
 			void SetDisplayMode(DisplayMode mode);
+			void SetPaletteIndex(RGBColorData data, unsigned char index);
+			RGBColorData GetPaletteIndex(unsigned char index) const;
 			void Render();
 			bool Fail() const;
 		private:

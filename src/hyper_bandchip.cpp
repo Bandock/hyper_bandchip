@@ -307,7 +307,7 @@ Hyper_BandCHIP::Application::Application() : MainWindow(nullptr), MainRenderer(n
 												}
 												case MenuDisplay::Configuration:
 												{
-													ConfigurationMenu.CurrentSelectableItemId = (ConfigurationMenu.CurrentSelectableItemId == 0) ? 5 : ConfigurationMenu.CurrentSelectableItemId - 1;
+													ConfigurationMenu.CurrentSelectableItemId = (ConfigurationMenu.CurrentSelectableItemId == 0) ? 6 : ConfigurationMenu.CurrentSelectableItemId - 1;
 													break;
 												}
 												case MenuDisplay::Behaviors:
@@ -325,6 +325,11 @@ Hyper_BandCHIP::Application::Application() : MainWindow(nullptr), MainRenderer(n
 															break;
 														}
 													}
+													break;
+												}
+												case MenuDisplay::PaletteSettings:
+												{
+													PaletteSettingsMenu.CurrentSelectableItemId = (PaletteSettingsMenu.CurrentSelectableItemId == 0) ? 5 : PaletteSettingsMenu.CurrentSelectableItemId - 1;
 													break;
 												}
 											}
@@ -413,7 +418,7 @@ Hyper_BandCHIP::Application::Application() : MainWindow(nullptr), MainRenderer(n
 												}
 												case MenuDisplay::Configuration:
 												{
-													ConfigurationMenu.CurrentSelectableItemId = (ConfigurationMenu.CurrentSelectableItemId == 5) ? 0 : ConfigurationMenu.CurrentSelectableItemId + 1;
+													ConfigurationMenu.CurrentSelectableItemId = (ConfigurationMenu.CurrentSelectableItemId == 6) ? 0 : ConfigurationMenu.CurrentSelectableItemId + 1;
 													break;
 												}
 												case MenuDisplay::Behaviors:
@@ -431,6 +436,11 @@ Hyper_BandCHIP::Application::Application() : MainWindow(nullptr), MainRenderer(n
 															break;
 														}
 													}
+													break;
+												}
+												case MenuDisplay::PaletteSettings:
+												{
+													PaletteSettingsMenu.CurrentSelectableItemId = (PaletteSettingsMenu.CurrentSelectableItemId == 5) ? 0 : PaletteSettingsMenu.CurrentSelectableItemId + 1;
 													break;
 												}
 											}
@@ -458,20 +468,25 @@ Hyper_BandCHIP::Application::Application() : MainWindow(nullptr), MainRenderer(n
 														}
 														case 2:
 														{
-															event_id = ConfigurationMenu.KeyboardRemapping.event_id;
+															event_id = ConfigurationMenu.PaletteSettings.event_id;
 															break;
 														}
 														case 3:
 														{
-															event_id = ConfigurationMenu.LoadConfiguration.event_id;
+															event_id = ConfigurationMenu.KeyboardRemapping.event_id;
 															break;
 														}
 														case 4:
 														{
-															event_id = ConfigurationMenu.SaveConfiguration.event_id;
+															event_id = ConfigurationMenu.LoadConfiguration.event_id;
 															break;
 														}
 														case 5:
+														{
+															event_id = ConfigurationMenu.SaveConfiguration.event_id;
+															break;
+														}
+														case 6:
 														{
 															event_id = ConfigurationMenu.ReturnToMainMenu.event_id;
 															break;
@@ -550,6 +565,50 @@ Hyper_BandCHIP::Application::Application() : MainWindow(nullptr), MainRenderer(n
 													}
 													break;
 												}
+												case MenuDisplay::PaletteSettings:
+												{
+													switch (PaletteSettingsMenu.CurrentSelectableItemId)
+													{
+														case 0:
+														{
+															PaletteSettingsMenu.CurrentIndex.value = (PaletteSettingsMenu.CurrentIndex.value == 0) ? 3 : PaletteSettingsMenu.CurrentIndex.value - 1;
+															RGBColorData data = MainRenderer->GetPaletteIndex(PaletteSettingsMenu.CurrentIndex.value);
+															PaletteSettingsMenu.Red.value = data.r;
+															PaletteSettingsMenu.Green.value = data.g;
+															PaletteSettingsMenu.Blue.value = data.b;
+															ShowMenu(CurrentMenu);
+															break;
+														}
+														case 1:
+														{
+															if (PaletteSettingsMenu.Red.value > PaletteSettingsMenu.Red.min)
+															{
+																--PaletteSettingsMenu.Red.value;
+																ShowMenu(CurrentMenu);
+															}
+															break;
+														}
+														case 2:
+														{
+															if (PaletteSettingsMenu.Green.value > PaletteSettingsMenu.Green.min)
+															{
+																--PaletteSettingsMenu.Green.value;
+																ShowMenu(CurrentMenu);
+															}
+															break;
+														}
+														case 3:
+														{
+															if (PaletteSettingsMenu.Blue.value > PaletteSettingsMenu.Blue.min)
+															{
+																--PaletteSettingsMenu.Blue.value;
+																ShowMenu(CurrentMenu);
+															}
+															break;
+														}
+													}
+													break;
+												}
 											}
 											break;
 										}
@@ -574,20 +633,25 @@ Hyper_BandCHIP::Application::Application() : MainWindow(nullptr), MainRenderer(n
 														}
 														case 2:
 														{
-															event_id = ConfigurationMenu.KeyboardRemapping.event_id;
+															event_id = ConfigurationMenu.PaletteSettings.event_id;
 															break;
 														}
 														case 3:
 														{
-															event_id = ConfigurationMenu.LoadConfiguration.event_id;
+															event_id = ConfigurationMenu.KeyboardRemapping.event_id;
 															break;
 														}
 														case 4:
 														{
-															event_id = ConfigurationMenu.SaveConfiguration.event_id;
+															event_id = ConfigurationMenu.LoadConfiguration.event_id;
 															break;
 														}
 														case 5:
+														{
+															event_id = ConfigurationMenu.SaveConfiguration.event_id;
+															break;
+														}
+														case 6:
 														{
 															event_id = ConfigurationMenu.ReturnToMainMenu.event_id;
 															break;
@@ -661,6 +725,50 @@ Hyper_BandCHIP::Application::Application() : MainWindow(nullptr), MainRenderer(n
 																}
 															}
 															ShowMenu(CurrentMenu);
+															break;
+														}
+													}
+													break;
+												}
+												case MenuDisplay::PaletteSettings:
+												{
+													switch (PaletteSettingsMenu.CurrentSelectableItemId)
+													{
+														case 0:
+														{
+															PaletteSettingsMenu.CurrentIndex.value = (PaletteSettingsMenu.CurrentIndex.value == PaletteSettingsMenu.CurrentIndex.max) ? 0 : PaletteSettingsMenu.CurrentIndex.value + 1;
+															RGBColorData data = MainRenderer->GetPaletteIndex(PaletteSettingsMenu.CurrentIndex.value);
+															PaletteSettingsMenu.Red.value = data.r;
+															PaletteSettingsMenu.Green.value = data.g;
+															PaletteSettingsMenu.Blue.value = data.b;
+															ShowMenu(CurrentMenu);
+															break;
+														}
+														case 1:
+														{
+															if (PaletteSettingsMenu.Red.value < PaletteSettingsMenu.Red.max)
+															{
+																++PaletteSettingsMenu.Red.value;
+																ShowMenu(CurrentMenu);
+															}
+															break;
+														}
+														case 2:
+														{
+															if (PaletteSettingsMenu.Green.value < PaletteSettingsMenu.Green.max)
+															{
+																++PaletteSettingsMenu.Green.value;
+																ShowMenu(CurrentMenu);
+															}
+															break;
+														}
+														case 3:
+														{
+															if (PaletteSettingsMenu.Blue.value < PaletteSettingsMenu.Blue.max)
+															{
+																++PaletteSettingsMenu.Blue.value;
+																ShowMenu(CurrentMenu);
+															}
 															break;
 														}
 													}
@@ -805,20 +913,25 @@ Hyper_BandCHIP::Application::Application() : MainWindow(nullptr), MainRenderer(n
 														}
 														case 2:
 														{
-															event_id = ConfigurationMenu.KeyboardRemapping.event_id;
+															event_id = ConfigurationMenu.PaletteSettings.event_id;
 															break;
 														}
 														case 3:
 														{
-															event_id = ConfigurationMenu.LoadConfiguration.event_id;
+															event_id = ConfigurationMenu.KeyboardRemapping.event_id;
 															break;
 														}
 														case 4:
 														{
-															event_id = ConfigurationMenu.SaveConfiguration.event_id;
+															event_id = ConfigurationMenu.LoadConfiguration.event_id;
 															break;
 														}
 														case 5:
+														{
+															event_id = ConfigurationMenu.SaveConfiguration.event_id;
+															break;
+														}
+														case 6:
 														{
 															event_id = ConfigurationMenu.ReturnToMainMenu.event_id;
 															break;
@@ -859,6 +972,12 @@ Hyper_BandCHIP::Application::Application() : MainWindow(nullptr), MainRenderer(n
 														case ConfigurationMenuEvent::Behaviors:
 														{
 															CurrentMenu = MenuDisplay::Behaviors;
+															ShowMenu(CurrentMenu);
+															break;
+														}
+														case ConfigurationMenuEvent::PaletteSettings:
+														{
+															CurrentMenu = MenuDisplay::PaletteSettings;
 															ShowMenu(CurrentMenu);
 															break;
 														}
@@ -937,6 +1056,40 @@ Hyper_BandCHIP::Application::Application() : MainWindow(nullptr), MainRenderer(n
 													}
 													break;
 												}
+												case MenuDisplay::PaletteSettings:
+												{
+													unsigned int event_id = 0xFFFFFFFF;
+													switch (PaletteSettingsMenu.CurrentSelectableItemId)
+													{
+														case 4:
+														{
+															event_id = PaletteSettingsMenu.CommitChanges.event_id;
+															break;
+														}
+														case 5:
+														{
+															event_id = PaletteSettingsMenu.ReturnToConfiguration.event_id;
+															break;
+														}
+													}
+													switch (static_cast<PaletteSettingsMenuEvent>(event_id))
+													{
+														case PaletteSettingsMenuEvent::CommitChanges:
+														{
+															RGBColorData data = { static_cast<unsigned char>(PaletteSettingsMenu.Red.value), static_cast<unsigned char>(PaletteSettingsMenu.Green.value), static_cast<unsigned char>(PaletteSettingsMenu.Blue.value) };
+															MainRenderer->SetPaletteIndex(data, static_cast<unsigned char>(PaletteSettingsMenu.CurrentIndex.value));
+															ShowMenu(CurrentMenu);
+															break;
+														}
+														case PaletteSettingsMenuEvent::ReturnToConfiguration:
+														{
+															CurrentMenu = MenuDisplay::Configuration;
+															ShowMenu(CurrentMenu);
+															break;
+														}
+													}
+													break;
+												}
 											}
 											break;
 										}
@@ -962,6 +1115,12 @@ Hyper_BandCHIP::Application::Application() : MainWindow(nullptr), MainRenderer(n
 													break;
 												}
 												case MenuDisplay::Behaviors:
+												{
+													CurrentMenu = MenuDisplay::Configuration;
+													ShowMenu(CurrentMenu);
+													break;
+												}
+												case MenuDisplay::PaletteSettings:
 												{
 													CurrentMenu = MenuDisplay::Configuration;
 													ShowMenu(CurrentMenu);
@@ -2611,10 +2770,11 @@ void Hyper_BandCHIP::Application::ShowMenu(Hyper_BandCHIP::MenuDisplay Menu)
 			DisplayItem(*MainRenderer, ConfigurationMenu.Title, 1);
 			DisplayItem(*MainRenderer, ConfigurationMenu.Core, (ConfigurationMenu.CurrentSelectableItemId == 0) ? 2 : 1);
 			DisplayItem(*MainRenderer, ConfigurationMenu.Behaviors, (ConfigurationMenu.CurrentSelectableItemId == 1) ? 2 : 1);
-			DisplayItem(*MainRenderer, ConfigurationMenu.KeyboardRemapping, (ConfigurationMenu.CurrentSelectableItemId == 2) ? 2 : 1);
-			DisplayItem(*MainRenderer, ConfigurationMenu.LoadConfiguration, (ConfigurationMenu.CurrentSelectableItemId == 3) ? 2 : 1);
-			DisplayItem(*MainRenderer, ConfigurationMenu.SaveConfiguration, (ConfigurationMenu.CurrentSelectableItemId == 4) ? 2 : 1);
-			DisplayItem(*MainRenderer, ConfigurationMenu.ReturnToMainMenu, (ConfigurationMenu.CurrentSelectableItemId == 5) ? 2 : 1);
+			DisplayItem(*MainRenderer, ConfigurationMenu.PaletteSettings, (ConfigurationMenu.CurrentSelectableItemId == 2) ? 2 : 1);
+			DisplayItem(*MainRenderer, ConfigurationMenu.KeyboardRemapping, (ConfigurationMenu.CurrentSelectableItemId == 3) ? 2 : 1);
+			DisplayItem(*MainRenderer, ConfigurationMenu.LoadConfiguration, (ConfigurationMenu.CurrentSelectableItemId == 4) ? 2 : 1);
+			DisplayItem(*MainRenderer, ConfigurationMenu.SaveConfiguration, (ConfigurationMenu.CurrentSelectableItemId == 5) ? 2 : 1);
+			DisplayItem(*MainRenderer, ConfigurationMenu.ReturnToMainMenu, (ConfigurationMenu.CurrentSelectableItemId == 6) ? 2 : 1);
 			break;
 		}
 		case MenuDisplay::LoadProgramDisplay:
@@ -2661,6 +2821,17 @@ void Hyper_BandCHIP::Application::ShowMenu(Hyper_BandCHIP::MenuDisplay Menu)
 					break;
 				}
 			}
+			break;
+		}
+		case MenuDisplay::PaletteSettings:
+		{
+			DisplayItem(*MainRenderer, PaletteSettingsMenu.Title, 1);
+			DisplayItem(*MainRenderer, PaletteSettingsMenu.CurrentIndex, (PaletteSettingsMenu.CurrentSelectableItemId == 0) ? 2 : 1);
+			DisplayItem(*MainRenderer, PaletteSettingsMenu.Red, (PaletteSettingsMenu.CurrentSelectableItemId == 1) ? 2 : 1);
+			DisplayItem(*MainRenderer, PaletteSettingsMenu.Green, (PaletteSettingsMenu.CurrentSelectableItemId == 2) ? 2 : 1);
+			DisplayItem(*MainRenderer, PaletteSettingsMenu.Blue, (PaletteSettingsMenu.CurrentSelectableItemId == 3) ? 2 : 1);
+			DisplayItem(*MainRenderer, PaletteSettingsMenu.CommitChanges, (PaletteSettingsMenu.CurrentSelectableItemId == 4) ? 2 : 1);
+			DisplayItem(*MainRenderer, PaletteSettingsMenu.ReturnToConfiguration, (PaletteSettingsMenu.CurrentSelectableItemId == 5) ? 2 : 1);
 			break;
 		}
 		case MenuDisplay::ErrorDisplay:

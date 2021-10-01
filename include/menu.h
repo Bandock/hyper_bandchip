@@ -161,7 +161,7 @@ namespace Hyper_BandCHIP
 		bool hidden;
 	};
 
-	struct LeftRightValueItem
+	struct AdjustableValueItem
 	{
 		std::string Text;
 		unsigned short x;

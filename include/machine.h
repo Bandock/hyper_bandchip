@@ -118,7 +118,7 @@ namespace Hyper_BandCHIP
 			bool IsPaused() const;
 			MachineCore GetMachineCore() const;
 			MachineError GetErrorState() const;
-			MachineState GetMachineState();
+			MachineState GetMachineState() const;
 			void SetCurrentTime(const high_resolution_clock::time_point current_tp);
 			void ExecuteInstructions();
 			void RunDelayTimer();

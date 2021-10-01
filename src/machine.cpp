@@ -328,7 +328,7 @@ Hyper_BandCHIP::MachineError Hyper_BandCHIP::Machine::GetErrorState() const
 	return error_state;
 }
 
-Hyper_BandCHIP::MachineState Hyper_BandCHIP::Machine::GetMachineState()
+Hyper_BandCHIP::MachineState Hyper_BandCHIP::Machine::GetMachineState() const
 {
 	MachineState State;
 	memcpy (State.V, V, 0x10);

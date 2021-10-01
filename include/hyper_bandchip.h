@@ -24,19 +24,20 @@ namespace Hyper_BandCHIP
 	};
 
 	enum class OperationMode { Menu = 0, Emulator = 1 };
-	enum class MenuDisplay { Main, LoadProgram, Configuration, LoadProgramDisplay, Behaviors, ErrorDisplay };
+	enum class MenuDisplay { Main, LoadProgram, Configuration, LoadProgramDisplay, Behaviors, PaletteSettings, ErrorDisplay };
 
 	enum class DirEntryType { Directory, File };
 
 	enum class MainMenuEvent { RunProgram, LoadProgram, Configuration, Exit };
 	enum class LoadProgramMenuEvent { ChangeDirectory, Load };
-	enum class ConfigurationMenuEvent { ChangeCore, Behaviors, ReturnToMainMenu };
+	enum class ConfigurationMenuEvent { ChangeCore, Behaviors, PaletteSettings, ReturnToMainMenu };
 	enum class LoadProgramDisplayMenuEvent { Ok };
 	enum class BehaviorMenuEvent { ReturnToConfiguration };
+	enum class PaletteSettingsMenuEvent { CommitChanges, ReturnToConfiguration };
 
 	struct MainMenuData
 	{
-		const TextItem Title = { "Hyper BandCHIP V0.4", 220, 20, false };
+		const TextItem Title = { "Hyper BandCHIP V0.5", 220, 20, false };
 		const TextItem Author = { "By Joshua Moss", 250, 34, false };
 		StatusTextItem CurrentProgram = { "Current Program", 160, 60, "None", false };
 		const ButtonItem RunProgram = { "Run Program", 200, 100, static_cast<unsigned int>(MainMenuEvent::RunProgram), false };
@@ -66,10 +67,11 @@ namespace Hyper_BandCHIP
 		const TextItem Title = { "Configuration", 240, 20, false };
 		MultiChoiceItem Core = { "Core", 200, 60, static_cast<unsigned int>(ConfigurationMenuEvent::ChangeCore), 0, { "CHIP-8", "SuperCHIP", "HyperCHIP-64" }, false };
 		const ButtonItem Behaviors = { "Behaviors", 200, 74, static_cast<unsigned int>(ConfigurationMenuEvent::Behaviors), false };
-		const ButtonItem KeyboardRemapping = { "Keyboard Remapping", 200, 88, 0xFFFFFFFF, false };
-		const ButtonItem LoadConfiguration = { "Load Configuration", 200, 102, 0xFFFFFFFF, false };
-		const ButtonItem SaveConfiguration = { "Save Configuration", 200, 116, 0xFFFFFFFF, false };
-		const ButtonItem ReturnToMainMenu = { "Return to Main Menu", 200, 130, static_cast<unsigned int>(ConfigurationMenuEvent::ReturnToMainMenu), false };
+		const ButtonItem PaletteSettings = { "Palette Settings", 200, 88, static_cast<unsigned int>(ConfigurationMenuEvent::PaletteSettings), false };
+		const ButtonItem KeyboardRemapping = { "Keyboard Remapping", 200, 102, 0xFFFFFFFF, false };
+		const ButtonItem LoadConfiguration = { "Load Configuration", 200, 116, 0xFFFFFFFF, false };
+		const ButtonItem SaveConfiguration = { "Save Configuration", 200, 130, 0xFFFFFFFF, false };
+		const ButtonItem ReturnToMainMenu = { "Return to Main Menu", 200, 144, static_cast<unsigned int>(ConfigurationMenuEvent::ReturnToMainMenu), false };
 		unsigned int CurrentSelectableItemId = 0;
 	};
 
@@ -88,6 +90,18 @@ namespace Hyper_BandCHIP
 		ToggleItem CHIP48_LoadStore = { "CHIP-48 Load/Store", 200, 74, false, false };
 		MultiChoiceItem SuperCHIP_Version = { "SuperCHIP Version", 140, 60, 0xFFFFFFFF, 0, { "Fixed SuperCHIP V1.1", "SuperCHIP V1.0", "Original SuperCHIP V1.1" }, false };
 		const ButtonItem ReturnToConfiguration = { "Return to Configuration", 200, 190, static_cast<unsigned int>(BehaviorMenuEvent::ReturnToConfiguration), false };
+		unsigned int CurrentSelectableItemId = 0;
+	};
+
+	struct PaletteSettingsMenuData
+	{
+		const TextItem Title = { "Palette Settings", 250, 20, false };
+		AdjustableValueItem CurrentIndex = { "Current Index", 200, 60, 0, 3, ValueBaseType::Dec, 0, 0, false };
+		AdjustableValueItem Red = { "Red", 200, 74, 0, 255, ValueBaseType::Dec, 0, 0, false };
+		AdjustableValueItem Green = { "Green", 200, 88, 0, 255, ValueBaseType::Dec, 0, 0, false };
+		AdjustableValueItem Blue = { "Blue", 200, 102, 0, 255, ValueBaseType::Dec, 0, 0, false };
+		const ButtonItem CommitChanges = { "Commit Changes", 200, 176, static_cast<unsigned int>(PaletteSettingsMenuEvent::CommitChanges), false };
+		const ButtonItem ReturnToConfiguration = { "Return to Configuration", 200, 190, static_cast<unsigned int>(PaletteSettingsMenuEvent::ReturnToConfiguration), false };
 		unsigned int CurrentSelectableItemId = 0;
 	};
 
@@ -141,6 +155,7 @@ namespace Hyper_BandCHIP
 			ConfigurationMenuData ConfigurationMenu;
 			LoadProgramDisplayData LoadProgramDisplay;
 			BehaviorsMenuData BehaviorsMenu;
+			PaletteSettingsMenuData PaletteSettingsMenu;
 			ErrorDisplayData ErrorDisplay;
 			Font<5, 16> *CHIP8_Fonts;
 			Font<10, 10> *SuperCHIP_Fonts;

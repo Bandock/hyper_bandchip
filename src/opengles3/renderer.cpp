@@ -416,6 +416,36 @@ void Hyper_BandCHIP::Renderer::SetDisplayMode(Hyper_BandCHIP::DisplayMode mode)
 	CurrentDisplayMode = mode;
 }
 
+void Hyper_BandCHIP::Renderer::SetPaletteIndex(Hyper_BandCHIP::RGBColorData data, unsigned char index)
+{
+	if (index < 4)
+	{
+		disp_ctrl.Palette[index] = { static_cast<float>(data.r) / 255.0f, static_cast<float>(data.g) / 255.0f, static_cast<float>(data.b) / 255.0f, 1.0f };
+		if (CurrentProgramId == MainProgramId)
+		{
+			glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(disp_ctrl), &disp_ctrl);
+		}
+		else
+		{
+			glBindBuffer(GL_UNIFORM_BUFFER, DisplayControlUBOId);
+			glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(disp_ctrl), &disp_ctrl);
+			glBindBufferRange(GL_UNIFORM_BUFFER, 0, FontControlUBOId, 0, sizeof(font_ctrl));
+		}
+	}
+}
+
+Hyper_BandCHIP::RGBColorData Hyper_BandCHIP::Renderer::GetPaletteIndex(unsigned char index) const
+{
+	if (index < 4)
+	{
+		return { static_cast<unsigned char>(disp_ctrl.Palette[index].Color[0] * 255.0f), static_cast<unsigned char>(disp_ctrl.Palette[index].Color[1] * 255.0f), static_cast<unsigned char>(disp_ctrl.Palette[index].Color[2] * 255.0f) };
+	}
+	else
+	{
+		return { 0, 0, 0 };
+	}
+}
+
 void Hyper_BandCHIP::Renderer::Render()
 {
 	if (CurrentFramebuffer != 0)
