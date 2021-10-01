@@ -5,6 +5,7 @@
 #include <vector>
 #include <concepts>
 #include <sstream>
+#include <iomanip>
 
 #ifdef RENDERER_OPENGLES3
 #include "../include/renderer_opengles3.h"
@@ -77,6 +78,12 @@ namespace Hyper_BandCHIP
 	};
 
 	template <typename T>
+	concept HasDisplayDigitCount = requires(T obj)
+	{
+		obj.display_digit_count;
+	};
+
+	template <typename T>
 	concept HasStatus = requires(T obj)
 	{
 		obj.Status;
@@ -95,7 +102,7 @@ namespace Hyper_BandCHIP
 	concept DisplayableToggle = HasText<T> && HasCoordinates<T> && HasHidden<T> && HasToggleSupport<T>;
 
 	template <typename T>
-	concept DisplayableValue = HasText<T> && HasValue<T> && HasValueBaseType<T> && HasCoordinates<T> && HasHidden<T>;
+	concept DisplayableValue = HasText<T> && HasValue<T> && HasValueBaseType<T> && HasDisplayDigitCount<T> && HasCoordinates<T> && HasHidden<T>;
 
 	struct TextItem
 	{
@@ -150,6 +157,7 @@ namespace Hyper_BandCHIP
 		unsigned short y;
 		const ValueBaseType value_base_type;
 		unsigned int value;
+		unsigned char display_digit_count;
 		bool hidden;
 	};
 
@@ -162,6 +170,7 @@ namespace Hyper_BandCHIP
 		const unsigned int max;
 		const ValueBaseType value_base_type;
 		unsigned int value;
+		unsigned char display_digit_count;
 		bool hidden;
 	};
 
@@ -229,6 +238,10 @@ namespace Hyper_BandCHIP
 					c_strstream << std::hex;
 					break;
 				}
+			}
+			if (item.display_digit_count > 0)
+			{
+				c_strstream << std::setfill('0') << std::setw(item.display_digit_count);
 			}
 			c_strstream << item.value;
 			renderer.OutputStringToMenu(c_strstream.str(), item.x, item.y, color);
