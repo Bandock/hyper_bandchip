@@ -332,6 +332,21 @@ Hyper_BandCHIP::Application::Application() : MainWindow(nullptr), MainRenderer(n
 													PaletteSettingsMenu.CurrentSelectableItemId = (PaletteSettingsMenu.CurrentSelectableItemId == 0) ? 5 : PaletteSettingsMenu.CurrentSelectableItemId - 1;
 													break;
 												}
+												case MenuDisplay::KeyboardRemapping:
+												{
+													if (!KeyboardRemappingMenu.input_mode)
+													{
+														if (KeyboardRemappingMenu.CurrentSelectableItemId < 16)
+														{
+															KeyboardRemappingMenu.CurrentSelectableItemId = (KeyboardRemappingMenu.CurrentSelectableItemId % 8 == 0) ? 16 : KeyboardRemappingMenu.CurrentSelectableItemId - 1;
+														}
+														else
+														{
+															KeyboardRemappingMenu.CurrentSelectableItemId = 7;
+														}
+													}
+													break;
+												}
 											}
 											ShowMenu(CurrentMenu);
 											break;
@@ -441,6 +456,21 @@ Hyper_BandCHIP::Application::Application() : MainWindow(nullptr), MainRenderer(n
 												case MenuDisplay::PaletteSettings:
 												{
 													PaletteSettingsMenu.CurrentSelectableItemId = (PaletteSettingsMenu.CurrentSelectableItemId == 5) ? 0 : PaletteSettingsMenu.CurrentSelectableItemId + 1;
+													break;
+												}
+												case MenuDisplay::KeyboardRemapping:
+												{
+													if (!KeyboardRemappingMenu.input_mode)
+													{
+														if (KeyboardRemappingMenu.CurrentSelectableItemId < 16)
+														{
+															KeyboardRemappingMenu.CurrentSelectableItemId = (KeyboardRemappingMenu.CurrentSelectableItemId % 8 == 7) ? 16 : KeyboardRemappingMenu.CurrentSelectableItemId + 1;
+														}
+														else
+														{
+															KeyboardRemappingMenu.CurrentSelectableItemId = 0;
+														}
+													}
 													break;
 												}
 											}
@@ -609,6 +639,18 @@ Hyper_BandCHIP::Application::Application() : MainWindow(nullptr), MainRenderer(n
 													}
 													break;
 												}
+												case MenuDisplay::KeyboardRemapping:
+												{
+													if (!KeyboardRemappingMenu.input_mode)
+													{
+														if (KeyboardRemappingMenu.CurrentSelectableItemId < 16)
+														{
+															KeyboardRemappingMenu.CurrentSelectableItemId = (KeyboardRemappingMenu.CurrentSelectableItemId >= 8) ? KeyboardRemappingMenu.CurrentSelectableItemId - 8 : KeyboardRemappingMenu.CurrentSelectableItemId + 8;
+															ShowMenu(CurrentMenu);
+														}
+													}
+													break;
+												}
 											}
 											break;
 										}
@@ -770,6 +812,18 @@ Hyper_BandCHIP::Application::Application() : MainWindow(nullptr), MainRenderer(n
 																ShowMenu(CurrentMenu);
 															}
 															break;
+														}
+													}
+													break;
+												}
+												case MenuDisplay::KeyboardRemapping:
+												{
+													if (!KeyboardRemappingMenu.input_mode)
+													{
+														if (KeyboardRemappingMenu.CurrentSelectableItemId != 16)
+														{
+															KeyboardRemappingMenu.CurrentSelectableItemId = (KeyboardRemappingMenu.CurrentSelectableItemId < 8) ? KeyboardRemappingMenu.CurrentSelectableItemId + 8 : KeyboardRemappingMenu.CurrentSelectableItemId - 8;
+															ShowMenu(CurrentMenu);
 														}
 													}
 													break;
@@ -981,6 +1035,12 @@ Hyper_BandCHIP::Application::Application() : MainWindow(nullptr), MainRenderer(n
 															ShowMenu(CurrentMenu);
 															break;
 														}
+														case ConfigurationMenuEvent::KeyboardRemapping:
+														{
+															CurrentMenu = MenuDisplay::KeyboardRemapping;
+															ShowMenu(CurrentMenu);
+															break;
+														}
 														case ConfigurationMenuEvent::ReturnToMainMenu:
 														{
 															CurrentMenu = MenuDisplay::Main;
@@ -1090,6 +1150,33 @@ Hyper_BandCHIP::Application::Application() : MainWindow(nullptr), MainRenderer(n
 													}
 													break;
 												}
+												case MenuDisplay::KeyboardRemapping:
+												{
+													if (!KeyboardRemappingMenu.input_mode)
+													{
+														if (KeyboardRemappingMenu.CurrentSelectableItemId < 16)
+														{
+															KeyboardRemappingMenu.input_mode = true;
+															KeyboardRemappingMenu.previous_key = KeyboardRemappingMenu.Keys[KeyboardRemappingMenu.CurrentSelectableItemId].input_data[0];
+															KeyboardRemappingMenu.Keys[KeyboardRemappingMenu.CurrentSelectableItemId].input_data[0] = '\0';
+															ShowMenu(CurrentMenu);
+														}
+														else
+														{
+															unsigned int event_id = KeyboardRemappingMenu.ReturnToConfiguration.event_id;
+															switch(static_cast<KeyboardRemappingMenuEvent>(event_id))
+															{
+																case KeyboardRemappingMenuEvent::ReturnToConfiguration:
+																{
+																	CurrentMenu = MenuDisplay::Configuration;
+																	ShowMenu(CurrentMenu);
+																	break;
+																}
+															}
+														}
+													}
+													break;
+												}
 											}
 											break;
 										}
@@ -1126,6 +1213,21 @@ Hyper_BandCHIP::Application::Application() : MainWindow(nullptr), MainRenderer(n
 													ShowMenu(CurrentMenu);
 													break;
 												}
+												case MenuDisplay::KeyboardRemapping:
+												{
+													if (!KeyboardRemappingMenu.input_mode)
+													{
+														CurrentMenu = MenuDisplay::Configuration;
+													}
+													else
+													{
+														KeyboardRemappingMenu.Keys[KeyboardRemappingMenu.CurrentSelectableItemId].input_data[0] = KeyboardRemappingMenu.previous_key;
+														KeyboardRemappingMenu.previous_key = '\0';
+														KeyboardRemappingMenu.input_mode = false;
+													}
+													ShowMenu(CurrentMenu);
+													break;
+												}
 												case MenuDisplay::ErrorDisplay:
 												{
 													CurrentMenu = MenuDisplay::Main;
@@ -1138,6 +1240,44 @@ Hyper_BandCHIP::Application::Application() : MainWindow(nullptr), MainRenderer(n
 									}
 									key_found = true;
 									break;
+								}
+							}
+							if (!key_found)
+							{
+								switch (CurrentMenu)
+								{
+									case MenuDisplay::KeyboardRemapping:
+									{
+										if (KeyboardRemappingMenu.input_mode)
+										{
+											for (auto [key, i] : Input_KeyMap)
+											{
+												if (i == scancode)
+												{
+													for (unsigned char i2 = 0x00; i2 < 0x10; ++i2)
+													{
+														if (i2 == KeyboardRemappingMenu.CurrentSelectableItemId)
+														{
+															continue;
+														}
+														if (KeyboardRemappingMenu.Keys[i2].input_data[0] == key)
+														{
+															KeyboardRemappingMenu.Keys[i2].input_data[0] = KeyboardRemappingMenu.previous_key;
+															CHIP8_KeyMap[static_cast<CHIP8Key>(i2)] = Input_KeyMap[KeyboardRemappingMenu.Keys[i2].input_data[0]];
+															break;
+														}
+													}
+													KeyboardRemappingMenu.Keys[KeyboardRemappingMenu.CurrentSelectableItemId].input_data[0] = key;
+													CHIP8_KeyMap[static_cast<CHIP8Key>(KeyboardRemappingMenu.CurrentSelectableItemId)] = Input_KeyMap[KeyboardRemappingMenu.Keys[KeyboardRemappingMenu.CurrentSelectableItemId].input_data[0]];
+													KeyboardRemappingMenu.previous_key = '\0';
+													KeyboardRemappingMenu.input_mode = false;
+													ShowMenu(CurrentMenu);
+													break;	
+												}
+											}
+										}
+										break;
+									}
 								}
 							}
 							break;
@@ -1179,7 +1319,7 @@ Hyper_BandCHIP::Application::Application() : MainWindow(nullptr), MainRenderer(n
 						}
 						case OperationMode::Emulator:
 						{
-							for (unsigned char i = 0x00; i < 0x10; i++)
+							for (unsigned char i = 0x00; i < 0x10; ++i)
 							{
 								if (CHIP8_KeyMap[static_cast<CHIP8Key>(i)] == scancode)
 								{
@@ -1313,6 +1453,44 @@ void Hyper_BandCHIP::Application::InitializeKeyMaps()
 	CHIP8_KeyMap[CHIP8Key::Key_0] = SDL_SCANCODE_X;
 	CHIP8_KeyMap[CHIP8Key::Key_B] = SDL_SCANCODE_C;
 	CHIP8_KeyMap[CHIP8Key::Key_F] = SDL_SCANCODE_V;
+
+	Input_KeyMap[' '] = SDL_SCANCODE_SPACE;
+	Input_KeyMap['0'] = SDL_SCANCODE_0;
+	Input_KeyMap['1'] = SDL_SCANCODE_1;
+	Input_KeyMap['2'] = SDL_SCANCODE_2;
+	Input_KeyMap['3'] = SDL_SCANCODE_3;
+	Input_KeyMap['4'] = SDL_SCANCODE_4;
+	Input_KeyMap['5'] = SDL_SCANCODE_5;
+	Input_KeyMap['6'] = SDL_SCANCODE_6;
+	Input_KeyMap['7'] = SDL_SCANCODE_7;
+	Input_KeyMap['8'] = SDL_SCANCODE_8;
+	Input_KeyMap['9'] = SDL_SCANCODE_9;
+	Input_KeyMap['A'] = SDL_SCANCODE_A;
+	Input_KeyMap['B'] = SDL_SCANCODE_B;
+	Input_KeyMap['C'] = SDL_SCANCODE_C;
+	Input_KeyMap['D'] = SDL_SCANCODE_D;
+	Input_KeyMap['E'] = SDL_SCANCODE_E;
+	Input_KeyMap['F'] = SDL_SCANCODE_F;
+	Input_KeyMap['G'] = SDL_SCANCODE_G;
+	Input_KeyMap['H'] = SDL_SCANCODE_H;
+	Input_KeyMap['I'] = SDL_SCANCODE_I;
+	Input_KeyMap['J'] = SDL_SCANCODE_J;
+	Input_KeyMap['K'] = SDL_SCANCODE_K;
+	Input_KeyMap['L'] = SDL_SCANCODE_L;
+	Input_KeyMap['M'] = SDL_SCANCODE_M;
+	Input_KeyMap['N'] = SDL_SCANCODE_N;
+	Input_KeyMap['O'] = SDL_SCANCODE_O;
+	Input_KeyMap['P'] = SDL_SCANCODE_P;
+	Input_KeyMap['Q'] = SDL_SCANCODE_Q;
+	Input_KeyMap['R'] = SDL_SCANCODE_R;
+	Input_KeyMap['S'] = SDL_SCANCODE_S;
+	Input_KeyMap['T'] = SDL_SCANCODE_T;
+	Input_KeyMap['U'] = SDL_SCANCODE_U;
+	Input_KeyMap['V'] = SDL_SCANCODE_V;
+	Input_KeyMap['W'] = SDL_SCANCODE_W;
+	Input_KeyMap['X'] = SDL_SCANCODE_X;
+	Input_KeyMap['Y'] = SDL_SCANCODE_Y;
+	Input_KeyMap['Z'] = SDL_SCANCODE_Z;
 }
 
 void Hyper_BandCHIP::Application::ConstructMenus()
@@ -2832,6 +3010,16 @@ void Hyper_BandCHIP::Application::ShowMenu(Hyper_BandCHIP::MenuDisplay Menu)
 			DisplayItem(*MainRenderer, PaletteSettingsMenu.Blue, (PaletteSettingsMenu.CurrentSelectableItemId == 3) ? 2 : 1);
 			DisplayItem(*MainRenderer, PaletteSettingsMenu.CommitChanges, (PaletteSettingsMenu.CurrentSelectableItemId == 4) ? 2 : 1);
 			DisplayItem(*MainRenderer, PaletteSettingsMenu.ReturnToConfiguration, (PaletteSettingsMenu.CurrentSelectableItemId == 5) ? 2 : 1);
+			break;
+		}
+		case MenuDisplay::KeyboardRemapping:
+		{
+			DisplayItem(*MainRenderer, KeyboardRemappingMenu.Title, 1);
+			for (unsigned char i = 0x00; i < 0x10; ++i)
+			{
+				DisplayItem(*MainRenderer, KeyboardRemappingMenu.Keys[i], (KeyboardRemappingMenu.CurrentSelectableItemId == i) ? 2 : 1);
+			}
+			DisplayItem(*MainRenderer, KeyboardRemappingMenu.ReturnToConfiguration, (KeyboardRemappingMenu.CurrentSelectableItemId == 16) ? 2 : 1);
 			break;
 		}
 		case MenuDisplay::ErrorDisplay:

@@ -90,10 +90,19 @@ namespace Hyper_BandCHIP
 	};
 
 	template <typename T>
+	concept HasInputData = requires(T obj)
+	{
+		obj.input_data;
+	};
+
+	template <typename T>
 	concept DisplayableText = HasText<T> && HasCoordinates<T> && HasHidden<T>;
 
 	template <typename T>
 	concept DisplayableStatus = HasText<T> && HasStatus<T> && HasCoordinates<T> && HasHidden<T>;
+
+	template <typename T>
+	concept DisplayableInput = HasText<T> && HasInputData<T> && HasCoordinates<T> && HasHidden<T>;
 
 	template <typename T>
 	concept DisplayableOptions = HasText<T> && HasCoordinates<T> && HasHidden<T> && HasOptionSupport<T>;
@@ -119,6 +128,16 @@ namespace Hyper_BandCHIP
 		unsigned short y;
 		std::string Status;
 		bool hidden;
+	};
+
+	template <unsigned int size>
+	struct InputItem
+	{
+		std::string Text;
+		unsigned short x;
+		unsigned short y;
+		bool hidden;
+		char input_data[size];
 	};
 
 	struct ButtonItem
@@ -189,6 +208,16 @@ namespace Hyper_BandCHIP
 		if (!item.hidden)
 		{
 			std::string CurrentText = item.Text + ": " + item.Status;
+			renderer.OutputStringToMenu(CurrentText, item.x, item.y, color);
+		}
+	}
+
+	template <DisplayableInput T>
+	void DisplayItem(Renderer &renderer, T &item, unsigned char color)
+	{
+		if (!item.hidden)
+		{
+			std::string CurrentText = item.Text + ": " + item.input_data;
 			renderer.OutputStringToMenu(CurrentText, item.x, item.y, color);
 		}
 	}
