@@ -18,7 +18,7 @@ namespace Hyper_BandCHIP
 	template <typename T>
 	concept HasText = requires(T obj)
 	{
-		obj.Text;
+		{ obj.Text } -> std::convertible_to<std::string>;
 	};
 
 	template <typename T>
@@ -44,13 +44,13 @@ namespace Hyper_BandCHIP
 	template <typename T>
 	concept HasHidden = requires(T obj)
 	{
-		obj.hidden;
+		{ obj.hidden } -> std::convertible_to<bool>;
 	};
 
 	template <typename T>
 	concept HasToggleSupport = requires(T obj)
 	{
-		obj.toggle;
+		{ obj.toggle } -> std::convertible_to<bool>;
 	};
 
 	template <typename T>
@@ -74,7 +74,7 @@ namespace Hyper_BandCHIP
 	template <typename T>
 	concept HasValueBaseType = requires(T obj)
 	{
-		obj.value_base_type;
+		{ obj.value_base_type } -> std::convertible_to<ValueBaseType>;
 	};
 
 	template <typename T>
@@ -86,7 +86,7 @@ namespace Hyper_BandCHIP
 	template <typename T>
 	concept HasStatus = requires(T obj)
 	{
-		obj.Status;
+		{ obj.Status } -> std::convertible_to<std::string>;
 	};
 
 	template <typename T>
