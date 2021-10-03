@@ -37,7 +37,7 @@ namespace Hyper_BandCHIP
 	template <typename T>
 	concept HasOptionSupport = requires(T obj)
 	{
-		obj.current_option;
+		{ obj.current_option } -> std::convertible_to<unsigned int>;
 		obj.Options;
 	};
 
