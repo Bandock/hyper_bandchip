@@ -246,6 +246,10 @@ bool Hyper_BandCHIP::Machine::LoadProgram(const unsigned char *source, unsigned 
 			PC = this->start_address;
 			memcpy(&memory[this->start_address], source, size);
 			cycle_accumulator = 0.0;
+			if (error_state != MachineError::NoError)
+			{
+				error_state = MachineError::NoError;
+			}
 			return true;
 		}
 	}

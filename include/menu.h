@@ -31,7 +31,7 @@ namespace Hyper_BandCHIP
 	template <typename T>
 	concept HasEventId = requires(T obj)
 	{
-		obj.event_id;
+		{ obj.event_id } -> std::convertible_to<unsigned int>;
 	};
 
 	template <typename T>
@@ -80,7 +80,7 @@ namespace Hyper_BandCHIP
 	template <typename T>
 	concept HasDisplayDigitCount = requires(T obj)
 	{
-		obj.display_digit_count;
+		{ obj.display_digit_count } -> std::convertible_to<unsigned int>;
 	};
 
 	template <typename T>
