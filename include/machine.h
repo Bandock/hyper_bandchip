@@ -4,6 +4,7 @@
 #include <fstream>
 #include <chrono>
 #include <random>
+#include <variant>
 #include "audio.h"
 
 using namespace std::chrono;
@@ -100,7 +101,11 @@ namespace Hyper_BandCHIP
 		public:
 			Machine(MachineCore Core = MachineCore::BandCHIP_CHIP8, unsigned int cycles_per_second = 600, unsigned int memory_size = 0x1000, unsigned short display_width = 64, unsigned short display_height = 32);
 			~Machine();
-			void StoreBehaviorData(const void *source_behavior_data);
+			template <typename T>
+			void StoreBehaviorData(const T *source_behavior_data)
+			{
+				behavior_data = *source_behavior_data;
+			}
 			void SetResolutionMode(ResolutionMode Mode);
 			void InitializeRegisters();
 			void InitializeTimers();
@@ -130,7 +135,7 @@ namespace Hyper_BandCHIP
 			MachineCore CurrentMachineCore;
 			ResolutionMode CurrentResolutionMode;
 			std::filebuf rpl_user_flags_file;
-			void *behavior_data;
+			std::variant<CHIP8_BehaviorData, SuperCHIP_BehaviorData> behavior_data;
 			Audio audio;
 			unsigned int cycles_per_second;
 			unsigned char delay_timer;

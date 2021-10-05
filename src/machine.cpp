@@ -4,22 +4,18 @@
 #include <fstream>
 #include <bit>
 
-Hyper_BandCHIP::Machine::Machine(MachineCore Core, unsigned int cycles_per_second, unsigned int memory_size, unsigned short display_width, unsigned short display_height) : CurrentMachineCore(Core), CurrentResolutionMode(ResolutionMode::LoRes), behavior_data(nullptr), cycles_per_second(cycles_per_second), delay_timer(0), sound_timer(0), PC(0), I(0), SP(0), memory(nullptr), display(nullptr), rng_engine(system_clock::now().time_since_epoch().count()), rng_distrib(0, 255), cycle_accumulator(0.0), dt_accumulator(0.0), st_accumulator(0.0), pause(true), error_state(MachineError::NoError)
+Hyper_BandCHIP::Machine::Machine(MachineCore Core, unsigned int cycles_per_second, unsigned int memory_size, unsigned short display_width, unsigned short display_height) : CurrentMachineCore(Core), CurrentResolutionMode(ResolutionMode::LoRes), cycles_per_second(cycles_per_second), delay_timer(0), sound_timer(0), PC(0), I(0), SP(0), memory(nullptr), display(nullptr), rng_engine(system_clock::now().time_since_epoch().count()), rng_distrib(0, 255), cycle_accumulator(0.0), dt_accumulator(0.0), st_accumulator(0.0), pause(true), error_state(MachineError::NoError)
 {
 	switch (CurrentMachineCore)
 	{
 		case MachineCore::BandCHIP_CHIP8:
 		{
-			CHIP8_BehaviorData *CurrentBehaviorData = new CHIP8_BehaviorData;
-			*CurrentBehaviorData = { false, false };
-			behavior_data = CurrentBehaviorData;
+			behavior_data = CHIP8_BehaviorData{ false, false };
 			break;
 		}
 		case MachineCore::BandCHIP_SuperCHIP:
 		{
-			SuperCHIP_BehaviorData *CurrentBehaviorData = new SuperCHIP_BehaviorData;
-			*CurrentBehaviorData = { SuperCHIPVersion::Fixed_SuperCHIP11 };
-			behavior_data = CurrentBehaviorData;
+			behavior_data = SuperCHIP_BehaviorData{ SuperCHIPVersion::Fixed_SuperCHIP11 };
 			rpl_user_flags_file.open("RPLUserFlags.bin", std::ios::binary | std::ios::in | std::ios::out);
 			if (!rpl_user_flags_file.is_open())
 			{
@@ -55,24 +51,6 @@ Hyper_BandCHIP::Machine::Machine(MachineCore Core, unsigned int cycles_per_secon
 
 Hyper_BandCHIP::Machine::~Machine()
 {
-	if (behavior_data != nullptr)
-	{
-		switch (CurrentMachineCore)
-		{
-			case MachineCore::BandCHIP_CHIP8:
-			{
-				CHIP8_BehaviorData *CurrentBehaviorData = static_cast<CHIP8_BehaviorData *>(behavior_data);
-				delete CurrentBehaviorData;
-				break;
-			}
-			case MachineCore::BandCHIP_SuperCHIP:
-			{
-				SuperCHIP_BehaviorData *CurrentBehaviorData = static_cast<SuperCHIP_BehaviorData *>(behavior_data);
-				delete CurrentBehaviorData;
-				break;
-			}
-		}
-	}
 	if (memory != nullptr)
 	{
 		delete [] memory;
@@ -80,26 +58,6 @@ Hyper_BandCHIP::Machine::~Machine()
 	if (display != nullptr)
 	{
 		delete [] display;
-	}
-}
-
-void Hyper_BandCHIP::Machine::StoreBehaviorData(const void *source_behavior_data)
-{
-	if (behavior_data != nullptr)
-	{
-		switch (CurrentMachineCore)
-		{
-			case MachineCore::BandCHIP_CHIP8:
-			{
-				memcpy(behavior_data, source_behavior_data, sizeof(CHIP8_BehaviorData));
-				break;
-			}
-			case MachineCore::BandCHIP_SuperCHIP:
-			{
-				memcpy(behavior_data, source_behavior_data, sizeof(SuperCHIP_BehaviorData));
-				break;
-			}
-		}
 	}
 }
 
@@ -659,7 +617,7 @@ void Hyper_BandCHIP::InstructionData<Hyper_BandCHIP::MachineCore::BandCHIP_CHIP8
 					}
 					case 0x6:
 					{
-						CHIP8_BehaviorData *Behavior = static_cast<CHIP8_BehaviorData *>(TargetMachine->behavior_data);
+						const CHIP8_BehaviorData *Behavior = std::get_if<CHIP8_BehaviorData>(&TargetMachine->behavior_data);
 						TargetMachine->V[0xF] = ((Behavior->CHIP48_Shift ? TargetMachine->V[x] : TargetMachine->V[y]) & 0x01);
 						TargetMachine->V[x] = ((Behavior->CHIP48_Shift ? TargetMachine->V[x] : TargetMachine->V[y]) >> 1);
 						break;
@@ -680,7 +638,7 @@ void Hyper_BandCHIP::InstructionData<Hyper_BandCHIP::MachineCore::BandCHIP_CHIP8
 					}
 					case 0xE:
 					{
-						CHIP8_BehaviorData *Behavior = static_cast<CHIP8_BehaviorData *>(TargetMachine->behavior_data);
+						const CHIP8_BehaviorData *Behavior = std::get_if<CHIP8_BehaviorData>(&TargetMachine->behavior_data);
 						TargetMachine->V[0xF] = (((Behavior->CHIP48_Shift ? TargetMachine->V[x] : TargetMachine->V[y]) & 0x80) >> 7);
 						TargetMachine->V[x] = ((Behavior->CHIP48_Shift ? TargetMachine->V[x] : TargetMachine->V[y]) << 1);
 						break;
@@ -1024,7 +982,7 @@ void Hyper_BandCHIP::InstructionData<Hyper_BandCHIP::MachineCore::BandCHIP_CHIP8
 					}
 					case 0x55:
 					{
-						CHIP8_BehaviorData *Behavior = static_cast<CHIP8_BehaviorData *>(TargetMachine->behavior_data);
+						const CHIP8_BehaviorData *Behavior = std::get_if<CHIP8_BehaviorData>(&TargetMachine->behavior_data);
 						for (unsigned char i = 0; i <= x; ++i)
 						{
 							TargetMachine->memory[((TargetMachine->I + i) & 0xFFF)] = TargetMachine->V[i];
@@ -1043,7 +1001,7 @@ void Hyper_BandCHIP::InstructionData<Hyper_BandCHIP::MachineCore::BandCHIP_CHIP8
 					}
 					case 0x65:
 					{
-						CHIP8_BehaviorData *Behavior = static_cast<CHIP8_BehaviorData *>(TargetMachine->behavior_data);
+						const CHIP8_BehaviorData *Behavior = std::get_if<CHIP8_BehaviorData>(&TargetMachine->behavior_data);
 						for (unsigned char i = 0; i <= x; ++i)
 						{
 							TargetMachine->V[i] = TargetMachine->memory[((TargetMachine->I + i) & 0xFFF)];
@@ -1104,7 +1062,7 @@ void Hyper_BandCHIP::InstructionData<Hyper_BandCHIP::MachineCore::BandCHIP_Super
 					case 0xCE:
 					case 0xCF:
 					{
-						SuperCHIP_BehaviorData *Behavior = static_cast<SuperCHIP_BehaviorData *>(TargetMachine->behavior_data);
+						const SuperCHIP_BehaviorData *Behavior = std::get_if<SuperCHIP_BehaviorData>(&TargetMachine->behavior_data);
 						switch (Behavior->Version)
 						{
 							case SuperCHIPVersion::Fixed_SuperCHIP11:
@@ -1158,7 +1116,7 @@ void Hyper_BandCHIP::InstructionData<Hyper_BandCHIP::MachineCore::BandCHIP_Super
 					}
 					case 0xFB:
 					{
-						SuperCHIP_BehaviorData *Behavior = static_cast<SuperCHIP_BehaviorData *>(TargetMachine->behavior_data);
+						const SuperCHIP_BehaviorData *Behavior = std::get_if<SuperCHIP_BehaviorData>(&TargetMachine->behavior_data);
 						switch (Behavior->Version)
 						{
 							case SuperCHIPVersion::Fixed_SuperCHIP11:
@@ -1187,7 +1145,7 @@ void Hyper_BandCHIP::InstructionData<Hyper_BandCHIP::MachineCore::BandCHIP_Super
 					}
 					case 0xFC:
 					{
-						SuperCHIP_BehaviorData *Behavior = static_cast<SuperCHIP_BehaviorData *>(TargetMachine->behavior_data);
+						const SuperCHIP_BehaviorData *Behavior = std::get_if<SuperCHIP_BehaviorData>(&TargetMachine->behavior_data);
 						switch (Behavior->Version)
 						{
 							case SuperCHIPVersion::Fixed_SuperCHIP11:
@@ -1410,7 +1368,7 @@ void Hyper_BandCHIP::InstructionData<Hyper_BandCHIP::MachineCore::BandCHIP_Super
 					}
 					case 0x6:
 					{
-						SuperCHIP_BehaviorData *Behavior = static_cast<SuperCHIP_BehaviorData *>(TargetMachine->behavior_data);
+						const SuperCHIP_BehaviorData *Behavior = std::get_if<SuperCHIP_BehaviorData>(&TargetMachine->behavior_data);
 						TargetMachine->V[0xF] = (((Behavior->Version == SuperCHIPVersion::Fixed_SuperCHIP11) ? TargetMachine->V[y] : TargetMachine->V[x]) & 0x01);
 						TargetMachine->V[x] = (((Behavior->Version == SuperCHIPVersion::Fixed_SuperCHIP11) ? TargetMachine->V[y] : TargetMachine->V[x]) >> 1);
 						break;
@@ -1431,7 +1389,7 @@ void Hyper_BandCHIP::InstructionData<Hyper_BandCHIP::MachineCore::BandCHIP_Super
 					}
 					case 0xE:
 					{
-						SuperCHIP_BehaviorData *Behavior = static_cast<SuperCHIP_BehaviorData *>(TargetMachine->behavior_data);
+						const SuperCHIP_BehaviorData *Behavior = std::get_if<SuperCHIP_BehaviorData>(&TargetMachine->behavior_data);
 						TargetMachine->V[0xF] = ((((Behavior->Version == SuperCHIPVersion::Fixed_SuperCHIP11) ? TargetMachine->V[y] : TargetMachine->V[x]) & 0x80) >> 7);
 						TargetMachine->V[x] = (((Behavior->Version == SuperCHIPVersion::Fixed_SuperCHIP11) ? TargetMachine->V[y] : TargetMachine->V[x]) << 1);
 						break;
@@ -1698,7 +1656,7 @@ void Hyper_BandCHIP::InstructionData<Hyper_BandCHIP::MachineCore::BandCHIP_Super
 					}
 					case 0x29:
 					{
-						SuperCHIP_BehaviorData *Behavior = static_cast<SuperCHIP_BehaviorData *>(TargetMachine->behavior_data);
+						const SuperCHIP_BehaviorData *Behavior = std::get_if<SuperCHIP_BehaviorData>(&TargetMachine->behavior_data);
 						switch (TargetMachine->V[x])
 						{
 							case 0x00:
@@ -1871,7 +1829,7 @@ void Hyper_BandCHIP::InstructionData<Hyper_BandCHIP::MachineCore::BandCHIP_Super
 					}
 					case 0x30:
 					{
-						SuperCHIP_BehaviorData *Behavior = static_cast<SuperCHIP_BehaviorData *>(TargetMachine->behavior_data);
+						const SuperCHIP_BehaviorData *Behavior = std::get_if<SuperCHIP_BehaviorData>(&TargetMachine->behavior_data);
 						switch (Behavior->Version)
 						{
 							case SuperCHIPVersion::Fixed_SuperCHIP11:
@@ -1967,7 +1925,7 @@ void Hyper_BandCHIP::InstructionData<Hyper_BandCHIP::MachineCore::BandCHIP_Super
 					}
 					case 0x55:
 					{
-						SuperCHIP_BehaviorData *Behavior = static_cast<SuperCHIP_BehaviorData *>(TargetMachine->behavior_data);
+						const SuperCHIP_BehaviorData *Behavior = std::get_if<SuperCHIP_BehaviorData>(&TargetMachine->behavior_data);
 						for (unsigned char i = 0; i <= x; ++i)
 						{
 							TargetMachine->memory[((TargetMachine->I + i) & 0xFFF)] = TargetMachine->V[i];
@@ -1998,7 +1956,7 @@ void Hyper_BandCHIP::InstructionData<Hyper_BandCHIP::MachineCore::BandCHIP_Super
 					}
 					case 0x65:
 					{
-						SuperCHIP_BehaviorData *Behavior = static_cast<SuperCHIP_BehaviorData *>(TargetMachine->behavior_data);
+						const SuperCHIP_BehaviorData *Behavior = std::get_if<SuperCHIP_BehaviorData>(&TargetMachine->behavior_data);
 						for (unsigned char i = 0; i <= x; ++i)
 						{
 							TargetMachine->V[i] = TargetMachine->memory[((TargetMachine->I + i) & 0xFFF)];
