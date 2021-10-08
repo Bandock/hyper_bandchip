@@ -2224,7 +2224,7 @@ void Hyper_BandCHIP::InstructionData<Hyper_BandCHIP::MachineCore::BandCHIP_Hyper
 					}
 					case 3:
 					{
-						for (unsigned char i = ((x <= y) ? x : y); i < ((x <= y) ? y : x); ++i)
+						for (unsigned char i = ((x <= y) ? x : y); i <= ((x <= y) ? y : x); ++i)
 						{
 							TargetMachine->V[(x <= y) ? i : x - i] = TargetMachine->memory[TargetMachine->I + ((x <= y) ? i - x : i - y)];
 						}
