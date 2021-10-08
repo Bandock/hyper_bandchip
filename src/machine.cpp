@@ -2058,6 +2058,28 @@ void Hyper_BandCHIP::InstructionData<Hyper_BandCHIP::MachineCore::BandCHIP_Hyper
 						TargetMachine->PC += 2;
 						break;
 					}
+					case 0xD0:
+					case 0xD1:
+					case 0xD2:
+					case 0xD3:
+					case 0xD4:
+					case 0xD5:
+					case 0xD6:
+					case 0xD7:
+					case 0xD8:
+					case 0xD9:
+					case 0xDA:
+					case 0xDB:
+					case 0xDC:
+					case 0xDD:
+					case 0xDE:
+					case 0xDF:
+					{
+						memmove(&TargetMachine->display[0], &TargetMachine->display[TargetMachine->display_width * (operand & 0x0F)], TargetMachine->display_width * (TargetMachine->display_height - (operand & 0x0F)));
+						memset(&TargetMachine->display[TargetMachine->display_width * (TargetMachine->display_height - (operand & 0x0F))], 0x00, TargetMachine->display_width * (operand & 0x0F));
+						TargetMachine->PC += 2;
+						break;
+					}
 					case 0xE0:
 					{
 						TargetMachine->InitializeVideo();
@@ -2179,16 +2201,46 @@ void Hyper_BandCHIP::InstructionData<Hyper_BandCHIP::MachineCore::BandCHIP_Hyper
 				unsigned char x = ((operand & 0xF00) >> 8);
 				unsigned char y = ((operand & 0x0F0) >> 4);
 				unsigned char z = (operand & 0x00F);
-				if (z != 0)
+				bool valid = true;
+				switch (z)
 				{
-					TargetMachine->pause = true;
-					TargetMachine->error_state = MachineError::InvalidInstruction;
-					break;
+					case 0:
+					{
+						TargetMachine->PC += 2;
+						if (TargetMachine->V[x] == TargetMachine->V[y])
+						{
+							TargetMachine->PC += 2;
+						}	
+						break;
+					}
+					case 2:
+					{
+						for (unsigned char i = ((x <= y) ? x : y); i <= ((x <= y) ? y : x); ++i)
+						{
+							TargetMachine->memory[TargetMachine->I + ((x <= y) ? i - x : i - y)] = TargetMachine->V[(x <= y) ? i : x - i];
+						}
+						TargetMachine->PC += 2;
+						break;
+					}
+					case 3:
+					{
+						for (unsigned char i = ((x <= y) ? x : y); i < ((x <= y) ? y : x); ++i)
+						{
+							TargetMachine->V[(x <= y) ? i : x - i] = TargetMachine->memory[TargetMachine->I + ((x <= y) ? i - x : i - y)];
+						}
+						TargetMachine->PC += 2;
+						break;
+					}
+					default:
+					{
+						valid = false;
+						break;
+					}
 				}
-				TargetMachine->PC += 2;
-				if (TargetMachine->V[x] == TargetMachine->V[y])
+				if (!valid)
 				{
-					TargetMachine->PC += 2;
+					TargetMachine->PauseProgram(true);
+					TargetMachine->error_state = MachineError::InvalidInstruction;
 				}
 				break;
 			}
