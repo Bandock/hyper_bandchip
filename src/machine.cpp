@@ -4,7 +4,7 @@
 #include <fstream>
 #include <bit>
 
-Hyper_BandCHIP::Machine::Machine(MachineCore Core, unsigned int cycles_per_second, unsigned int memory_size, unsigned short display_width, unsigned short display_height) : CurrentMachineCore(Core), CurrentResolutionMode(ResolutionMode::LoRes), cycles_per_second(cycles_per_second), delay_timer(0), sound_timer(0), PC(0), I(0), SP(0), memory(nullptr), display(nullptr), rng_engine(system_clock::now().time_since_epoch().count()), rng_distrib(0, 255), cycle_accumulator(0.0), dt_accumulator(0.0), st_accumulator(0.0), pause(true), error_state(MachineError::NoError)
+Hyper_BandCHIP::Machine::Machine(MachineCore Core, unsigned int cycles_per_second, unsigned int memory_size, unsigned short display_width, unsigned short display_height) : CurrentMachineCore(Core), CurrentResolutionMode(ResolutionMode::LoRes), cycles_per_second(cycles_per_second), delay_timer(0), sound_timer(0), PC(0), I(0), SP(0), memory(nullptr), display(nullptr), prefix_flags(0), address_nibble_store(0), rng_engine(system_clock::now().time_since_epoch().count()), rng_distrib(0, 255), cycle_accumulator(0.0), dt_accumulator(0.0), st_accumulator(0.0), pause(true), error_state(MachineError::NoError)
 {
 	switch (CurrentMachineCore)
 	{
@@ -78,6 +78,8 @@ void Hyper_BandCHIP::Machine::InitializeRegisters()
 {
 	memset(V, 0, sizeof(V));
 	I = 0;
+	prefix_flags = 0;
+	address_nibble_store = 0;
 }
 
 void Hyper_BandCHIP::Machine::InitializeTimers()
@@ -2157,7 +2159,12 @@ void Hyper_BandCHIP::InstructionData<Hyper_BandCHIP::MachineCore::BandCHIP_Hyper
 			}
 			case 0x1:
 			{
-				TargetMachine->PC = (operand & 0xFFF);
+				TargetMachine->PC = ((TargetMachine->prefix_flags & 0x01) ? (TargetMachine->address_nibble_store << 8) : 0) | (operand & 0xFFF);
+				if (TargetMachine->prefix_flags & 0x01)
+				{
+					TargetMachine->prefix_flags &= ~(0x01);
+					TargetMachine->address_nibble_store = 0x00;
+				}
 				break;
 			}
 			case 0x2:
@@ -2165,7 +2172,13 @@ void Hyper_BandCHIP::InstructionData<Hyper_BandCHIP::MachineCore::BandCHIP_Hyper
 				if (TargetMachine->SP < (sizeof(TargetMachine->stack) / sizeof(unsigned short)))
 				{
 					TargetMachine->stack[TargetMachine->SP++] = TargetMachine->PC + 2;
-					TargetMachine->PC = (operand & 0xFFF);
+					TargetMachine->PC = ((TargetMachine->prefix_flags & 0x01) ? (TargetMachine->address_nibble_store << 8) : 0) | (operand & 0xFFF);
+					if (TargetMachine->prefix_flags & 0x01)
+					{
+						TargetMachine->prefix_flags &= ~(0x01);
+						TargetMachine->address_nibble_store = 0x00;
+					}
+					break;
 				}
 				else
 				{
@@ -2399,13 +2412,23 @@ void Hyper_BandCHIP::InstructionData<Hyper_BandCHIP::MachineCore::BandCHIP_Hyper
 			}
 			case 0xA:
 			{
-				TargetMachine->I = (operand & 0xFFF);
+				TargetMachine->I = ((TargetMachine->prefix_flags & 0x01) ? (TargetMachine->address_nibble_store << 8) : 0) | (operand & 0xFFF);
+				if (TargetMachine->prefix_flags & 0x01)
+				{
+					TargetMachine->prefix_flags &= ~(0x01);
+					TargetMachine->address_nibble_store = 0x00;
+				}
 				TargetMachine->PC += 2;
 				break;
 			}
 			case 0xB:
 			{
-				TargetMachine->PC = (operand & 0xFFF) + TargetMachine->V[0];
+				TargetMachine->PC = (((TargetMachine->prefix_flags & 0x01) ? (TargetMachine->address_nibble_store << 8) : 0) | (operand & 0xFFF)) + TargetMachine->V[0];
+				if (TargetMachine->prefix_flags & 0x01)
+				{
+					TargetMachine->prefix_flags &= ~(0x01);
+					TargetMachine->address_nibble_store = 0x00;
+				}
 				break;
 			}
 			case 0xC:
@@ -2796,6 +2819,13 @@ void Hyper_BandCHIP::InstructionData<Hyper_BandCHIP::MachineCore::BandCHIP_Hyper
 					case 0xA2:
 					{
 						TargetMachine->I = ((TargetMachine->memory[static_cast<unsigned short>(TargetMachine->I + TargetMachine->V[x])] << 8) | (TargetMachine->memory[static_cast<unsigned short>(TargetMachine->I + TargetMachine->V[x] + 1)]));
+						TargetMachine->PC += 2;
+						break;
+					}
+					case 0xB0:
+					{
+						TargetMachine->prefix_flags |= 0x01;
+						TargetMachine->address_nibble_store = TargetMachine->V[x];
 						TargetMachine->PC += 2;
 						break;
 					}

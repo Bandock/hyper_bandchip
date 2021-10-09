@@ -152,6 +152,8 @@ namespace Hyper_BandCHIP
 			unsigned short display_width;
 			unsigned short display_height;
 			unsigned char key_status[0x10];
+			unsigned char prefix_flags;
+			unsigned char address_nibble_store;
 			mt19937 rng_engine;
 			uniform_int_distribution<unsigned char> rng_distrib;
 			high_resolution_clock::time_point current_tp;
