@@ -8,7 +8,8 @@ cartridges) for each program and 4 working programmable sound generators (nearly
 
 Technical Specifications:
 - Standard CPU Clock:  1,800 cycles per second
-- RAM:  64KB
+- Endianness:  Big (Same as the original CHIP-8)
+- RAM:  64KB (First 512 bytes still reserved)
 
 Here are the supported instructions below:
 
