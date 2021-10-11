@@ -2194,7 +2194,6 @@ void Hyper_BandCHIP::InstructionData<Hyper_BandCHIP::MachineCore::BandCHIP_Hyper
 				TargetMachine->PC += 2;
 				if (TargetMachine->V[x] == value)
 				{
-					TargetMachine->PC += 2;
 					unsigned char next_opcode = (TargetMachine->memory[TargetMachine->PC] >> 4);
 					unsigned short next_operand = ((TargetMachine->memory[TargetMachine->PC] & 0x0F) << 8) | (TargetMachine->memory[static_cast<unsigned short>(TargetMachine->PC + 1)] & 0xFFF);
 					while (next_opcode == 0xF && (((next_operand & 0x0F0) >> 4) == 0xB))
@@ -2203,6 +2202,7 @@ void Hyper_BandCHIP::InstructionData<Hyper_BandCHIP::MachineCore::BandCHIP_Hyper
 						next_opcode = (TargetMachine->memory[TargetMachine->PC] >> 4);
 						next_operand = ((TargetMachine->memory[TargetMachine->PC] & 0x0F) << 8) | (TargetMachine->memory[static_cast<unsigned short>(TargetMachine->PC + 1)] & 0xFFF);
 					}
+					TargetMachine->PC += 2;
 				}
 				break;
 			}
@@ -2213,7 +2213,6 @@ void Hyper_BandCHIP::InstructionData<Hyper_BandCHIP::MachineCore::BandCHIP_Hyper
 				TargetMachine->PC += 2;
 				if (TargetMachine->V[x] != value)
 				{
-					TargetMachine->PC += 2;
 					unsigned char next_opcode = (TargetMachine->memory[TargetMachine->PC] >> 4);
 					unsigned short next_operand = ((TargetMachine->memory[TargetMachine->PC] & 0x0F) << 8) | (TargetMachine->memory[static_cast<unsigned short>(TargetMachine->PC + 1)] & 0xFFF);
 					while (next_opcode == 0xF && (((next_operand & 0x0F0) >> 4) == 0xB))
@@ -2222,6 +2221,7 @@ void Hyper_BandCHIP::InstructionData<Hyper_BandCHIP::MachineCore::BandCHIP_Hyper
 						next_opcode = (TargetMachine->memory[TargetMachine->PC] >> 4);
 						next_operand = ((TargetMachine->memory[TargetMachine->PC] & 0x0F) << 8) | (TargetMachine->memory[static_cast<unsigned short>(TargetMachine->PC + 1)] & 0xFFF);
 					}
+					TargetMachine->PC += 2;
 				}
 				break;
 			}
@@ -2238,7 +2238,6 @@ void Hyper_BandCHIP::InstructionData<Hyper_BandCHIP::MachineCore::BandCHIP_Hyper
 						TargetMachine->PC += 2;
 						if (TargetMachine->V[x] == TargetMachine->V[y])
 						{
-							TargetMachine->PC += 2;
 							unsigned char next_opcode = (TargetMachine->memory[TargetMachine->PC] >> 4);
 							unsigned short next_operand = ((TargetMachine->memory[TargetMachine->PC] & 0x0F) << 8) | (TargetMachine->memory[static_cast<unsigned short>(TargetMachine->PC + 1)] & 0xFFF);
 							while (next_opcode == 0xF && (((next_operand & 0x0F0) >> 4) == 0xB))
@@ -2247,6 +2246,7 @@ void Hyper_BandCHIP::InstructionData<Hyper_BandCHIP::MachineCore::BandCHIP_Hyper
 								next_opcode = (TargetMachine->memory[TargetMachine->PC] >> 4);
 								next_operand = ((TargetMachine->memory[TargetMachine->PC] & 0x0F) << 8) | (TargetMachine->memory[static_cast<unsigned short>(TargetMachine->PC + 1)] & 0xFFF);
 							}
+							TargetMachine->PC += 2;
 						}	
 						break;
 					}
@@ -2430,7 +2430,6 @@ void Hyper_BandCHIP::InstructionData<Hyper_BandCHIP::MachineCore::BandCHIP_Hyper
 				TargetMachine->PC += 2;
 				if (TargetMachine->V[x] != TargetMachine->V[y])
 				{
-					TargetMachine->PC += 2;
 					unsigned char next_opcode = (TargetMachine->memory[TargetMachine->PC] >> 4);
 					unsigned short next_operand = ((TargetMachine->memory[TargetMachine->PC] & 0x0F) << 8) | (TargetMachine->memory[static_cast<unsigned short>(TargetMachine->PC + 1)] & 0xFFF);
 					while (next_opcode == 0xF && (((next_operand & 0x0F0) >> 4) == 0xB))
@@ -2439,6 +2438,7 @@ void Hyper_BandCHIP::InstructionData<Hyper_BandCHIP::MachineCore::BandCHIP_Hyper
 						next_opcode = (TargetMachine->memory[TargetMachine->PC] >> 4);
 						next_operand = ((TargetMachine->memory[TargetMachine->PC] & 0x0F) << 8) | (TargetMachine->memory[static_cast<unsigned short>(TargetMachine->PC + 1)] & 0xFFF);
 					}
+					TargetMachine->PC += 2;
 				}
 				break;
 			}
@@ -2556,7 +2556,6 @@ void Hyper_BandCHIP::InstructionData<Hyper_BandCHIP::MachineCore::BandCHIP_Hyper
 						TargetMachine->PC += 2;
 						if (TargetMachine->key_status[(TargetMachine->V[x] & 0xF)] == 1)
 						{
-							TargetMachine->PC += 2;
 							unsigned char next_opcode = (TargetMachine->memory[TargetMachine->PC] >> 4);
 							unsigned short next_operand = ((TargetMachine->memory[TargetMachine->PC] & 0x0F) << 8) | (TargetMachine->memory[static_cast<unsigned short>(TargetMachine->PC + 1)] & 0xFFF);
 							while (next_opcode == 0xF && (((next_operand & 0x0F0) >> 4) == 0xB))
@@ -2565,6 +2564,7 @@ void Hyper_BandCHIP::InstructionData<Hyper_BandCHIP::MachineCore::BandCHIP_Hyper
 								next_opcode = (TargetMachine->memory[TargetMachine->PC] >> 4);
 								next_operand = ((TargetMachine->memory[TargetMachine->PC] & 0x0F) << 8) | (TargetMachine->memory[static_cast<unsigned short>(TargetMachine->PC + 1)] & 0xFFF);
 							}
+							TargetMachine->PC += 2;
 						}
 						break;
 					}
@@ -2573,7 +2573,6 @@ void Hyper_BandCHIP::InstructionData<Hyper_BandCHIP::MachineCore::BandCHIP_Hyper
 						TargetMachine->PC += 2;
 						if (TargetMachine->key_status[(TargetMachine->V[x] & 0xF)] == 0)
 						{
-							TargetMachine->PC += 2;
 							unsigned char next_opcode = (TargetMachine->memory[TargetMachine->PC] >> 4);
 							unsigned short next_operand = ((TargetMachine->memory[TargetMachine->PC] & 0x0F) << 8) | (TargetMachine->memory[static_cast<unsigned short>(TargetMachine->PC + 1)] & 0xFFF);
 							while (next_opcode == 0xF && (((next_operand & 0x0F0) >> 4) == 0xB))
@@ -2582,6 +2581,7 @@ void Hyper_BandCHIP::InstructionData<Hyper_BandCHIP::MachineCore::BandCHIP_Hyper
 								next_opcode = (TargetMachine->memory[TargetMachine->PC] >> 4);
 								next_operand = ((TargetMachine->memory[TargetMachine->PC] & 0x0F) << 8) | (TargetMachine->memory[static_cast<unsigned short>(TargetMachine->PC + 1)] & 0xFFF);
 							}
+							TargetMachine->PC += 2;
 						}
 						break;
 					}
