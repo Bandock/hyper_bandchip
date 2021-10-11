@@ -4,7 +4,7 @@
 #include <fstream>
 #include <bit>
 
-Hyper_BandCHIP::Machine::Machine(MachineCore Core, unsigned int cycles_per_second, unsigned int memory_size, unsigned short display_width, unsigned short display_height) : CurrentMachineCore(Core), CurrentResolutionMode(ResolutionMode::LoRes), cycles_per_second(cycles_per_second), delay_timer(0), sound_timer(0), PC(0), I(0), SP(0), memory(nullptr), display(nullptr), prefix_flags(0), address_nibble_store(0), rng_engine(system_clock::now().time_since_epoch().count()), rng_distrib(0, 255), cycle_accumulator(0.0), dt_accumulator(0.0), st_accumulator(0.0), pause(true), error_state(MachineError::NoError)
+Hyper_BandCHIP::Machine::Machine(MachineCore Core, unsigned int cycles_per_second, unsigned int memory_size, unsigned short display_width, unsigned short display_height) : CurrentMachineCore(Core), CurrentResolutionMode(ResolutionMode::LoRes), cycles_per_second(cycles_per_second), delay_timer(0), sound_timer(0), PC(0), I(0), SP(0), memory(nullptr), display(nullptr), prefix_flags(0), address_nibble_store(0), register_store(0), rng_engine(system_clock::now().time_since_epoch().count()), rng_distrib(0, 255), cycle_accumulator(0.0), dt_accumulator(0.0), st_accumulator(0.0), pause(true), error_state(MachineError::NoError)
 {
 	switch (CurrentMachineCore)
 	{
@@ -2455,11 +2455,16 @@ void Hyper_BandCHIP::InstructionData<Hyper_BandCHIP::MachineCore::BandCHIP_Hyper
 			}
 			case 0xB:
 			{
-				TargetMachine->PC = (((TargetMachine->prefix_flags & 0x01) ? (TargetMachine->address_nibble_store << 8) : 0) | (operand & 0xFFF)) + TargetMachine->V[0];
+				TargetMachine->PC = (((TargetMachine->prefix_flags & 0x01) ? (TargetMachine->address_nibble_store << 8) : 0) | (operand & 0xFFF)) + TargetMachine->V[(TargetMachine->prefix_flags & 0x02) ? TargetMachine->register_store : 0];
 				if (TargetMachine->prefix_flags & 0x01)
 				{
 					TargetMachine->prefix_flags &= ~(0x01);
 					TargetMachine->address_nibble_store = 0x00;
+				}
+				if (TargetMachine->prefix_flags & 0x02)
+				{
+					TargetMachine->prefix_flags &= ~(0x02);
+					TargetMachine->register_store = 0x0;
 				}
 				break;
 			}
@@ -2874,6 +2879,13 @@ void Hyper_BandCHIP::InstructionData<Hyper_BandCHIP::MachineCore::BandCHIP_Hyper
 					{
 						TargetMachine->prefix_flags |= 0x01;
 						TargetMachine->address_nibble_store = TargetMachine->V[x];
+						TargetMachine->PC += 2;
+						break;
+					}
+					case 0xB1:
+					{
+						TargetMachine->prefix_flags |= 0x02;
+						TargetMachine->register_store = x;
 						TargetMachine->PC += 2;
 						break;
 					}
