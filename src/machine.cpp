@@ -80,6 +80,7 @@ void Hyper_BandCHIP::Machine::InitializeRegisters()
 	I = 0;
 	prefix_flags = 0;
 	address_nibble_store = 0;
+	register_store = 0;
 }
 
 void Hyper_BandCHIP::Machine::InitializeTimers()
