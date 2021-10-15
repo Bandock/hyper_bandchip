@@ -1421,6 +1421,7 @@ Hyper_BandCHIP::Application::~Application()
 		delete SuperCHIP_Fonts;
 	}
 	delete MainRenderer;
+	SDL_DestroyWindow(MainWindow);
 }
 
 int Hyper_BandCHIP::Application::GetReturnCode() const
