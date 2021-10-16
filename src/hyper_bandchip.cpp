@@ -867,9 +867,12 @@ Hyper_BandCHIP::Application::Application() : MainWindow(nullptr), MainRenderer(n
 														{
 															if (CurrentMachine != nullptr)
 															{
-																CurrentOperationMode = OperationMode::Emulator;
-																MainRenderer->SetDisplayMode(DisplayMode::Emulator);
-																CurrentMachine->PauseProgram(false);
+																if (CurrentMachine->IsOperational())
+																{
+																	CurrentOperationMode = OperationMode::Emulator;
+																	MainRenderer->SetDisplayMode(DisplayMode::Emulator);
+																	CurrentMachine->PauseProgram(false);
+																}
 															}
 															break;
 														}
@@ -1389,6 +1392,13 @@ Hyper_BandCHIP::Application::Application() : MainWindow(nullptr), MainRenderer(n
 					ErrorDisplay.SoundTimerValue.value = State.ST;
 					CurrentOperationMode = OperationMode::Menu;
 					CurrentMenu = MenuDisplay::ErrorDisplay;
+					MainRenderer->SetDisplayMode(DisplayMode::Menu);
+					ShowMenu(CurrentMenu);
+				}
+				else if (!CurrentMachine->IsOperational())
+				{
+					CurrentOperationMode = OperationMode::Menu;
+					CurrentMenu = MenuDisplay::Main;
 					MainRenderer->SetDisplayMode(DisplayMode::Menu);
 					ShowMenu(CurrentMenu);
 				}

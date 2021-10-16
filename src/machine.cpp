@@ -4,7 +4,7 @@
 #include <fstream>
 #include <bit>
 
-Hyper_BandCHIP::Machine::Machine(MachineCore Core, unsigned int cycles_per_second, unsigned int memory_size, unsigned short display_width, unsigned short display_height) : CurrentMachineCore(Core), CurrentResolutionMode(ResolutionMode::LoRes), cycles_per_second(cycles_per_second), delay_timer(0), sound_timer(0), PC(0), I(0), SP(0), memory(nullptr), display(nullptr), prefix_flags(0), address_nibble_store(0), register_store(0), rng_engine(system_clock::now().time_since_epoch().count()), rng_distrib(0, 255), cycle_accumulator(0.0), dt_accumulator(0.0), st_accumulator(0.0), pause(true), error_state(MachineError::NoError)
+Hyper_BandCHIP::Machine::Machine(MachineCore Core, unsigned int cycles_per_second, unsigned int memory_size, unsigned short display_width, unsigned short display_height) : CurrentMachineCore(Core), CurrentResolutionMode(ResolutionMode::LoRes), cycles_per_second(cycles_per_second), delay_timer(0), sound_timer(0), PC(0), I(0), SP(0), memory(nullptr), display(nullptr), prefix_flags(0), address_nibble_store(0), register_store(0), rng_engine(system_clock::now().time_since_epoch().count()), rng_distrib(0, 255), cycle_accumulator(0.0), dt_accumulator(0.0), st_accumulator(0.0), pause(true), operational(true), error_state(MachineError::NoError)
 {
 	switch (CurrentMachineCore)
 	{
@@ -211,6 +211,10 @@ bool Hyper_BandCHIP::Machine::LoadProgram(const unsigned char *source, unsigned 
 			{
 				error_state = MachineError::NoError;
 			}
+			if (!operational)
+			{
+				operational = true;
+			}
 			return true;
 		}
 	}
@@ -281,6 +285,11 @@ void Hyper_BandCHIP::Machine::PauseProgram(bool pause)
 bool Hyper_BandCHIP::Machine::IsPaused() const
 {
 	return pause;
+}
+
+bool Hyper_BandCHIP::Machine::IsOperational() const
+{
+	return operational;
 }
 
 Hyper_BandCHIP::MachineCore Hyper_BandCHIP::Machine::GetMachineCore() const
@@ -1179,6 +1188,7 @@ void Hyper_BandCHIP::InstructionData<Hyper_BandCHIP::MachineCore::BandCHIP_Super
 					{
 						TargetMachine->InitializeVideo();
 						TargetMachine->PauseProgram(true);
+						TargetMachine->operational = false;
 						break;
 					}
 					case 0xFE:
@@ -2127,6 +2137,7 @@ void Hyper_BandCHIP::InstructionData<Hyper_BandCHIP::MachineCore::BandCHIP_Hyper
 					{
 						TargetMachine->InitializeVideo();
 						TargetMachine->PauseProgram(true);
+						TargetMachine->operational = false;
 						break;
 					}
 					case 0xFE:

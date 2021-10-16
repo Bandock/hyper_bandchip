@@ -121,6 +121,7 @@ namespace Hyper_BandCHIP
 			bool LoadProgram(const unsigned char *source, unsigned short start_address, unsigned int size);
 			void PauseProgram(bool pause = true);
 			bool IsPaused() const;
+			bool IsOperational() const;
 			MachineCore GetMachineCore() const;
 			MachineError GetErrorState() const;
 			MachineState GetMachineState() const;
@@ -165,6 +166,7 @@ namespace Hyper_BandCHIP
 			high_resolution_clock::time_point st_tp;
 			double st_accumulator;
 			bool pause;
+			bool operational;
 			MachineError error_state;
 	};
 }
