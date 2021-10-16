@@ -79,6 +79,7 @@ Hyper_BandCHIP::Application::Application() : MainWindow(nullptr), MainRenderer(n
 						LoadProgramDisplay.LoadSuccessful.hidden = false;
 						LoadProgramDisplay.Ok.hidden = false;
 						MainMenu.CurrentProgram.Status = LoadProgramMenu.MenuEntry[LoadProgramMenu.CurrentSelectableItemId].Entry.Text;
+						MainMenu.CurrentMachineStatus.Status = "Operational";
 					}
 					else
 					{
@@ -144,6 +145,7 @@ Hyper_BandCHIP::Application::Application() : MainWindow(nullptr), MainRenderer(n
 						LoadProgramDisplay.LoadSuccessful.hidden = false;
 						LoadProgramDisplay.Ok.hidden = false;
 						MainMenu.CurrentProgram.Status = LoadProgramMenu.MenuEntry[LoadProgramMenu.CurrentSelectableItemId].Entry.Text;
+						MainMenu.CurrentMachineStatus.Status = "Operational";
 					}
 					else
 					{
@@ -189,6 +191,7 @@ Hyper_BandCHIP::Application::Application() : MainWindow(nullptr), MainRenderer(n
 						LoadProgramDisplay.LoadSuccessful.hidden = false;
 						LoadProgramDisplay.Ok.hidden = false;
 						MainMenu.CurrentProgram.Status = LoadProgramMenu.MenuEntry[LoadProgramMenu.CurrentSelectableItemId].Entry.Text;
+						MainMenu.CurrentMachineStatus.Status = "Operational";
 					}
 					else
 					{
@@ -1400,6 +1403,7 @@ Hyper_BandCHIP::Application::Application() : MainWindow(nullptr), MainRenderer(n
 					CurrentOperationMode = OperationMode::Menu;
 					CurrentMenu = MenuDisplay::Main;
 					MainRenderer->SetDisplayMode(DisplayMode::Menu);
+					MainMenu.CurrentMachineStatus.Status = "Non-Operational";
 					ShowMenu(CurrentMenu);
 				}
 			}
@@ -2934,6 +2938,7 @@ void Hyper_BandCHIP::Application::ShowMenu(Hyper_BandCHIP::MenuDisplay Menu)
 			DisplayItem(*MainRenderer, MainMenu.Title, 1);
 			DisplayItem(*MainRenderer, MainMenu.Author, 1);
 			DisplayItem(*MainRenderer, MainMenu.CurrentProgram, 1);
+			DisplayItem(*MainRenderer, MainMenu.CurrentMachineStatus, 1);
 			DisplayItem(*MainRenderer, MainMenu.RunProgram, (MainMenu.CurrentSelectableItemId == 0) ? 2 : 1);
 			DisplayItem(*MainRenderer, MainMenu.LoadProgram, (MainMenu.CurrentSelectableItemId == 1) ? 2 : 1);
 			DisplayItem(*MainRenderer, MainMenu.Configuration, (MainMenu.CurrentSelectableItemId == 2) ? 2 : 1);

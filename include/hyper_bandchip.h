@@ -41,10 +41,11 @@ namespace Hyper_BandCHIP
 		const TextItem Title = { "Hyper BandCHIP V0.7", 220, 20, false };
 		const TextItem Author = { "By Joshua Moss", 250, 34, false };
 		StatusTextItem CurrentProgram = { "Current Program", 160, 60, "None", false };
-		const ButtonItem RunProgram = { "Run Program", 200, 100, static_cast<unsigned int>(MainMenuEvent::RunProgram), false };
-		const ButtonItem LoadProgram = { "Load Program", 200, 114, static_cast<unsigned int>(MainMenuEvent::LoadProgram), false };
-		const ButtonItem Configuration = { "Configuration", 200, 128, static_cast<unsigned int>(MainMenuEvent::Configuration), false };
-		const ButtonItem Exit = { "Exit Hyper BandCHIP", 200, 142, static_cast<unsigned int>(MainMenuEvent::Exit), false };
+		StatusTextItem CurrentMachineStatus = { "Current Machine Status", 120, 74, "Non-Operational", false };
+		const ButtonItem RunProgram = { "Run Program", 200, 120, static_cast<unsigned int>(MainMenuEvent::RunProgram), false };
+		const ButtonItem LoadProgram = { "Load Program", 200, 134, static_cast<unsigned int>(MainMenuEvent::LoadProgram), false };
+		const ButtonItem Configuration = { "Configuration", 200, 148, static_cast<unsigned int>(MainMenuEvent::Configuration), false };
+		const ButtonItem Exit = { "Exit Hyper BandCHIP", 200, 162, static_cast<unsigned int>(MainMenuEvent::Exit), false };
 		unsigned int CurrentSelectableItemId = 0;
 	};
 
