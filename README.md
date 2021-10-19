@@ -8,9 +8,9 @@ As of right now, only the OpenGL ES 3.0 renderer is built.  OpenGL and Direct3D 
 
 ## Requirements for Compiling
 
-- CMake (at least 3.10)
-- GLEW (If you're compiling with OpenGL or OpenGL ES 3.0 renderer support)
-- SDL2 (Latest stable development versions should work fine)
+- [CMake](https://www.cmake.org/download/) (at least 3.10)
+- [GLEW](http://glew.sourceforge.net) (If you're compiling with OpenGL or OpenGL ES 3.0 renderer support)
+- [SDL2](https://www.libsdl.org/download-2.0.php) (Latest stable development versions should work fine)
 - C++ Compiler with C++20 Support (mainly for Concepts and some other features)
 
 ## How to use
