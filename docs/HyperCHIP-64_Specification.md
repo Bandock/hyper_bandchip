@@ -4,12 +4,20 @@ This extension builds upon the foundations of CHIP-8 and SuperCHIP (V1.0/V1.1). 
 
 Main purpose behind this extension is to not only enable full access to the 16-bit memory range, but also grant capabilities reminiscent to early computers and consoles 
 of the 1980s (compared to the 1970s found when CHIP-8 first existed).  That includes the ability to utilize 4KB of external storage (mimicking battery-backed storage on game
-cartridges) for each program and 4 working programmable sound generators (nearly equivalent to the Commodore 64's SID).
+cartridges; support which is dependent on the interpreter that implements it) for each program and 4 working programmable sound generators (nearly equivalent to the Commodore
+64's SID).
 
 Technical Specifications:
 - Standard CPU Clock:  1,800 cycles per second
 - Endianness:  Big (Same as the original CHIP-8)
 - RAM:  64KB (First 512 bytes still reserved)
+
+Latchable Memory Map:
+
+|Latch Target ID |Memory Range |Description |Required |
+|----------------|-------------|------------|---------|
+|0x00|0xF000-0xFFFF|Program External Storage|No|
+|0x01|0xD000-0xD01F *WIP*|4 Programmable Sound Generators|Yes|
 
 Here are the supported instructions below:
 
@@ -67,7 +75,7 @@ Here are the supported instructions below:
 |FX65|Load V0 to VX from memory starting at I (I = I + X + 1, CHIP-8 original behavior)|CHIP-8|No|
 |FX75|Store V0 to VX in RPL User Flags (X <= 7)|SuperCHIP V1.0|No|
 |FX85|Load V0 to VX from RPL User Flags (X <= 7)|SuperCHIP V1.0|No|
-|FXA0|Latch To Memory Instruction *WIP*|HyperCHIP-64|N/A|
+|FXA0|Latch To Memory Instruction (VF = 01 if Latch Target is supported, 00 if Latch Target is not supported, VF is set by the implementing interpreter) *WIP*|HyperCHIP-64|N/A|
 |FXA1|Unlatch From Memory Instruction *WIP*|HyperCHIP-64|N/A|
 |FXA2|Set I to [I + VX]|HyperCHIP-64|N/A|
 |FNB0|4-bit Absolute Address Extend Prefix (N is stored in the last nibble of the 16-bit address when used on a supported instruction.)|HyperCHIP-64|N/A|
