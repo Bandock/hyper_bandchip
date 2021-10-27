@@ -2890,7 +2890,7 @@ void Hyper_BandCHIP::InstructionData<Hyper_BandCHIP::MachineCore::BandCHIP_Hyper
 					case 0xB0:
 					{
 						TargetMachine->prefix_flags |= 0x01;
-						TargetMachine->address_nibble_store = TargetMachine->V[x];
+						TargetMachine->address_nibble_store = x;
 						TargetMachine->PC += 2;
 						break;
 					}
