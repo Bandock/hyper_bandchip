@@ -15,6 +15,8 @@ Hyper_BandCHIP::Application::Application() : MainWindow(nullptr), MainRenderer(n
 {
 	bool exit = false;
 	unsigned int flags = 0x00000000;
+	unsigned int frame_count = 0;
+	double refresh_time_accumulator = 0.0;
 	SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO);
 #ifdef RENDERER_OPENGLES3
 	flags |= SDL_WINDOW_OPENGL;
@@ -1414,11 +1416,21 @@ Hyper_BandCHIP::Application::Application() : MainWindow(nullptr), MainRenderer(n
 			delta_time = std::chrono::duration<double>(0.25);
 		}
 		refresh_accumulator += delta_time.count();
+		refresh_time_accumulator += delta_time.count();
 		refresh_tp = current_tp;
 		if (refresh_accumulator >= 1.0 / 60.0)
 		{
 			refresh_accumulator = 0.0;
 			MainRenderer->Render();
+			++frame_count;
+			if (refresh_time_accumulator >= 1.0)
+			{
+				refresh_time_accumulator = 0.0;
+				std::ostringstream window_name;
+				window_name << "Hyper BandCHIP Emulator (FPS: " << frame_count << ")";
+				SDL_SetWindowTitle(MainWindow, window_name.str().c_str());
+				frame_count = 0;
+			}
 		}
 		SDL_Delay(1);
 	}
