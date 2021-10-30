@@ -205,6 +205,7 @@ void main()
 	glEnable(GL_DEPTH_TEST);
 	glViewport(0, 0, 1280, 640);
 	glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+	SDL_GL_SetSwapInterval(0);
 }
 
 Hyper_BandCHIP::Renderer::~Renderer()
