@@ -1419,8 +1419,8 @@ Hyper_BandCHIP::Application::Application() : MainWindow(nullptr), MainRenderer(n
 		{
 			refresh_accumulator = 0.0;
 			MainRenderer->Render();
+			SDL_Delay(10);
 		}
-		SDL_Delay(1);
 	}
 }
 
