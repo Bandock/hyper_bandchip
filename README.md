@@ -1,8 +1,8 @@
 # Hyper BandCHIP
 
 Next generation CHIP-8 emulator that is designed to take advantage of a new extension built from different foundations.
-This includes the original CHIP-8 and SuperCHIP V1.1 instruction sets.  You can also run different supported cores such
-as the original CHIP-8 and SuperCHIP.
+This includes the original CHIP-8, SuperCHIP V1.1, and XO-CHIP instruction sets.  You can also run different supported cores
+such as the original CHIP-8, SuperCHIP, and XO-CHIP.
 
 As of right now, only the OpenGL ES 3.0 renderer is built.  OpenGL and Direct3D renderers should be built in the near future.
 
@@ -16,7 +16,7 @@ As of right now, only the OpenGL ES 3.0 renderer is built.  OpenGL and Direct3D 
 ## How to use
 
 To get started with this current build of the emulator, simply go to the Configuration menu and change the Core (using left/right 
-arrow keys or even return) to either CHIP-8 or SuperCHIP (HyperCHIP-64 is a WIP).  Next is to alter the behaviors through the 
+arrow keys or even return) to either CHIP-8, SuperCHIP, or XO-CHIP (HyperCHIP-64 is a WIP).  Next is to alter the behaviors through the 
 Behaviors menu (which varies depending on the core selected).  Might want to toy with different behaviors due to games that take 
 advantage of these quirks.
 
