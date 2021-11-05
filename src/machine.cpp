@@ -1624,9 +1624,12 @@ void Hyper_BandCHIP::InstructionData<Hyper_BandCHIP::MachineCore::BandCHIP_Super
 				unsigned char width = 8;
 				unsigned char height = (operand & 0x00F);
 				unsigned char scale_factor = (TargetMachine->CurrentResolutionMode == ResolutionMode::HiRes) ? 1 : 2;
-				if (!height && TargetMachine->CurrentResolutionMode == ResolutionMode::HiRes)
+				if (!height)
 				{
-					width = 16;
+					if (TargetMachine->CurrentResolutionMode == ResolutionMode::HiRes)
+					{
+						width = 16;
+					}
 					height = 16;
 				}
 				unsigned char *sprite = &TargetMachine->memory[TargetMachine->I];
