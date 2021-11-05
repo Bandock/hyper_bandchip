@@ -2765,10 +2765,6 @@ void Hyper_BandCHIP::InstructionData<Hyper_BandCHIP::MachineCore::BandCHIP_XOCHI
 					case 0x9E:
 					{
 						TargetMachine->PC += 2;
-						if (TargetMachine->PC > 0xFFF)
-						{
-							TargetMachine->PC &= 0xFFF;
-						}
 						if (TargetMachine->key_status[(TargetMachine->V[x] & 0xF)] == 1)
 						{
 							unsigned char next_opcode = (TargetMachine->memory[TargetMachine->PC] >> 4);
