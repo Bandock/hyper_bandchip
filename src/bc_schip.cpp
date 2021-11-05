@@ -862,6 +862,11 @@ void Hyper_BandCHIP::InstructionData<Hyper_BandCHIP::MachineCore::BandCHIP_Super
 										TargetMachine->I = 0x0AA;
 										break;
 									}
+									default:
+									{
+										TargetMachine->I = 0x0B4;
+										break;
+									}
 								}
 								TargetMachine->PC += 2;
 								if (TargetMachine->PC > 0xFFF)

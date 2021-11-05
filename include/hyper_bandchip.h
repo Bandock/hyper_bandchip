@@ -184,7 +184,6 @@ namespace Hyper_BandCHIP
 			int GetReturnCode() const;
 			void InitializeKeyMaps();
 			void ConstructMenus();
-			void ConstructFonts();
 			void ShowMenu(MenuDisplay Menu);
 		private:
 			SDL_Window *MainWindow;
@@ -205,9 +204,6 @@ namespace Hyper_BandCHIP
 			PaletteSettingsMenuData PaletteSettingsMenu;
 			KeyboardRemappingMenuData KeyboardRemappingMenu;
 			ErrorDisplayData ErrorDisplay;
-			Font<5, 16> *CHIP8_Fonts;
-			Font<10, 10> *SuperCHIP_Fonts;
-			Font<10, 16> *Octo_Fonts; // Inherited from Octo developed by John Earnest
 			Machine *CurrentMachine;
 			std::chrono::high_resolution_clock::time_point refresh_tp;
 			double refresh_accumulator;
