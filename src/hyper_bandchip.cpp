@@ -55,7 +55,7 @@ Hyper_BandCHIP::Application::Application() : MainWindow(nullptr), MainRenderer(n
 						if (CurrentMachine->GetMachineCore() != CurrentMachineCore)
 						{
 							delete CurrentMachine;
-							CurrentMachine = new Machine();
+							CurrentMachine = new Machine(CurrentMachineCore, CPUSettingsMenu.CPUCycles.value);
 						}
 						else
 						{
@@ -69,7 +69,7 @@ Hyper_BandCHIP::Application::Application() : MainWindow(nullptr), MainRenderer(n
 					}
 					else
 					{
-						CurrentMachine = new Machine();
+						CurrentMachine = new Machine(CurrentMachineCore, CPUSettingsMenu.CPUCycles.value);
 					}
 					MainRenderer->SetupDisplay(64, 32);
 					CurrentMachine->CopyDataToInterpreterMemory(reinterpret_cast<const unsigned char *>(CHIP8_Fonts), 0, sizeof(Font<5, 16>));
@@ -100,7 +100,7 @@ Hyper_BandCHIP::Application::Application() : MainWindow(nullptr), MainRenderer(n
 						if (CurrentMachine->GetMachineCore() != CurrentMachineCore)
 						{
 							delete CurrentMachine;
-							CurrentMachine = new Machine(CurrentMachineCore, 1800, 0x1000, 128, 64);
+							CurrentMachine = new Machine(CurrentMachineCore, CPUSettingsMenu.CPUCycles.value, 0x1000, 128, 64);
 						}
 						else
 						{
@@ -115,7 +115,7 @@ Hyper_BandCHIP::Application::Application() : MainWindow(nullptr), MainRenderer(n
 					}
 					else
 					{
-						CurrentMachine = new Machine(CurrentMachineCore, 1800, 0x1000, 128, 64);
+						CurrentMachine = new Machine(CurrentMachineCore, CPUSettingsMenu.CPUCycles.value, 0x1000, 128, 64);
 					}
 					std::filesystem::current_path(local_dir);
 					MainRenderer->SetupDisplay(128, 64);
@@ -157,6 +157,55 @@ Hyper_BandCHIP::Application::Application() : MainWindow(nullptr), MainRenderer(n
 					}
 					break;
 				}
+				case MachineCore::BandCHIP_XOCHIP:
+				{
+					std::filesystem::path local_dir = std::filesystem::current_path();
+					std::filesystem::current_path(start_path);
+					if (CurrentMachine != nullptr)
+					{
+						if (CurrentMachine->GetMachineCore() != CurrentMachineCore)
+						{
+							delete CurrentMachine;
+							CurrentMachine = new Machine(CurrentMachineCore, CPUSettingsMenu.CPUCycles.value, 0x10000, 128, 64);
+						}
+						else
+						{
+							CurrentMachine->SetResolutionMode(ResolutionMode::LoRes);
+							CurrentMachine->InitializeRegisters();
+							CurrentMachine->InitializeTimers();
+							CurrentMachine->InitializeStack();
+							CurrentMachine->InitializeMemory();
+							CurrentMachine->InitializeVideo();
+							CurrentMachine->InitializeAudio();
+							CurrentMachine->InitializeKeyStatus();
+						}
+					}
+					else
+					{
+						CurrentMachine = new Machine(CurrentMachineCore, CPUSettingsMenu.CPUCycles.value, 0x10000, 128, 64);
+					}
+					std::filesystem::current_path(local_dir);
+					MainRenderer->SetupDisplay(128, 64);
+					CurrentMachine->CopyDataToInterpreterMemory(reinterpret_cast<const unsigned char *>(CHIP8_Fonts), 0, sizeof(Font<5, 16>));
+					CurrentMachine->CopyDataToInterpreterMemory(reinterpret_cast<const unsigned char *>(Octo_Fonts), sizeof(Font<5, 16>), sizeof(Font<10, 16>));
+					XOCHIP_BehaviorData CurrentBehaviorData = { BehaviorsMenu.SuperCHIP_LoadStore.toggle, BehaviorsMenu.Octo_LoResSprite.toggle };
+					CurrentMachine->StoreBehaviorData(&CurrentBehaviorData);
+					if (CurrentMachine->LoadProgram(program_data, 0x200, program_size))
+					{
+						LoadProgramDisplay.LoadingProgram.hidden = true;
+						LoadProgramDisplay.LoadSuccessful.hidden = false;
+						LoadProgramDisplay.Ok.hidden = false;
+						MainMenu.CurrentProgram.Status = LoadProgramMenu.MenuEntry[LoadProgramMenu.CurrentSelectableItemId].Entry.Text;
+						MainMenu.CurrentMachineStatus.Status = "Operational";
+					}
+					else
+					{
+						LoadProgramDisplay.LoadingProgram.hidden = true;
+						LoadProgramDisplay.LoadFailed.hidden = false;
+						LoadProgramDisplay.Ok.hidden = false;
+					}
+					break;
+				}
 				case MachineCore::BandCHIP_HyperCHIP64:
 				{
 					std::filesystem::path local_dir = std::filesystem::current_path();
@@ -166,7 +215,7 @@ Hyper_BandCHIP::Application::Application() : MainWindow(nullptr), MainRenderer(n
 						if (CurrentMachine->GetMachineCore() != CurrentMachineCore)
 						{
 							delete CurrentMachine;
-							CurrentMachine = new Machine(CurrentMachineCore, 1800, 0x10000, 128, 64);
+							CurrentMachine = new Machine(CurrentMachineCore, CPUSettingsMenu.CPUCycles.value, 0x10000, 128, 64);
 						}
 						else
 						{
@@ -181,7 +230,7 @@ Hyper_BandCHIP::Application::Application() : MainWindow(nullptr), MainRenderer(n
 					}
 					else
 					{
-						CurrentMachine = new Machine(CurrentMachineCore, 1800, 0x10000, 128,  64);
+						CurrentMachine = new Machine(CurrentMachineCore, CPUSettingsMenu.CPUCycles.value, 0x10000, 128, 64);
 					}
 					std::filesystem::current_path(local_dir);
 					MainRenderer->SetupDisplay(128, 64);
@@ -312,7 +361,12 @@ Hyper_BandCHIP::Application::Application() : MainWindow(nullptr), MainRenderer(n
 												}
 												case MenuDisplay::Configuration:
 												{
-													ConfigurationMenu.CurrentSelectableItemId = (ConfigurationMenu.CurrentSelectableItemId == 0) ? 6 : ConfigurationMenu.CurrentSelectableItemId - 1;
+													ConfigurationMenu.CurrentSelectableItemId = (ConfigurationMenu.CurrentSelectableItemId == 0) ? 7 : ConfigurationMenu.CurrentSelectableItemId - 1;
+													break;
+												}
+												case MenuDisplay::CPUSettings:
+												{
+													CPUSettingsMenu.CurrentSelectableItemId = (CPUSettingsMenu.CurrentSelectableItemId == 0) ? 3 : CPUSettingsMenu.CurrentSelectableItemId - 1;
 													break;
 												}
 												case MenuDisplay::Behaviors:
@@ -327,6 +381,11 @@ Hyper_BandCHIP::Application::Application() : MainWindow(nullptr), MainRenderer(n
 														case MachineCore::BandCHIP_SuperCHIP:
 														{
 															BehaviorsMenu.CurrentSelectableItemId = (BehaviorsMenu.CurrentSelectableItemId == 0) ? 1 : BehaviorsMenu.CurrentSelectableItemId - 1;
+															break;
+														}
+														case MachineCore::BandCHIP_XOCHIP:
+														{
+															BehaviorsMenu.CurrentSelectableItemId = (BehaviorsMenu.CurrentSelectableItemId == 0) ? 2 : BehaviorsMenu.CurrentSelectableItemId - 1;
 															break;
 														}
 													}
@@ -438,7 +497,12 @@ Hyper_BandCHIP::Application::Application() : MainWindow(nullptr), MainRenderer(n
 												}
 												case MenuDisplay::Configuration:
 												{
-													ConfigurationMenu.CurrentSelectableItemId = (ConfigurationMenu.CurrentSelectableItemId == 6) ? 0 : ConfigurationMenu.CurrentSelectableItemId + 1;
+													ConfigurationMenu.CurrentSelectableItemId = (ConfigurationMenu.CurrentSelectableItemId == 7) ? 0 : ConfigurationMenu.CurrentSelectableItemId + 1;
+													break;
+												}
+												case MenuDisplay::CPUSettings:
+												{
+													CPUSettingsMenu.CurrentSelectableItemId = (CPUSettingsMenu.CurrentSelectableItemId == 3) ? 0 : CPUSettingsMenu.CurrentSelectableItemId + 1;
 													break;
 												}
 												case MenuDisplay::Behaviors:
@@ -453,6 +517,11 @@ Hyper_BandCHIP::Application::Application() : MainWindow(nullptr), MainRenderer(n
 														case MachineCore::BandCHIP_SuperCHIP:
 														{
 															BehaviorsMenu.CurrentSelectableItemId = (BehaviorsMenu.CurrentSelectableItemId == 1) ? 0 : BehaviorsMenu.CurrentSelectableItemId + 1;
+															break;
+														}
+														case MachineCore::BandCHIP_XOCHIP:
+														{
+															BehaviorsMenu.CurrentSelectableItemId = (BehaviorsMenu.CurrentSelectableItemId == 2) ? 0 : BehaviorsMenu.CurrentSelectableItemId + 1;
 															break;
 														}
 													}
@@ -498,30 +567,35 @@ Hyper_BandCHIP::Application::Application() : MainWindow(nullptr), MainRenderer(n
 														}
 														case 1:
 														{
-															event_id = ConfigurationMenu.Behaviors.event_id;
+															event_id = ConfigurationMenu.CPUSettings.event_id;
 															break;
 														}
 														case 2:
 														{
-															event_id = ConfigurationMenu.PaletteSettings.event_id;
+															event_id = ConfigurationMenu.Behaviors.event_id;
 															break;
 														}
 														case 3:
 														{
-															event_id = ConfigurationMenu.KeyboardRemapping.event_id;
+															event_id = ConfigurationMenu.PaletteSettings.event_id;
 															break;
 														}
 														case 4:
 														{
-															event_id = ConfigurationMenu.LoadConfiguration.event_id;
+															event_id = ConfigurationMenu.KeyboardRemapping.event_id;
 															break;
 														}
 														case 5:
 														{
-															event_id = ConfigurationMenu.SaveConfiguration.event_id;
+															event_id = ConfigurationMenu.LoadConfiguration.event_id;
 															break;
 														}
 														case 6:
+														{
+															event_id = ConfigurationMenu.SaveConfiguration.event_id;
+															break;
+														}
+														case 7:
 														{
 															event_id = ConfigurationMenu.ReturnToMainMenu.event_id;
 															break;
@@ -536,7 +610,7 @@ Hyper_BandCHIP::Application::Application() : MainWindow(nullptr), MainRenderer(n
 																case MachineCore::BandCHIP_CHIP8:
 																{
 																	CurrentMachineCore = MachineCore::BandCHIP_HyperCHIP64;
-																	ConfigurationMenu.Core.current_option = 2;
+																	ConfigurationMenu.Core.current_option = 3;
 																	break;
 																}
 																case MachineCore::BandCHIP_SuperCHIP:
@@ -547,15 +621,55 @@ Hyper_BandCHIP::Application::Application() : MainWindow(nullptr), MainRenderer(n
 																	BehaviorsMenu.CHIP48_LoadStore.toggle = false;
 																	break;
 																}
-																case MachineCore::BandCHIP_HyperCHIP64:
+																case MachineCore::BandCHIP_XOCHIP:
 																{
 																	CurrentMachineCore = MachineCore::BandCHIP_SuperCHIP;
 																	ConfigurationMenu.Core.current_option = 1;
 																	BehaviorsMenu.SuperCHIP_Version.current_option = 0;
 																	break;
 																}
+																case MachineCore::BandCHIP_HyperCHIP64:
+																{
+																	CurrentMachineCore = MachineCore::BandCHIP_XOCHIP;
+																	ConfigurationMenu.Core.current_option = 2;
+																	BehaviorsMenu.SuperCHIP_LoadStore.toggle = false;
+																	BehaviorsMenu.Octo_LoResSprite.toggle = true;
+																	break;
+																}
 															}
 															BehaviorsMenu.CurrentSelectableItemId = 0;
+															ShowMenu(CurrentMenu);
+															break;
+														}
+													}
+													break;
+												}
+												case MenuDisplay::CPUSettings:
+												{
+													switch (CPUSettingsMenu.CurrentSelectableItemId)
+													{
+														case 0:
+														{
+															unsigned int cycles = CPUSettingsMenu.CPUCycles.value - CPUSettingsMenu.AdjustmentModifier.value;
+															bool underflow = (cycles > CPUSettingsMenu.CPUCycles.value);
+															if (underflow || cycles < CPUSettingsMenu.CPUCycles.min)
+															{
+																cycles = CPUSettingsMenu.CPUCycles.min;
+															}
+															CPUSettingsMenu.CPUCycles.value = cycles;
+															if (CurrentMachine != nullptr)
+															{
+																CPUSettingsMenu.ChangeStatus.Status = "Changed";
+															}
+															ShowMenu(CurrentMenu);
+															break;
+														}
+														case 1:
+														{
+															if (CPUSettingsMenu.AdjustmentModifier.value > CPUSettingsMenu.AdjustmentModifier.min)
+															{
+																CPUSettingsMenu.AdjustmentModifier.value /= 10;
+															}
 															ShowMenu(CurrentMenu);
 															break;
 														}
@@ -591,6 +705,24 @@ Hyper_BandCHIP::Application::Application() : MainWindow(nullptr), MainRenderer(n
 																case 0:
 																{
 																	BehaviorsMenu.SuperCHIP_Version.current_option = (BehaviorsMenu.SuperCHIP_Version.current_option == 0) ? 2 : BehaviorsMenu.SuperCHIP_Version.current_option - 1;
+																	break;
+																}
+															}
+															ShowMenu(CurrentMenu);
+															break;
+														}
+														case MachineCore::BandCHIP_XOCHIP:
+														{
+															switch (BehaviorsMenu.CurrentSelectableItemId)
+															{
+																case 0:
+																{
+																	BehaviorsMenu.SuperCHIP_LoadStore.toggle = (BehaviorsMenu.SuperCHIP_LoadStore.toggle) ? false : true;
+																	break;
+																}
+																case 1:
+																{
+																	BehaviorsMenu.Octo_LoResSprite.toggle = (BehaviorsMenu.Octo_LoResSprite.toggle) ? false : true;
 																	break;
 																}
 															}
@@ -675,30 +807,35 @@ Hyper_BandCHIP::Application::Application() : MainWindow(nullptr), MainRenderer(n
 														}
 														case 1:
 														{
-															event_id = ConfigurationMenu.Behaviors.event_id;
+															event_id = ConfigurationMenu.CPUSettings.event_id;
 															break;
 														}
 														case 2:
 														{
-															event_id = ConfigurationMenu.PaletteSettings.event_id;
+															event_id = ConfigurationMenu.Behaviors.event_id;
 															break;
 														}
 														case 3:
 														{
-															event_id = ConfigurationMenu.KeyboardRemapping.event_id;
+															event_id = ConfigurationMenu.PaletteSettings.event_id;
 															break;
 														}
 														case 4:
 														{
-															event_id = ConfigurationMenu.LoadConfiguration.event_id;
+															event_id = ConfigurationMenu.KeyboardRemapping.event_id;
 															break;
 														}
 														case 5:
 														{
-															event_id = ConfigurationMenu.SaveConfiguration.event_id;
+															event_id = ConfigurationMenu.LoadConfiguration.event_id;
 															break;
 														}
 														case 6:
+														{
+															event_id = ConfigurationMenu.SaveConfiguration.event_id;
+															break;
+														}
+														case 7:
 														{
 															event_id = ConfigurationMenu.ReturnToMainMenu.event_id;
 															break;
@@ -719,8 +856,16 @@ Hyper_BandCHIP::Application::Application() : MainWindow(nullptr), MainRenderer(n
 																}
 																case MachineCore::BandCHIP_SuperCHIP:
 																{
-																	CurrentMachineCore = MachineCore::BandCHIP_HyperCHIP64;
+																	CurrentMachineCore = MachineCore::BandCHIP_XOCHIP;
 																	ConfigurationMenu.Core.current_option = 2;
+																	BehaviorsMenu.SuperCHIP_LoadStore.toggle = false;
+																	BehaviorsMenu.Octo_LoResSprite.toggle = true;
+																	break;
+																}
+																case MachineCore::BandCHIP_XOCHIP:
+																{
+																	CurrentMachineCore = MachineCore::BandCHIP_HyperCHIP64;
+																	ConfigurationMenu.Core.current_option = 3;
 																	break;
 																}
 																case MachineCore::BandCHIP_HyperCHIP64:
@@ -733,6 +878,37 @@ Hyper_BandCHIP::Application::Application() : MainWindow(nullptr), MainRenderer(n
 																}
 															}
 															BehaviorsMenu.CurrentSelectableItemId = 0;
+															ShowMenu(CurrentMenu);
+															break;
+														}
+													}
+													break;
+												}
+												case MenuDisplay::CPUSettings:
+												{
+													switch(CPUSettingsMenu.CurrentSelectableItemId)
+													{
+														case 0:
+														{
+															unsigned int cycles = CPUSettingsMenu.CPUCycles.value + CPUSettingsMenu.AdjustmentModifier.value;
+															if (cycles > CPUSettingsMenu.CPUCycles.max)
+															{
+																cycles = CPUSettingsMenu.CPUCycles.max;
+															}
+															CPUSettingsMenu.CPUCycles.value = cycles;
+															if (CurrentMachine != nullptr)
+															{
+																CPUSettingsMenu.ChangeStatus.Status = "Changed";
+															}
+															ShowMenu(CurrentMenu);
+															break;
+														}
+														case 1:
+														{
+															if (CPUSettingsMenu.AdjustmentModifier.value < CPUSettingsMenu.AdjustmentModifier.max)
+															{
+																CPUSettingsMenu.AdjustmentModifier.value *= 10;
+															}
 															ShowMenu(CurrentMenu);
 															break;
 														}
@@ -768,6 +944,24 @@ Hyper_BandCHIP::Application::Application() : MainWindow(nullptr), MainRenderer(n
 																case 0:
 																{
 																	BehaviorsMenu.SuperCHIP_Version.current_option = (BehaviorsMenu.SuperCHIP_Version.current_option == 2) ? 0 : BehaviorsMenu.SuperCHIP_Version.current_option + 1;
+																	break;
+																}
+															}
+															ShowMenu(CurrentMenu);
+															break;
+														}
+														case MachineCore::BandCHIP_XOCHIP:
+														{
+															switch (BehaviorsMenu.CurrentSelectableItemId)
+															{
+																case 0:
+																{
+																	BehaviorsMenu.SuperCHIP_LoadStore.toggle = (BehaviorsMenu.SuperCHIP_LoadStore.toggle) ? false : true;
+																	break;
+																}
+																case 1:
+																{
+																	BehaviorsMenu.Octo_LoResSprite.toggle = (BehaviorsMenu.Octo_LoResSprite.toggle) ? false : true;
 																	break;
 																}
 															}
@@ -970,30 +1164,35 @@ Hyper_BandCHIP::Application::Application() : MainWindow(nullptr), MainRenderer(n
 														}
 														case 1:
 														{
-															event_id = ConfigurationMenu.Behaviors.event_id;
+															event_id = ConfigurationMenu.CPUSettings.event_id;
 															break;
 														}
 														case 2:
 														{
-															event_id = ConfigurationMenu.PaletteSettings.event_id;
+															event_id = ConfigurationMenu.Behaviors.event_id;
 															break;
 														}
 														case 3:
 														{
-															event_id = ConfigurationMenu.KeyboardRemapping.event_id;
+															event_id = ConfigurationMenu.PaletteSettings.event_id;
 															break;
 														}
 														case 4:
 														{
-															event_id = ConfigurationMenu.LoadConfiguration.event_id;
+															event_id = ConfigurationMenu.KeyboardRemapping.event_id;
 															break;
 														}
 														case 5:
 														{
-															event_id = ConfigurationMenu.SaveConfiguration.event_id;
+															event_id = ConfigurationMenu.LoadConfiguration.event_id;
 															break;
 														}
 														case 6:
+														{
+															event_id = ConfigurationMenu.SaveConfiguration.event_id;
+															break;
+														}
+														case 7:
 														{
 															event_id = ConfigurationMenu.ReturnToMainMenu.event_id;
 															break;
@@ -1014,8 +1213,14 @@ Hyper_BandCHIP::Application::Application() : MainWindow(nullptr), MainRenderer(n
 																}
 																case MachineCore::BandCHIP_SuperCHIP:
 																{
-																	CurrentMachineCore = MachineCore::BandCHIP_HyperCHIP64;
+																	CurrentMachineCore = MachineCore::BandCHIP_XOCHIP;
 																	ConfigurationMenu.Core.current_option = 2;
+																	break;
+																}
+																case MachineCore::BandCHIP_XOCHIP:
+																{
+																	CurrentMachineCore = MachineCore::BandCHIP_HyperCHIP64;
+																	ConfigurationMenu.Core.current_option = 3;
 																	break;
 																}
 																case MachineCore::BandCHIP_HyperCHIP64:
@@ -1028,6 +1233,12 @@ Hyper_BandCHIP::Application::Application() : MainWindow(nullptr), MainRenderer(n
 																}
 															}
 															BehaviorsMenu.CurrentSelectableItemId = 0;
+															ShowMenu(CurrentMenu);
+															break;
+														}
+														case ConfigurationMenuEvent::CPUSettings:
+														{
+															CurrentMenu = MenuDisplay::CPUSettings;
 															ShowMenu(CurrentMenu);
 															break;
 														}
@@ -1070,6 +1281,43 @@ Hyper_BandCHIP::Application::Application() : MainWindow(nullptr), MainRenderer(n
 													}
 													break;
 												}
+												case MenuDisplay::CPUSettings:
+												{
+													unsigned int event_id = 0xFFFFFFFF;
+													switch (CPUSettingsMenu.CurrentSelectableItemId)
+													{
+														case 2:
+														{
+															event_id = CPUSettingsMenu.CommitChanges.event_id;
+															break;
+														}
+														case 3:
+														{
+															event_id = CPUSettingsMenu.ReturnToConfiguration.event_id;
+															break;
+														}
+													}
+													switch (static_cast<CPUSettingsMenuEvent>(event_id))
+													{
+														case CPUSettingsMenuEvent::CommitChanges:
+														{
+															if (CurrentMachine != nullptr && CPUSettingsMenu.ChangeStatus.Status == "Changed")
+															{
+																CurrentMachine->SetCyclesPerSecond(CPUSettingsMenu.CPUCycles.value);
+																CPUSettingsMenu.ChangeStatus.Status = "Unchanged";
+																ShowMenu(CurrentMenu);
+															}
+															break;
+														}
+														case CPUSettingsMenuEvent::ReturnToConfiguration:
+														{
+															CurrentMenu = MenuDisplay::Configuration;
+															ShowMenu(CurrentMenu);
+															break;
+														}
+													}
+													break;
+												}
 												case MenuDisplay::Behaviors:
 												{
 													switch (CurrentMachineCore)
@@ -1107,6 +1355,29 @@ Hyper_BandCHIP::Application::Application() : MainWindow(nullptr), MainRenderer(n
 																	break;
 																}
 																case 1:
+																{
+																	CurrentMenu = MenuDisplay::Configuration;
+																	break;
+																}
+															}
+															ShowMenu(CurrentMenu);
+															break;
+														}
+														case MachineCore::BandCHIP_XOCHIP:
+														{
+															switch (BehaviorsMenu.CurrentSelectableItemId)
+															{
+																case 0:
+																{
+																	BehaviorsMenu.SuperCHIP_LoadStore.toggle = (BehaviorsMenu.SuperCHIP_LoadStore.toggle) ? false : true;
+																	break;
+																}
+																case 1:
+																{
+																	BehaviorsMenu.Octo_LoResSprite.toggle = (BehaviorsMenu.Octo_LoResSprite.toggle) ? false : true;
+																	break;
+																}
+																case 2:
 																{
 																	CurrentMenu = MenuDisplay::Configuration;
 																	break;
@@ -1206,6 +1477,12 @@ Hyper_BandCHIP::Application::Application() : MainWindow(nullptr), MainRenderer(n
 												case MenuDisplay::Configuration:
 												{
 													CurrentMenu = MenuDisplay::Main;
+													ShowMenu(CurrentMenu);
+													break;
+												}
+												case MenuDisplay::CPUSettings:
+												{
+													CurrentMenu = MenuDisplay::Configuration;
 													ShowMenu(CurrentMenu);
 													break;
 												}
@@ -1431,7 +1708,7 @@ Hyper_BandCHIP::Application::Application() : MainWindow(nullptr), MainRenderer(n
 				frame_count = 0;
 				refresh_time_accumulator -= 1.0;
 			}
-			SDL_Delay(10);
+			// SDL_Delay(10);
 		}
 	}
 }
@@ -1445,6 +1722,10 @@ Hyper_BandCHIP::Application::~Application()
 	if (SuperCHIP_Fonts != nullptr)
 	{
 		delete SuperCHIP_Fonts;
+	}
+	if (Octo_Fonts != nullptr)
+	{
+		delete Octo_Fonts;
 	}
 	delete MainRenderer;
 	SDL_DestroyWindow(MainWindow);
@@ -2938,6 +3219,201 @@ void Hyper_BandCHIP::Application::ConstructFonts()
 		}
 	};
 	SuperCHIP_Fonts = new Font<10, 10>(SuperCHIP_FontData);
+	const FontData<10> Octo_FontData[] = {
+		{ // 0
+			0b11111111,
+			0b11111111,
+			0b11000011,
+			0b11000011,
+			0b11000011,
+			0b11000011,
+			0b11000011,
+			0b11000011,
+			0b11111111,
+			0b11111111
+		},
+		{ // 1
+			0b00011000,
+			0b01111000,
+			0b01111000,
+			0b00011000,
+			0b00011000,
+			0b00011000,
+			0b00011000,
+			0b00011000,
+			0b11111111,
+			0b11111111
+		},
+		{ // 2
+			0b11111111,
+			0b11111111,
+			0b00000011,
+			0b00000011,
+			0b11111111,
+			0b11111111,
+			0b11000000,
+			0b11000000,
+			0b11111111,
+			0b11111111
+		},
+		{ // 3
+			0b11111111,
+			0b11111111,
+			0b00000011,
+			0b00000011,
+			0b11111111,
+			0b11111111,
+			0b00000011,
+			0b00000011,
+			0b11111111,
+			0b11111111
+		},
+		{ // 4
+			0b11000011,
+			0b11000011,
+			0b11000011,
+			0b11000011,
+			0b11111111,
+			0b11111111,
+			0b00000011,
+			0b00000011,
+			0b00000011,
+			0b00000011
+		},
+		{ // 5
+			0b11111111,
+			0b11111111,
+			0b11000000,
+			0b11000000,
+			0b11111111,
+			0b11111111,
+			0b00000011,
+			0b00000011,
+			0b11111111,
+			0b11111111
+		},
+		{ // 6
+			0b11111111,
+			0b11111111,
+			0b11000000,
+			0b11000000,
+			0b11111111,
+			0b11111111,
+			0b11000011,
+			0b11000011,
+			0b11111111,
+			0b11111111
+		},
+		{ // 7
+			0b11111111,
+			0b11111111,
+			0b00000011,
+			0b00000011,
+			0b00000110,
+			0b00001100,
+			0b00011000,
+			0b00011000,
+			0b00011000,
+			0b00011000
+		},
+		{ // 8
+			0b11111111,
+			0b11111111,
+			0b11000011,
+			0b11000011,
+			0b11111111,
+			0b11111111,
+			0b11000011,
+			0b11000011,
+			0b11111111,
+			0b11111111
+		},
+		{ // 9
+			0b11111111,
+			0b11111111,
+			0b11000011,
+			0b11000011,
+			0b11111111,
+			0b11111111,
+			0b00000011,
+			0b00000011,
+			0b11111111,
+			0b11111111
+		},
+		{ // A
+			0b01111110,
+			0b11111111,
+			0b11000011,
+			0b11000011,
+			0b11000011,
+			0b11111111,
+			0b11111111,
+			0b11000011,
+			0b11000011,
+			0b11000011
+		},
+		{ // B
+			0b11111100,
+			0b11111100,
+			0b11000011,
+			0b11000011,
+			0b11111100,
+			0b11111100,
+			0b11000011,
+			0b11000011,
+			0b11111100,
+			0b11111100
+		},
+		{ // C
+			0b00111100,
+			0b11111111,
+			0b11000011,
+			0b11000000,
+			0b11000000,
+			0b11000000,
+			0b11000000,
+			0b11000011,
+			0b11111111,
+			0b00111100
+		},
+		{ // D
+			0b11111100,
+			0b11111110,
+			0b11000011,
+			0b11000011,
+			0b11000011,
+			0b11000011,
+			0b11000011,
+			0b11000011,
+			0b11111110,
+			0b11111100
+		},
+		{ // E
+			0b11111111,
+			0b11111111,
+			0b11000000,
+			0b11000000,
+			0b11111111,
+			0b11111111,
+			0b11000000,
+			0b11000000,
+			0b11111111,
+			0b11111111
+		},
+		{ // F
+			0b11111111,
+			0b11111111,
+			0b11000000,
+			0b11000000,
+			0b11111111,
+			0b11111111,
+			0b11000000,
+			0b11000000,
+			0b11000000,
+			0b11000000
+		}
+	};
+	Octo_Fonts = new Font<10, 16>(Octo_FontData);
 }
 
 void Hyper_BandCHIP::Application::ShowMenu(Hyper_BandCHIP::MenuDisplay Menu)
@@ -2975,12 +3451,13 @@ void Hyper_BandCHIP::Application::ShowMenu(Hyper_BandCHIP::MenuDisplay Menu)
 		{
 			DisplayItem(*MainRenderer, ConfigurationMenu.Title, 1);
 			DisplayItem(*MainRenderer, ConfigurationMenu.Core, (ConfigurationMenu.CurrentSelectableItemId == 0) ? 2 : 1);
-			DisplayItem(*MainRenderer, ConfigurationMenu.Behaviors, (ConfigurationMenu.CurrentSelectableItemId == 1) ? 2 : 1);
-			DisplayItem(*MainRenderer, ConfigurationMenu.PaletteSettings, (ConfigurationMenu.CurrentSelectableItemId == 2) ? 2 : 1);
-			DisplayItem(*MainRenderer, ConfigurationMenu.KeyboardRemapping, (ConfigurationMenu.CurrentSelectableItemId == 3) ? 2 : 1);
-			DisplayItem(*MainRenderer, ConfigurationMenu.LoadConfiguration, (ConfigurationMenu.CurrentSelectableItemId == 4) ? 2 : 1);
-			DisplayItem(*MainRenderer, ConfigurationMenu.SaveConfiguration, (ConfigurationMenu.CurrentSelectableItemId == 5) ? 2 : 1);
-			DisplayItem(*MainRenderer, ConfigurationMenu.ReturnToMainMenu, (ConfigurationMenu.CurrentSelectableItemId == 6) ? 2 : 1);
+			DisplayItem(*MainRenderer, ConfigurationMenu.CPUSettings, (ConfigurationMenu.CurrentSelectableItemId == 1) ? 2 : 1);
+			DisplayItem(*MainRenderer, ConfigurationMenu.Behaviors, (ConfigurationMenu.CurrentSelectableItemId == 2) ? 2 : 1);
+			DisplayItem(*MainRenderer, ConfigurationMenu.PaletteSettings, (ConfigurationMenu.CurrentSelectableItemId == 3) ? 2 : 1);
+			DisplayItem(*MainRenderer, ConfigurationMenu.KeyboardRemapping, (ConfigurationMenu.CurrentSelectableItemId == 4) ? 2 : 1);
+			DisplayItem(*MainRenderer, ConfigurationMenu.LoadConfiguration, (ConfigurationMenu.CurrentSelectableItemId == 5) ? 2 : 1);
+			DisplayItem(*MainRenderer, ConfigurationMenu.SaveConfiguration, (ConfigurationMenu.CurrentSelectableItemId == 6) ? 2 : 1);
+			DisplayItem(*MainRenderer, ConfigurationMenu.ReturnToMainMenu, (ConfigurationMenu.CurrentSelectableItemId == 7) ? 2 : 1);
 			break;
 		}
 		case MenuDisplay::LoadProgramDisplay:
@@ -3003,6 +3480,16 @@ void Hyper_BandCHIP::Application::ShowMenu(Hyper_BandCHIP::MenuDisplay Menu)
 			}
 			break;
 		}
+		case MenuDisplay::CPUSettings:
+		{
+			DisplayItem(*MainRenderer, CPUSettingsMenu.Title, 1);
+			DisplayItem(*MainRenderer, CPUSettingsMenu.ChangeStatus, 1);
+			DisplayItem(*MainRenderer, CPUSettingsMenu.CPUCycles, (CPUSettingsMenu.CurrentSelectableItemId == 0) ? 2 : 1);
+			DisplayItem(*MainRenderer, CPUSettingsMenu.AdjustmentModifier, (CPUSettingsMenu.CurrentSelectableItemId == 1) ? 2 : 1);
+			DisplayItem(*MainRenderer, CPUSettingsMenu.CommitChanges, (CPUSettingsMenu.CurrentSelectableItemId == 2) ? 2 : 1);
+			DisplayItem(*MainRenderer, CPUSettingsMenu.ReturnToConfiguration, (CPUSettingsMenu.CurrentSelectableItemId == 3) ? 2 : 1);
+			break;
+		}
 		case MenuDisplay::Behaviors:
 		{
 			DisplayItem(*MainRenderer, BehaviorsMenu.Title, 1);
@@ -3019,6 +3506,13 @@ void Hyper_BandCHIP::Application::ShowMenu(Hyper_BandCHIP::MenuDisplay Menu)
 				{
 					DisplayItem(*MainRenderer, BehaviorsMenu.SuperCHIP_Version, (BehaviorsMenu.CurrentSelectableItemId == 0) ? 2 : 1);
 					DisplayItem(*MainRenderer, BehaviorsMenu.ReturnToConfiguration, (BehaviorsMenu.CurrentSelectableItemId == 1) ? 2 : 1);
+					break;
+				}
+				case MachineCore::BandCHIP_XOCHIP:
+				{
+					DisplayItem(*MainRenderer, BehaviorsMenu.SuperCHIP_LoadStore, (BehaviorsMenu.CurrentSelectableItemId == 0) ? 2 : 1);
+					DisplayItem(*MainRenderer, BehaviorsMenu.Octo_LoResSprite, (BehaviorsMenu.CurrentSelectableItemId == 1) ? 2 : 1 );
+					DisplayItem(*MainRenderer, BehaviorsMenu.ReturnToConfiguration, (BehaviorsMenu.CurrentSelectableItemId == 2) ? 2 : 1);
 					break;
 				}
 				default:

@@ -22,6 +22,7 @@ namespace Hyper_BandCHIP
 
 	template class Font<5, 16>;
 	template class Font<10, 10>;
+	template class Font<10, 16>;
 }
 
 #endif

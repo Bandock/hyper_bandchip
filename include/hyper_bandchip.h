@@ -24,21 +24,24 @@ namespace Hyper_BandCHIP
 	};
 
 	enum class OperationMode { Menu = 0, Emulator = 1 };
-	enum class MenuDisplay { Main, LoadProgram, Configuration, LoadProgramDisplay, Behaviors, PaletteSettings, KeyboardRemapping, ErrorDisplay };
+	enum class MenuDisplay {
+		Main, LoadProgram, Configuration, LoadProgramDisplay, CPUSettings, Behaviors, PaletteSettings, KeyboardRemapping, ErrorDisplay
+	};
 
 	enum class DirEntryType { Directory, File };
 
 	enum class MainMenuEvent { RunProgram, LoadProgram, Configuration, Exit };
 	enum class LoadProgramMenuEvent { ChangeDirectory, Load };
-	enum class ConfigurationMenuEvent { ChangeCore, Behaviors, PaletteSettings, KeyboardRemapping, ReturnToMainMenu };
+	enum class ConfigurationMenuEvent { ChangeCore, CPUSettings, Behaviors, PaletteSettings, KeyboardRemapping, ReturnToMainMenu };
 	enum class LoadProgramDisplayMenuEvent { Ok };
+	enum class CPUSettingsMenuEvent { CommitChanges, ReturnToConfiguration };
 	enum class BehaviorMenuEvent { ReturnToConfiguration };
 	enum class PaletteSettingsMenuEvent { CommitChanges, ReturnToConfiguration };
 	enum class KeyboardRemappingMenuEvent { ReturnToConfiguration };
 
 	struct MainMenuData
 	{
-		const TextItem Title = { "Hyper BandCHIP V0.7", 220, 20, false };
+		const TextItem Title = { "Hyper BandCHIP V0.8", 220, 20, false };
 		const TextItem Author = { "By Joshua Moss", 250, 34, false };
 		StatusTextItem CurrentProgram = { "Current Program", 160, 60, "None", false };
 		StatusTextItem CurrentMachineStatus = { "Current Machine Status", 120, 74, "Non-Operational", false };
@@ -67,13 +70,14 @@ namespace Hyper_BandCHIP
 	struct ConfigurationMenuData
 	{
 		const TextItem Title = { "Configuration", 240, 20, false };
-		MultiChoiceItem Core = { "Core", 200, 60, static_cast<unsigned int>(ConfigurationMenuEvent::ChangeCore), 0, { "CHIP-8", "SuperCHIP", "HyperCHIP-64" }, false };
-		const ButtonItem Behaviors = { "Behaviors", 200, 74, static_cast<unsigned int>(ConfigurationMenuEvent::Behaviors), false };
-		const ButtonItem PaletteSettings = { "Palette Settings", 200, 88, static_cast<unsigned int>(ConfigurationMenuEvent::PaletteSettings), false };
-		const ButtonItem KeyboardRemapping = { "Keyboard Remapping", 200, 102, static_cast<unsigned int>(ConfigurationMenuEvent::KeyboardRemapping), false };
-		const ButtonItem LoadConfiguration = { "Load Configuration", 200, 116, 0xFFFFFFFF, false };
-		const ButtonItem SaveConfiguration = { "Save Configuration", 200, 130, 0xFFFFFFFF, false };
-		const ButtonItem ReturnToMainMenu = { "Return to Main Menu", 200, 144, static_cast<unsigned int>(ConfigurationMenuEvent::ReturnToMainMenu), false };
+		MultiChoiceItem Core = { "Core", 200, 60, static_cast<unsigned int>(ConfigurationMenuEvent::ChangeCore), 0, { "CHIP-8", "SuperCHIP", "XO-CHIP", "HyperCHIP-64" }, false };
+		const ButtonItem CPUSettings = { "CPU Settings", 200, 74, static_cast<unsigned int>(ConfigurationMenuEvent::CPUSettings), false };
+		const ButtonItem Behaviors = { "Behaviors", 200, 88, static_cast<unsigned int>(ConfigurationMenuEvent::Behaviors), false };
+		const ButtonItem PaletteSettings = { "Palette Settings", 200, 102, static_cast<unsigned int>(ConfigurationMenuEvent::PaletteSettings), false };
+		const ButtonItem KeyboardRemapping = { "Keyboard Remapping", 200, 116, static_cast<unsigned int>(ConfigurationMenuEvent::KeyboardRemapping), false };
+		const ButtonItem LoadConfiguration = { "Load Configuration", 200, 130, 0xFFFFFFFF, false };
+		const ButtonItem SaveConfiguration = { "Save Configuration", 200, 144, 0xFFFFFFFF, false };
+		const ButtonItem ReturnToMainMenu = { "Return to Main Menu", 200, 158, static_cast<unsigned int>(ConfigurationMenuEvent::ReturnToMainMenu), false };
 		unsigned int CurrentSelectableItemId = 0;
 	};
 
@@ -85,12 +89,25 @@ namespace Hyper_BandCHIP
 		ButtonItem Ok = { "Ok", 300, 180, static_cast<unsigned int>(LoadProgramDisplayMenuEvent::Ok), true };
 	};
 
+	struct CPUSettingsMenuData
+	{
+		const TextItem Title = { "CPU Settings", 266, 20, false };
+		StatusTextItem ChangeStatus = { "Change Status", 200, 40, "Unchanged", false };
+		AdjustableValueItem CPUCycles = { "CPU Cycles", 200, 60, 60, 6000000, ValueBaseType::Dec, 600, 0, false };
+		AdjustableValueItem AdjustmentModifier { "Adjustment Modifier", 200, 74, 60, 600000, ValueBaseType::Dec, 60, 0, false };
+		const ButtonItem CommitChanges = { "Commit Changes", 200, 176, static_cast<unsigned int>(CPUSettingsMenuEvent::CommitChanges), false };
+		const ButtonItem ReturnToConfiguration = { "Return to Configuration", 200, 190, static_cast<unsigned int>(CPUSettingsMenuEvent::ReturnToConfiguration), false };
+		unsigned int CurrentSelectableItemId = 0;
+	};
+
 	struct BehaviorsMenuData
 	{
 		const TextItem Title = { "Behaviors", 270, 20, false };
 		ToggleItem CHIP48_Shift = { "CHIP-48 Shift", 200, 60, false, false };
 		ToggleItem CHIP48_LoadStore = { "CHIP-48 Load/Store", 200, 74, false, false };
 		MultiChoiceItem SuperCHIP_Version = { "SuperCHIP Version", 140, 60, 0xFFFFFFFF, 0, { "Fixed SuperCHIP V1.1", "SuperCHIP V1.0", "Original SuperCHIP V1.1" }, false };
+		ToggleItem SuperCHIP_LoadStore = { "SuperCHIP Load/Store", 200, 60, false, false };
+		ToggleItem Octo_LoResSprite = { "Octo LoRes Sprite Mode", 200, 74, true, false };
 		const ButtonItem ReturnToConfiguration = { "Return to Configuration", 200, 190, static_cast<unsigned int>(BehaviorMenuEvent::ReturnToConfiguration), false };
 		unsigned int CurrentSelectableItemId = 0;
 	};
@@ -183,12 +200,14 @@ namespace Hyper_BandCHIP
 			LoadProgramMenuData LoadProgramMenu;
 			ConfigurationMenuData ConfigurationMenu;
 			LoadProgramDisplayData LoadProgramDisplay;
+			CPUSettingsMenuData CPUSettingsMenu;
 			BehaviorsMenuData BehaviorsMenu;
 			PaletteSettingsMenuData PaletteSettingsMenu;
 			KeyboardRemappingMenuData KeyboardRemappingMenu;
 			ErrorDisplayData ErrorDisplay;
 			Font<5, 16> *CHIP8_Fonts;
 			Font<10, 10> *SuperCHIP_Fonts;
+			Font<10, 16> *Octo_Fonts; // Inherited from Octo developed by John Earnest
 			Machine *CurrentMachine;
 			std::chrono::high_resolution_clock::time_point refresh_tp;
 			double refresh_accumulator;

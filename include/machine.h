@@ -15,11 +15,22 @@ namespace Hyper_BandCHIP
 {
 	class Machine;
 
+	using XOCHIP_Audio = SampleAudio<1>;
+	using HyperCHIP64_Audio = SampleAudio<2>;
+
 	enum class MachineCore
 	{
 		BandCHIP_CHIP8, // BandCHIP CHIP-8 Core
 		BandCHIP_SuperCHIP, // BandCHIP SuperCHIP Core
+		BandCHIP_XOCHIP, // BandCHIP XO-CHIP Core
 		BandCHIP_HyperCHIP64 // BandCHIP HyperCHIP-64 Core
+	};
+
+	enum class MachineAudioModel
+	{
+		Synthesizer,
+		Sampled_XOCHIP,
+		Sampled_HyperCHIP64
 	};
 
 	enum class MachineError
@@ -63,7 +74,13 @@ namespace Hyper_BandCHIP
 		SuperCHIPVersion Version;
 	};
 
-	template<>
+	struct XOCHIP_BehaviorData
+	{
+		bool SuperCHIP_LoadStore;
+		bool Octo_LoResSprite; // When toggled, enables 16x16 in low resolution mode.  Inherited from the Octo interpreter.
+	};
+
+	template <>
 	struct InstructionData<MachineCore::BandCHIP_CHIP8>
 	{
 		void operator()(Machine *TargetMachine);
@@ -71,7 +88,7 @@ namespace Hyper_BandCHIP
 		unsigned short operand;
 	};
 
-	template<>
+	template <>
 	struct InstructionData<MachineCore::BandCHIP_SuperCHIP>
 	{
 		void operator()(Machine *TargetMachine);
@@ -79,7 +96,15 @@ namespace Hyper_BandCHIP
 		unsigned short operand;
 	};
 
-	template<>
+	template <>
+	struct InstructionData<MachineCore::BandCHIP_XOCHIP>
+	{
+		void operator()(Machine *TargetMachine);
+		unsigned char opcode;
+		unsigned short operand;
+	};
+
+	template <>
 	struct InstructionData<MachineCore::BandCHIP_HyperCHIP64>
 	{
 		void operator()(Machine *TargetMachine);
@@ -112,9 +137,11 @@ namespace Hyper_BandCHIP
 			void InitializeStack();
 			void InitializeMemory();
 			void InitializeVideo();
+			void InitializeAudio();
 			void InitializeKeyStatus();
 			void CopyDataToInterpreterMemory(const unsigned char *source, unsigned short address, unsigned int size);
 			void GetDisplay(unsigned char **display, unsigned short *display_width, unsigned short *display_height);
+			void SetCyclesPerSecond(unsigned int cycles_per_second);
 			void SetDelayTimer(unsigned char delay_timer);
 			void SetSoundTimer(unsigned char sound_timer);
 			void SetKeyStatus(unsigned char key, bool pressed);
@@ -131,13 +158,15 @@ namespace Hyper_BandCHIP
 			void RunSoundTimer();
 			friend struct InstructionData<MachineCore::BandCHIP_CHIP8>;
 			friend struct InstructionData<MachineCore::BandCHIP_SuperCHIP>;
+			friend struct InstructionData<MachineCore::BandCHIP_XOCHIP>;
 			friend struct InstructionData<MachineCore::BandCHIP_HyperCHIP64>;
 		private:
 			MachineCore CurrentMachineCore;
+			MachineAudioModel CurrentMachineAudioModel;
 			ResolutionMode CurrentResolutionMode;
 			std::filebuf rpl_user_flags_file;
-			std::variant<CHIP8_BehaviorData, SuperCHIP_BehaviorData> behavior_data;
-			Audio audio;
+			std::variant<CHIP8_BehaviorData, SuperCHIP_BehaviorData, XOCHIP_BehaviorData> behavior_data;
+			std::variant<Audio, XOCHIP_Audio, HyperCHIP64_Audio> audio_system;
 			unsigned int cycles_per_second;
 			unsigned char delay_timer;
 			unsigned char sound_timer;
@@ -153,6 +182,7 @@ namespace Hyper_BandCHIP
 			unsigned short display_width;
 			unsigned short display_height;
 			unsigned char key_status[0x10];
+			unsigned char plane;
 			unsigned char prefix_flags;
 			unsigned char address_nibble_store;
 			unsigned char register_store;
