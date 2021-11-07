@@ -75,7 +75,7 @@ Here are the supported instructions below:
 |FX29|Point I to 5-byte font sprite for digit in VX (0-F)|CHIP-8|No|
 |FX30|Point I to 10-byte font sprite for digit in VX (0-F)|SuperCHIP V1.1|No|
 |FX33|Store BCD in VX at I, I+1, and I+2|CHIP-8|No|
-|FX3A|Sets the pitch to the value stored in VX|XO-CHIP|No|
+|FX3A|Sets the pitch to the value stored in VX|XO-CHIP|Yes, can modify the pitch of the selected voice.|
 |FX3B|Sets the volume of the selected voice to the value stored in VX.|HyperCHIP-64|N/A|
 |FN3C|Sets the current voice specified by N for audio operations (Currently maxed at 4 voices, ranging from 0 to 3.)|HyperCHIP-64|N/A|
 |FX3D|Sets the audio channel mask for the selected voice (N = 0 for No Audio Output, N = 1 for Channel 1 (Left), N = 2 for Channel 2 (Right))|HyperCHIP-64|N/A|
