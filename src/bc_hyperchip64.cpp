@@ -1018,7 +1018,7 @@ void Hyper_BandCHIP::InstructionData<Hyper_BandCHIP::MachineCore::BandCHIP_Hyper
 					}
 					case 0x75:
 					{
-						unsigned char flag_count = (x > 7) ? 7 : x;
+						unsigned char flag_count = (x > 15) ? 15 : x;
 						TargetMachine->rpl_user_flags_file.pubseekoff(0, std::ios::beg);
 						TargetMachine->rpl_user_flags_file.sputn(reinterpret_cast<const char *>(TargetMachine->V), flag_count + 1);
 						TargetMachine->PC += 2;
@@ -1026,7 +1026,7 @@ void Hyper_BandCHIP::InstructionData<Hyper_BandCHIP::MachineCore::BandCHIP_Hyper
 					}
 					case 0x85:
 					{
-						unsigned char flag_count = (x > 7) ? 7 : x;
+						unsigned char flag_count = (x > 15) ? 15 : x;
 						TargetMachine->rpl_user_flags_file.pubseekoff(0, std::ios::beg);
 						TargetMachine->rpl_user_flags_file.sgetn(reinterpret_cast<char *>(TargetMachine->V), flag_count + 1);
 						TargetMachine->PC += 2;

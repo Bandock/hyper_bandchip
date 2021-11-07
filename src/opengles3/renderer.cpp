@@ -331,7 +331,7 @@ void Hyper_BandCHIP::Renderer::WriteToDisplay(const unsigned char *src, unsigned
 			CurrentBoundTextureId = DisplayTextureId;
 			glBindTexture(GL_TEXTURE_2D, DisplayTextureId);
 		}
-		for (unsigned short y = 0; y < height; y++)
+		for (unsigned short y = 0; y < height; ++y)
 		{
 			memcpy(&display[((height - y - 1) * width)], &src[y * width], width);
 		}
