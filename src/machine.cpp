@@ -42,8 +42,8 @@ Hyper_BandCHIP::Machine::Machine(MachineCore Core, unsigned int cycles_per_secon
 		}
 		case MachineCore::BandCHIP_HyperCHIP64:
 		{
-			CurrentMachineAudioModel = MachineAudioModel::Sampled_HyperCHIP64;
-			audio_system.emplace<HyperCHIP64_Audio>();
+			CurrentMachineAudioModel = MachineAudioModel::Sampled_XOCHIP;
+			audio_system.emplace<XOCHIP_Audio>();
 			rpl_user_flags_file.open("RPLUserFlags.bin", std::ios::binary | std::ios::in | std::ios::out);
 			if (!rpl_user_flags_file.is_open())
 			{

@@ -862,9 +862,34 @@ void Hyper_BandCHIP::InstructionData<Hyper_BandCHIP::MachineCore::BandCHIP_Super
 										TargetMachine->I = 0x0AA;
 										break;
 									}
-									default:
+									case 0xA:
 									{
 										TargetMachine->I = 0x0B4;
+										break;
+									}
+									case 0xB:
+									{
+										TargetMachine->I = 0x0BE;
+										break;
+									}
+									case 0xC:
+									{
+										TargetMachine->I = 0x0C8;
+										break;
+									}
+									case 0xD:
+									{
+										TargetMachine->I = 0x0D2;
+										break;
+									}
+									case 0xE:
+									{
+										TargetMachine->I = 0x0DC;
+										break;
+									}
+									case 0xF:
+									{
+										TargetMachine->I = 0x0E6;
 										break;
 									}
 								}

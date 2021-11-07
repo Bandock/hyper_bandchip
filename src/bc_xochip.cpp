@@ -76,7 +76,7 @@ void Hyper_BandCHIP::InstructionData<Hyper_BandCHIP::MachineCore::BandCHIP_XOCHI
 							memcpy(buffer, &TargetMachine->display[(operand & 0x0F) * TargetMachine->display_width], (TargetMachine->display_height - (operand & 0x0F)) * TargetMachine->display_width);
 							for (unsigned short y = 0; y < TargetMachine->display_height - (operand & 0x0F); ++y)
 							{
-								for (unsigned int x = 0; x < TargetMachine->display_width; ++x)
+								for (unsigned short x = 0; x < TargetMachine->display_width; ++x)
 								{
 									unsigned char tmp = (buffer[(y * TargetMachine->display_width) + x] & TargetMachine->plane);
 									TargetMachine->display[(y * TargetMachine->display_width) + x] &= ~(TargetMachine->plane);
@@ -85,7 +85,7 @@ void Hyper_BandCHIP::InstructionData<Hyper_BandCHIP::MachineCore::BandCHIP_XOCHI
 							}
 							for (unsigned short y = TargetMachine->display_height - (operand & 0x0F); y < TargetMachine->display_height; ++y)
 							{
-								for (unsigned int x = 0; x < TargetMachine->display_width; ++x)
+								for (unsigned short x = 0; x < TargetMachine->display_width; ++x)
 								{
 									TargetMachine->display[(y * TargetMachine->display_width) + x] &= ~(TargetMachine->plane);
 								}
@@ -390,8 +390,9 @@ void Hyper_BandCHIP::InstructionData<Hyper_BandCHIP::MachineCore::BandCHIP_XOCHI
 					}
 					case 0x6:
 					{
-						unsigned char tmp = (TargetMachine->V[y] & 0x01);
-						TargetMachine->V[x] = (TargetMachine->V[y] >> 1);
+						const XOCHIP_BehaviorData *Behavior = std::get_if<XOCHIP_BehaviorData>(&TargetMachine->behavior_data);
+						unsigned char tmp = ((Behavior->SuperCHIP_Shift ? TargetMachine->V[x] : TargetMachine->V[y]) & 0x01);
+						TargetMachine->V[x] = ((Behavior->SuperCHIP_Shift ? TargetMachine->V[x] : TargetMachine->V[y]) >> 1);
 						TargetMachine->V[0xF] = tmp;
 						break;
 					}
@@ -412,8 +413,9 @@ void Hyper_BandCHIP::InstructionData<Hyper_BandCHIP::MachineCore::BandCHIP_XOCHI
 					}
 					case 0xE:
 					{
-						unsigned char tmp = ((TargetMachine->V[y] & 0x80) >> 7);
-						TargetMachine->V[x] = (TargetMachine->V[y] << 1);
+						const XOCHIP_BehaviorData *Behavior = std::get_if<XOCHIP_BehaviorData>(&TargetMachine->behavior_data);
+						unsigned char tmp = (((Behavior->SuperCHIP_Shift ? TargetMachine->V[x] : TargetMachine->V[y]) & 0x80) >> 7);
+						TargetMachine->V[x] = ((Behavior->SuperCHIP_Shift ? TargetMachine->V[x] : TargetMachine->V[y]) << 1);
 						TargetMachine->V[0xF] = tmp;
 						break;
 					}

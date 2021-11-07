@@ -76,6 +76,7 @@ namespace Hyper_BandCHIP
 
 	struct XOCHIP_BehaviorData
 	{
+		bool SuperCHIP_Shift;
 		bool SuperCHIP_LoadStore;
 		bool Octo_LoResSprite; // When toggled, enables 16x16 in low resolution mode.  Inherited from the Octo interpreter.
 	};

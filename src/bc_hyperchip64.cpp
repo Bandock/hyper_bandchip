@@ -28,8 +28,28 @@ void Hyper_BandCHIP::InstructionData<Hyper_BandCHIP::MachineCore::BandCHIP_Hyper
 					case 0xCE:
 					case 0xCF:
 					{
-						memmove(&TargetMachine->display[TargetMachine->display_width * (operand & 0x0F)], &TargetMachine->display[0], TargetMachine->display_width * (TargetMachine->display_height - (operand & 0x0F)));
-						memset(TargetMachine->display, 0x00, TargetMachine->display_width * (operand & 0x0F));
+						if (TargetMachine->plane && (operand & 0x0F))
+						{
+							unsigned char *buffer = new unsigned char[(TargetMachine->display_height - (operand & 0x0F)) * TargetMachine->display_width];
+							memcpy(buffer, &TargetMachine->display[0], (TargetMachine->display_height - (operand & 0x0F)) * TargetMachine->display_width);
+							for (unsigned short y = (operand & 0xF); y < TargetMachine->display_height; ++y)
+							{
+								for (unsigned short x = 0; x < TargetMachine->display_width; ++x)
+								{
+									unsigned char tmp = (buffer[((y - (operand & 0x0F)) * TargetMachine->display_width) + x] & TargetMachine->plane);
+									TargetMachine->display[(y * TargetMachine->display_width) + x] &= ~(TargetMachine->plane);
+									TargetMachine->display[(y * TargetMachine->display_width) + x] |= tmp;
+								}
+							}
+							for (unsigned short y = 0; y < (operand & 0x0F); ++y)
+							{
+								for (unsigned short x = 0; x < TargetMachine->display_width; ++x)
+								{
+									TargetMachine->display[(y * TargetMachine->display_width) + x] &= ~(TargetMachine->plane);
+								}
+							}
+							delete [] buffer;
+						}
 						TargetMachine->PC += 2;
 						break;
 					}
@@ -50,14 +70,40 @@ void Hyper_BandCHIP::InstructionData<Hyper_BandCHIP::MachineCore::BandCHIP_Hyper
 					case 0xDE:
 					case 0xDF:
 					{
-						memmove(&TargetMachine->display[0], &TargetMachine->display[TargetMachine->display_width * (operand & 0x0F)], TargetMachine->display_width * (TargetMachine->display_height - (operand & 0x0F)));
-						memset(&TargetMachine->display[TargetMachine->display_width * (TargetMachine->display_height - (operand & 0x0F))], 0x00, TargetMachine->display_width * (operand & 0x0F));
+						if (TargetMachine->plane && (operand & 0x0F))
+						{
+							unsigned char *buffer = new unsigned char[(TargetMachine->display_height - (operand & 0x0F)) * TargetMachine->display_width];
+							memcpy(buffer, &TargetMachine->display[(operand & 0x0F) * TargetMachine->display_width], (TargetMachine->display_height - (operand & 0x0F)) * TargetMachine->display_width);
+							for (unsigned short y = 0; y < TargetMachine->display_height - (operand & 0x0F); ++y)
+							{
+								for (unsigned short x = 0; x < TargetMachine->display_width; ++x)
+								{
+									unsigned char tmp = (buffer[(y * TargetMachine->display_width) + x] & TargetMachine->plane);
+									TargetMachine->display[(y * TargetMachine->display_width) + x] &= ~(TargetMachine->plane);
+									TargetMachine->display[(y * TargetMachine->display_width) + x] |= tmp;
+								}
+							}
+							for (unsigned short y = TargetMachine->display_height - (operand & 0x0F); y < TargetMachine->display_height; ++y)
+							{
+								for (unsigned short x = 0; x < TargetMachine->display_width; ++x)
+								{
+									TargetMachine->display[(y * TargetMachine->display_width) + x] &= ~(TargetMachine->plane);
+								}
+							}
+							delete [] buffer;
+						}
 						TargetMachine->PC += 2;
 						break;
 					}
 					case 0xE0:
 					{
-						TargetMachine->InitializeVideo();
+						if (TargetMachine->plane)
+						{
+							for (unsigned int i = 0; i < TargetMachine->display_width * TargetMachine->display_height; ++i)
+							{
+								TargetMachine->display[i] &= ~(TargetMachine->plane);
+							}
+						}
 						TargetMachine->PC += 2;
 						break;
 					}
@@ -77,20 +123,48 @@ void Hyper_BandCHIP::InstructionData<Hyper_BandCHIP::MachineCore::BandCHIP_Hyper
 					}
 					case 0xFB:
 					{
-						for (unsigned short y = 0; y < TargetMachine->display_height; ++y)
+						if (TargetMachine->plane)
 						{
-							memmove(&TargetMachine->display[(y * TargetMachine->display_width) + 4], &TargetMachine->display[y * TargetMachine->display_width], TargetMachine->display_width - 4);
-							memset(&TargetMachine->display[y * TargetMachine->display_width], 0x00, 4);
+							unsigned char *buffer = new unsigned char[TargetMachine->display_width - 4];
+							for (unsigned short y = 0; y < TargetMachine->display_height; ++y)
+							{
+								memcpy(buffer, &TargetMachine->display[y * TargetMachine->display_width], TargetMachine->display_width - 4);
+								for (unsigned short x = 0; x < TargetMachine->display_width - 4; ++x)
+								{
+									unsigned char tmp = (buffer[x] & TargetMachine->plane);
+									TargetMachine->display[(y * TargetMachine->display_width) + 4 + x] &= ~(TargetMachine->plane);
+									TargetMachine->display[(y * TargetMachine->display_width) + 4 + x] |= tmp;
+								}
+								for (unsigned short x = 0; x < 4; ++x)
+								{
+									TargetMachine->display[(y * TargetMachine->display_width) + x] &= ~(TargetMachine->plane);
+								}
+							}
+							delete [] buffer;
 						}
 						TargetMachine->PC += 2;
 						break;
 					}
 					case 0xFC:
 					{
-						for (unsigned short y = 0; y < TargetMachine->display_height; ++y)
+						if (TargetMachine->plane)
 						{
-							memmove(&TargetMachine->display[y * TargetMachine->display_width], &TargetMachine->display[(y * TargetMachine->display_width) + 4], TargetMachine->display_width - 4);
-							memset(&TargetMachine->display[(y * TargetMachine->display_width) + (TargetMachine->display_width - 4)], 0x00, 4);
+							unsigned char *buffer = new unsigned char[TargetMachine->display_width - 4];
+							for (unsigned short y = 0; y < TargetMachine->display_height; ++y)
+							{
+								memcpy(buffer, &TargetMachine->display[(y * TargetMachine->display_width) + 4], TargetMachine->display_width - 4);
+								for (unsigned short x = 0; x < TargetMachine->display_width - 4; ++x)
+								{
+									unsigned char tmp = (buffer[x] & TargetMachine->plane);
+									TargetMachine->display[(y * TargetMachine->display_width) + x] &= ~(TargetMachine->plane);
+									TargetMachine->display[(y * TargetMachine->display_width) + x] |= tmp;
+								}
+								for (unsigned short x = 0; x < 4; ++x)
+								{
+									TargetMachine->display[(y * TargetMachine->display_width) + 4 + x] &= ~(TargetMachine->plane);
+								}
+							}
+							delete [] buffer;
 						}
 						TargetMachine->PC += 2;
 						break;
@@ -170,9 +244,14 @@ void Hyper_BandCHIP::InstructionData<Hyper_BandCHIP::MachineCore::BandCHIP_Hyper
 				{
 					unsigned char next_opcode = (TargetMachine->memory[TargetMachine->PC] >> 4);
 					unsigned short next_operand = ((TargetMachine->memory[TargetMachine->PC] & 0x0F) << 8) | (TargetMachine->memory[static_cast<unsigned short>(TargetMachine->PC + 1)]);
-					while (next_opcode == 0xF && (((next_operand & 0x0F0) >> 4) == 0xB))
+					while (next_opcode == 0xF && ((((next_operand & 0x0F0) >> 4) == 0xB) || ((next_operand & 0xFFF) == 0x000)))
 					{
+						bool long_data = (next_opcode == 0xF && ((next_operand & 0xFFF) == 0x000));
 						TargetMachine->PC += 2;
+						if (long_data)
+						{
+							break;
+						}
 						next_opcode = (TargetMachine->memory[TargetMachine->PC] >> 4);
 						next_operand = ((TargetMachine->memory[TargetMachine->PC] & 0x0F) << 8) | (TargetMachine->memory[static_cast<unsigned short>(TargetMachine->PC + 1)]);
 					}
@@ -189,9 +268,14 @@ void Hyper_BandCHIP::InstructionData<Hyper_BandCHIP::MachineCore::BandCHIP_Hyper
 				{
 					unsigned char next_opcode = (TargetMachine->memory[TargetMachine->PC] >> 4);
 					unsigned short next_operand = ((TargetMachine->memory[TargetMachine->PC] & 0x0F) << 8) | (TargetMachine->memory[static_cast<unsigned short>(TargetMachine->PC + 1)]);
-					while (next_opcode == 0xF && (((next_operand & 0x0F0) >> 4) == 0xB))
+					while (next_opcode == 0xF && ((((next_operand & 0x0F0) >> 4) == 0xB) || ((next_operand & 0xFFF) == 0x000)))
 					{
+						bool long_data = (next_opcode == 0xF && ((next_operand & 0xFFF) == 0x000));
 						TargetMachine->PC += 2;
+						if (long_data)
+						{
+							break;
+						}
 						next_opcode = (TargetMachine->memory[TargetMachine->PC] >> 4);
 						next_operand = ((TargetMachine->memory[TargetMachine->PC] & 0x0F) << 8) | (TargetMachine->memory[static_cast<unsigned short>(TargetMachine->PC + 1)]);
 					}
@@ -214,9 +298,14 @@ void Hyper_BandCHIP::InstructionData<Hyper_BandCHIP::MachineCore::BandCHIP_Hyper
 						{
 							unsigned char next_opcode = (TargetMachine->memory[TargetMachine->PC] >> 4);
 							unsigned short next_operand = ((TargetMachine->memory[TargetMachine->PC] & 0x0F) << 8) | (TargetMachine->memory[static_cast<unsigned short>(TargetMachine->PC + 1)]);
-							while (next_opcode == 0xF && (((next_operand & 0x0F0) >> 4) == 0xB))
+							while (next_opcode == 0xF && ((((next_operand & 0x0F0) >> 4) == 0xB) || ((next_operand & 0xFFF) == 0x000)))
 							{
+								bool long_data = (next_opcode == 0xF && ((next_operand & 0xFFF) == 0x000));
 								TargetMachine->PC += 2;
+								if (long_data)
+								{
+									break;
+								}
 								next_opcode = (TargetMachine->memory[TargetMachine->PC] >> 4);
 								next_operand = ((TargetMachine->memory[TargetMachine->PC] & 0x0F) << 8) | (TargetMachine->memory[static_cast<unsigned short>(TargetMachine->PC + 1)]);
 							}
@@ -411,9 +500,14 @@ void Hyper_BandCHIP::InstructionData<Hyper_BandCHIP::MachineCore::BandCHIP_Hyper
 				{
 					unsigned char next_opcode = (TargetMachine->memory[TargetMachine->PC] >> 4);
 					unsigned short next_operand = ((TargetMachine->memory[TargetMachine->PC] & 0x0F) << 8) | (TargetMachine->memory[static_cast<unsigned short>(TargetMachine->PC + 1)]);
-					while (next_opcode == 0xF && (((next_operand & 0x0F0) >> 4) == 0xB))
+					while (next_opcode == 0xF && ((((next_operand & 0x0F0) >> 4) == 0xB) || ((next_operand & 0xFFF) == 0x000)))
 					{
+						bool long_data = (next_opcode == 0xF && ((next_operand & 0xFFF) == 0x000));
 						TargetMachine->PC += 2;
+						if (long_data)
+						{
+							break;
+						}
 						next_opcode = (TargetMachine->memory[TargetMachine->PC] >> 4);
 						next_operand = ((TargetMachine->memory[TargetMachine->PC] & 0x0F) << 8) | (TargetMachine->memory[static_cast<unsigned short>(TargetMachine->PC + 1)]);
 					}
@@ -462,53 +556,85 @@ void Hyper_BandCHIP::InstructionData<Hyper_BandCHIP::MachineCore::BandCHIP_Hyper
 				unsigned char width = 8;
 				unsigned char height = (operand & 0x00F);
 				unsigned char scale_factor = (TargetMachine->CurrentResolutionMode == ResolutionMode::HiRes) ? 1 : 2;
-				if (!height && TargetMachine->CurrentResolutionMode == ResolutionMode::HiRes)
+				unsigned char plane_count = 0;
+				if (!height)
 				{
 					width = 16;
 					height = 16;
 				}
 				unsigned char *sprite = &TargetMachine->memory[TargetMachine->I];
 				bool pixels_changed_to_unset = false;
+				for (unsigned char p = 0; p < 2; ++p)
+				{
+					if (TargetMachine->plane & (0x01 << p))
+					{
+						++plane_count;
+					}
+				}
 				for (unsigned int py = 0; py < height; ++py)
 				{
 					unsigned char b_offset = 0;
 					for (unsigned int px = 0; px < width; ++px)
 					{
 						unsigned int y_offset = py * (width / 8);
-						unsigned char pixel = ((sprite[y_offset + (px / 8)] & (0x80 >> b_offset++)) >> (7 - (px % 8)));
+						unsigned char current_plane = 0;
+						for (unsigned char p = 0; p < plane_count; ++p)
+						{
+							unsigned char current_mask = 0x00;
+							unsigned char pixel_color_data = 0;
+							for (; current_plane < 2; ++current_plane)
+							{
+								if ((0x01 << current_plane) & TargetMachine->plane)
+								{
+									current_mask |= (0x01 << current_plane);
+									++current_plane;
+									break;
+								}
+							}
+							unsigned char pixel = ((sprite[y_offset + (px / 8)] & (0x80 >> b_offset)) >> (7 - (px % 8)));
+							unsigned int display_addr = (((y + py) * scale_factor % 64) * 128) + ((x + px) * scale_factor % 128);
+							switch (TargetMachine->CurrentResolutionMode)
+							{
+								case ResolutionMode::LoRes:
+								{
+									for (unsigned char dy = 0; dy < 2; ++dy)
+									{
+										for (unsigned char dx = 0; dx < 2; ++dx)
+										{
+											unsigned char tmp = TargetMachine->display[display_addr + (dy * 128) + dx];
+											if (pixel)
+											{
+												pixel_color_data |= current_mask;
+											}
+											TargetMachine->display[display_addr + (dy * 128) + dx] ^= pixel_color_data;
+											if (TargetMachine->display[display_addr + (dy * 128) + dx] != tmp && !(TargetMachine->display[display_addr + (dy * 128) + dx] & current_mask) && !pixels_changed_to_unset)
+											{
+												pixels_changed_to_unset = true;
+											}
+										}
+									}
+									break;
+								}
+								case ResolutionMode::HiRes:
+								{
+									unsigned char tmp = TargetMachine->display[display_addr];
+									if (pixel)
+									{
+										pixel_color_data |= current_mask;
+									}
+									TargetMachine->display[display_addr] ^= pixel_color_data;
+									if (TargetMachine->display[display_addr] != tmp && !(TargetMachine->display[display_addr] & current_mask) && !pixels_changed_to_unset)
+									{
+										pixels_changed_to_unset = true;
+									}
+									break;
+								}
+							}
+						}
+						++b_offset;
 						if (b_offset == 8)
 						{
 							b_offset = 0;
-						}
-						unsigned int display_addr = (((y + py) * scale_factor % 64) * 128) + ((x + px) * scale_factor % 128);
-						switch (TargetMachine->CurrentResolutionMode)
-						{
-							case ResolutionMode::LoRes:
-							{
-								for (unsigned char dy = 0; dy < 2; ++dy)
-								{
-									for (unsigned char dx = 0; dx < 2; ++dx)
-									{
-										unsigned char tmp = TargetMachine->display[display_addr + (dy * 128) + dx];
-										TargetMachine->display[display_addr + (dy * 128) + dx] ^= pixel;
-										if (TargetMachine->display[display_addr + (dy * 128) + dx] != tmp && TargetMachine->display[display_addr + (dy * 128) + dx] == 0 && !pixels_changed_to_unset)
-										{
-											pixels_changed_to_unset = true;
-										}
-									}
-								}
-								break;
-							}
-							case ResolutionMode::HiRes:
-							{
-								unsigned char tmp = TargetMachine->display[display_addr];
-								TargetMachine->display[display_addr] ^= pixel;
-								if (TargetMachine->display[display_addr] != tmp && TargetMachine->display[display_addr] == 0 && !pixels_changed_to_unset)
-								{
-									pixels_changed_to_unset = true;
-								}
-								break;
-							}
 						}
 					}
 				}
@@ -537,9 +663,14 @@ void Hyper_BandCHIP::InstructionData<Hyper_BandCHIP::MachineCore::BandCHIP_Hyper
 						{
 							unsigned char next_opcode = (TargetMachine->memory[TargetMachine->PC] >> 4);
 							unsigned short next_operand = ((TargetMachine->memory[TargetMachine->PC] & 0x0F) << 8) | (TargetMachine->memory[static_cast<unsigned short>(TargetMachine->PC + 1)]);
-							while (next_opcode == 0xF && (((next_operand & 0x0F0) >> 4) == 0xB))
+							while (next_opcode == 0xF && ((((next_operand & 0x0F0) >> 4) == 0xB) || ((next_operand & 0xFFF) == 0x000)))
 							{
+								bool long_data = (next_opcode == 0xF && ((next_operand & 0xFFF) == 0x000));
 								TargetMachine->PC += 2;
+								if (long_data)
+								{
+									break;
+								}
 								next_opcode = (TargetMachine->memory[TargetMachine->PC] >> 4);
 								next_operand = ((TargetMachine->memory[TargetMachine->PC] & 0x0F) << 8) | (TargetMachine->memory[static_cast<unsigned short>(TargetMachine->PC + 1)]);
 							}
@@ -554,9 +685,14 @@ void Hyper_BandCHIP::InstructionData<Hyper_BandCHIP::MachineCore::BandCHIP_Hyper
 						{
 							unsigned char next_opcode = (TargetMachine->memory[TargetMachine->PC] >> 4);
 							unsigned short next_operand = ((TargetMachine->memory[TargetMachine->PC] & 0x0F) << 8) | (TargetMachine->memory[static_cast<unsigned short>(TargetMachine->PC + 1)]);
-							while (next_opcode == 0xF && (((next_operand & 0x0F0) >> 4) == 0xB))
+							while (next_opcode == 0xF && ((((next_operand & 0x0F0) >> 4) == 0xB) || ((next_operand & 0xFFF) == 0x000)))
 							{
+								bool long_data = (next_opcode == 0xF && ((next_operand & 0xFFF) == 0x000));
 								TargetMachine->PC += 2;
+								if (long_data)
+								{
+									break;
+								}
 								next_opcode = (TargetMachine->memory[TargetMachine->PC] >> 4);
 								next_operand = ((TargetMachine->memory[TargetMachine->PC] & 0x0F) << 8) | (TargetMachine->memory[static_cast<unsigned short>(TargetMachine->PC + 1)]);
 							}
@@ -584,6 +720,26 @@ void Hyper_BandCHIP::InstructionData<Hyper_BandCHIP::MachineCore::BandCHIP_Hyper
 				bool valid = true;
 				switch (opcode2)
 				{
+					case 0x00:
+					{
+						TargetMachine->PC += 2;
+						TargetMachine->I = ((TargetMachine->memory[TargetMachine->PC] << 8) | (TargetMachine->memory[static_cast<unsigned short>(TargetMachine->PC + 1)]));
+						TargetMachine->PC += 2;
+						break;
+					}
+					case 0x01:
+					{
+						TargetMachine->plane = x;
+						TargetMachine->PC += 2;
+						break;
+					}
+					case 0x02:
+					{
+						XOCHIP_Audio *audio = std::get_if<XOCHIP_Audio>(&TargetMachine->audio_system);
+						audio->CopyToAudioBuffer(TargetMachine->memory, TargetMachine->I, 0);
+						TargetMachine->PC += 2;
+						break;
+					}
 					case 0x07:
 					{
 						TargetMachine->V[x] = TargetMachine->delay_timer;
@@ -782,6 +938,36 @@ void Hyper_BandCHIP::InstructionData<Hyper_BandCHIP::MachineCore::BandCHIP_Hyper
 								TargetMachine->I = 0x00AA;
 								break;
 							}
+							case 0xA:
+							{
+								TargetMachine->I = 0x00B4;
+								break;
+							}
+							case 0xB:
+							{
+								TargetMachine->I = 0x00BE;
+								break;
+							}
+							case 0xC:
+							{
+								TargetMachine->I = 0x00C8;
+								break;
+							}
+							case 0xD:
+							{
+								TargetMachine->I = 0x00D2;
+								break;
+							}
+							case 0xE:
+							{
+								TargetMachine->I = 0x00DC;
+								break;
+							}
+							case 0xF:
+							{
+								TargetMachine->I = 0x00E6;
+								break;
+							}
 						}
 						TargetMachine->PC += 2;
 						break;
@@ -799,6 +985,14 @@ void Hyper_BandCHIP::InstructionData<Hyper_BandCHIP::MachineCore::BandCHIP_Hyper
 						{
 							TargetMachine->memory[static_cast<unsigned short>(TargetMachine->I + i)] = digit[2 - i];
 						}
+						TargetMachine->PC += 2;
+						break;
+					}
+					case 0x3A:
+					{
+						XOCHIP_Audio *audio = std::get_if<XOCHIP_Audio>(&TargetMachine->audio_system);
+						unsigned char pitch = TargetMachine->V[x];
+						audio->SetPlaybackRate(pitch);
 						TargetMachine->PC += 2;
 						break;
 					}

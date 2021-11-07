@@ -2,10 +2,11 @@
 #ifdef RENDERER_OPENGLES3
 #include "../include/renderer_opengles3.h"
 #endif
-#include "../include/fonts.h"
 #include "../include/menu_fonts.h"
+#include "../include/vip_fonts.h"
 #include "../include/schip_fonts.h"
 #include "../include/octo_fonts.h"
+#include "../include/kchip8_fonts.h"
 #include <iostream>
 #include <fstream>
 
@@ -14,7 +15,7 @@ using std::endl;
 
 using std::ifstream;
 
-Hyper_BandCHIP::Application::Application() : MainWindow(nullptr), MainRenderer(nullptr), start_path(std::filesystem::current_path()), CurrentOperationMode(OperationMode::Menu), CurrentMachineCore(MachineCore::BandCHIP_CHIP8), CurrentMenu(MenuDisplay::Main), CurrentMachine(nullptr), refresh_accumulator(0.0), loading_program(false), retcode(0)
+Hyper_BandCHIP::Application::Application() : MainWindow(nullptr), MainRenderer(nullptr), start_path(std::filesystem::current_path()), CurrentOperationMode(OperationMode::Menu), CurrentMachineCore(MachineCore::BandCHIP_CHIP8), CurrentMenu(MenuDisplay::Main), CurrentLoResFontStyle(LoResFontStyle::VIP), CurrentHiResFontStyle(HiResFontStyle::SuperCHIP), CurrentMachine(nullptr), refresh_accumulator(0.0), loading_program(false), retcode(0)
 {
 	bool exit = false;
 	unsigned int flags = 0x00000000;
@@ -75,7 +76,30 @@ Hyper_BandCHIP::Application::Application() : MainWindow(nullptr), MainRenderer(n
 						CurrentMachine = new Machine(CurrentMachineCore, CPUSettingsMenu.CPUCycles.value);
 					}
 					MainRenderer->SetupDisplay(64, 32);
-					CurrentMachine->CopyDataToInterpreterMemory(reinterpret_cast<const unsigned char *>(Fonts::SuperCHIP::LoResFonts), 0, sizeof(Fonts::SuperCHIP::LoResFonts));
+					const unsigned char *lores_fonts = nullptr;
+					size_t lores_fonts_size = 0;
+					switch (CurrentLoResFontStyle)
+					{
+						case LoResFontStyle::VIP:
+						{
+							lores_fonts = reinterpret_cast<const unsigned char *>(Fonts::VIP::LoResFonts);
+							lores_fonts_size = sizeof(Fonts::VIP::LoResFonts);
+							break;
+						}
+						case LoResFontStyle::SuperCHIP:
+						{
+							lores_fonts = reinterpret_cast<const unsigned char *>(Fonts::SuperCHIP::LoResFonts);
+							lores_fonts_size = sizeof(Fonts::SuperCHIP::LoResFonts);
+							break;
+						}
+						case LoResFontStyle::KCHIP8:
+						{
+							lores_fonts = reinterpret_cast<const unsigned char *>(Fonts::KCHIP8::LoResFonts);
+							lores_fonts_size = sizeof(Fonts::KCHIP8::LoResFonts);
+							break;
+						}
+					}
+					CurrentMachine->CopyDataToInterpreterMemory(lores_fonts, 0x000, lores_fonts_size);
 					CHIP8_BehaviorData CurrentBehaviorData = { BehaviorsMenu.CHIP48_Shift.toggle, BehaviorsMenu.CHIP48_LoadStore.toggle };
 					CurrentMachine->StoreBehaviorData(&CurrentBehaviorData);
 					if (CurrentMachine->LoadProgram(program_data, 0x200, program_size))
@@ -122,8 +146,54 @@ Hyper_BandCHIP::Application::Application() : MainWindow(nullptr), MainRenderer(n
 					}
 					std::filesystem::current_path(local_dir);
 					MainRenderer->SetupDisplay(128, 64);
-					CurrentMachine->CopyDataToInterpreterMemory(reinterpret_cast<const unsigned char *>(Fonts::SuperCHIP::LoResFonts), 0, sizeof(Fonts::SuperCHIP::LoResFonts));
-					CurrentMachine->CopyDataToInterpreterMemory(reinterpret_cast<const unsigned char *>(Fonts::SuperCHIP::HiResFonts), sizeof(Fonts::SuperCHIP::LoResFonts), sizeof(Fonts::SuperCHIP::HiResFonts));
+					const unsigned char *lores_fonts = nullptr;
+					const unsigned char *hires_fonts = nullptr;
+					size_t lores_fonts_size = 0;
+					size_t hires_fonts_size = 0;
+					switch (CurrentLoResFontStyle)
+					{
+						case LoResFontStyle::VIP:
+						{
+							lores_fonts = reinterpret_cast<const unsigned char *>(Fonts::VIP::LoResFonts);
+							lores_fonts_size = sizeof(Fonts::VIP::LoResFonts);
+							break;
+						}
+						case LoResFontStyle::SuperCHIP:
+						{
+							lores_fonts = reinterpret_cast<const unsigned char *>(Fonts::SuperCHIP::LoResFonts);
+							lores_fonts_size = sizeof(Fonts::SuperCHIP::LoResFonts);
+							break;
+						}
+						case LoResFontStyle::KCHIP8:
+						{
+							lores_fonts = reinterpret_cast<const unsigned char *>(Fonts::KCHIP8::LoResFonts);
+							lores_fonts_size = sizeof(Fonts::KCHIP8::LoResFonts);
+							break;
+						}
+					}
+					switch (CurrentHiResFontStyle)
+					{
+						case HiResFontStyle::SuperCHIP:
+						{
+							hires_fonts = reinterpret_cast<const unsigned char *>(Fonts::SuperCHIP::HiResFonts);
+							hires_fonts_size = sizeof(Fonts::SuperCHIP::HiResFonts);
+							break;
+						}
+						case HiResFontStyle::Octo:
+						{
+							hires_fonts = reinterpret_cast<const unsigned char *>(Fonts::Octo::HiResFonts);
+							hires_fonts_size = sizeof(Fonts::Octo::HiResFonts);
+							break;
+						}
+						case HiResFontStyle::KCHIP8:
+						{
+							hires_fonts = reinterpret_cast<const unsigned char *>(Fonts::KCHIP8::HiResFonts);
+							hires_fonts_size = sizeof(Fonts::KCHIP8::HiResFonts);
+							break;
+						}
+					}
+					CurrentMachine->CopyDataToInterpreterMemory(lores_fonts, 0x000, lores_fonts_size);
+					CurrentMachine->CopyDataToInterpreterMemory(hires_fonts, 0x050, hires_fonts_size);
 					SuperCHIP_BehaviorData CurrentBehaviorData;
 					switch (BehaviorsMenu.SuperCHIP_Version.current_option)
 					{
@@ -189,9 +259,55 @@ Hyper_BandCHIP::Application::Application() : MainWindow(nullptr), MainRenderer(n
 					}
 					std::filesystem::current_path(local_dir);
 					MainRenderer->SetupDisplay(128, 64);
-					CurrentMachine->CopyDataToInterpreterMemory(reinterpret_cast<const unsigned char *>(Fonts::SuperCHIP::LoResFonts), 0, sizeof(Fonts::SuperCHIP::LoResFonts));
-					CurrentMachine->CopyDataToInterpreterMemory(reinterpret_cast<const unsigned char *>(Fonts::Octo::HiResFonts), sizeof(Fonts::SuperCHIP::LoResFonts), sizeof(Fonts::Octo::HiResFonts));
-					XOCHIP_BehaviorData CurrentBehaviorData = { BehaviorsMenu.SuperCHIP_LoadStore.toggle, BehaviorsMenu.Octo_LoResSprite.toggle };
+					const unsigned char *lores_fonts = nullptr;
+					const unsigned char *hires_fonts = nullptr;
+					size_t lores_fonts_size = 0;
+					size_t hires_fonts_size = 0;
+					switch (CurrentLoResFontStyle)
+					{
+						case LoResFontStyle::VIP:
+						{
+							lores_fonts = reinterpret_cast<const unsigned char *>(Fonts::VIP::LoResFonts);
+							lores_fonts_size = sizeof(Fonts::VIP::LoResFonts);
+							break;
+						}
+						case LoResFontStyle::SuperCHIP:
+						{
+							lores_fonts = reinterpret_cast<const unsigned char *>(Fonts::SuperCHIP::LoResFonts);
+							lores_fonts_size = sizeof(Fonts::SuperCHIP::LoResFonts);
+							break;
+						}
+						case LoResFontStyle::KCHIP8:
+						{
+							lores_fonts = reinterpret_cast<const unsigned char *>(Fonts::KCHIP8::LoResFonts);
+							lores_fonts_size = sizeof(Fonts::KCHIP8::LoResFonts);
+							break;
+						}
+					}
+					switch (CurrentHiResFontStyle)
+					{
+						case HiResFontStyle::SuperCHIP:
+						{
+							hires_fonts = reinterpret_cast<const unsigned char *>(Fonts::SuperCHIP::HiResFonts);
+							hires_fonts_size = sizeof(Fonts::SuperCHIP::HiResFonts);
+							break;
+						}
+						case HiResFontStyle::Octo:
+						{
+							hires_fonts = reinterpret_cast<const unsigned char *>(Fonts::Octo::HiResFonts);
+							hires_fonts_size = sizeof(Fonts::Octo::HiResFonts);
+							break;
+						}
+						case HiResFontStyle::KCHIP8:
+						{
+							hires_fonts = reinterpret_cast<const unsigned char *>(Fonts::KCHIP8::HiResFonts);
+							hires_fonts_size = sizeof(Fonts::KCHIP8::HiResFonts);
+							break;
+						}
+					}
+					CurrentMachine->CopyDataToInterpreterMemory(lores_fonts, 0x000, lores_fonts_size);
+					CurrentMachine->CopyDataToInterpreterMemory(hires_fonts, 0x050, hires_fonts_size);
+					XOCHIP_BehaviorData CurrentBehaviorData = { BehaviorsMenu.SuperCHIP_Shift.toggle, BehaviorsMenu.SuperCHIP_LoadStore.toggle, BehaviorsMenu.Octo_LoResSprite.toggle };
 					CurrentMachine->StoreBehaviorData(&CurrentBehaviorData);
 					if (CurrentMachine->LoadProgram(program_data, 0x200, program_size))
 					{
@@ -237,8 +353,54 @@ Hyper_BandCHIP::Application::Application() : MainWindow(nullptr), MainRenderer(n
 					}
 					std::filesystem::current_path(local_dir);
 					MainRenderer->SetupDisplay(128, 64);
-					CurrentMachine->CopyDataToInterpreterMemory(reinterpret_cast<const unsigned char *>(Fonts::SuperCHIP::LoResFonts), 0, sizeof(Fonts::SuperCHIP::LoResFonts));
-					CurrentMachine->CopyDataToInterpreterMemory(reinterpret_cast<const unsigned char *>(Fonts::SuperCHIP::HiResFonts), sizeof(Fonts::SuperCHIP::LoResFonts), sizeof(Fonts::SuperCHIP::HiResFonts));
+					const unsigned char *lores_fonts = nullptr;
+					const unsigned char *hires_fonts = nullptr;
+					size_t lores_fonts_size = 0;
+					size_t hires_fonts_size = 0;
+					switch (CurrentLoResFontStyle)
+					{
+						case LoResFontStyle::VIP:
+						{
+							lores_fonts = reinterpret_cast<const unsigned char *>(Fonts::VIP::LoResFonts);
+							lores_fonts_size = sizeof(Fonts::VIP::LoResFonts);
+							break;
+						}
+						case LoResFontStyle::SuperCHIP:
+						{
+							lores_fonts = reinterpret_cast<const unsigned char *>(Fonts::SuperCHIP::LoResFonts);
+							lores_fonts_size = sizeof(Fonts::SuperCHIP::LoResFonts);
+							break;
+						}
+						case LoResFontStyle::KCHIP8:
+						{
+							lores_fonts = reinterpret_cast<const unsigned char *>(Fonts::KCHIP8::LoResFonts);
+							lores_fonts_size = sizeof(Fonts::KCHIP8::LoResFonts);
+							break;
+						}
+					}
+					switch (CurrentHiResFontStyle)
+					{
+						case HiResFontStyle::SuperCHIP:
+						{
+							hires_fonts = reinterpret_cast<const unsigned char *>(Fonts::SuperCHIP::HiResFonts);
+							hires_fonts_size = sizeof(Fonts::SuperCHIP::HiResFonts);
+							break;
+						}
+						case HiResFontStyle::Octo:
+						{
+							hires_fonts = reinterpret_cast<const unsigned char *>(Fonts::Octo::HiResFonts);
+							hires_fonts_size = sizeof(Fonts::Octo::HiResFonts);
+							break;
+						}
+						case HiResFontStyle::KCHIP8:
+						{
+							hires_fonts = reinterpret_cast<const unsigned char *>(Fonts::KCHIP8::HiResFonts);
+							hires_fonts_size = sizeof(Fonts::KCHIP8::HiResFonts);
+							break;
+						}
+					}
+					CurrentMachine->CopyDataToInterpreterMemory(lores_fonts, 0x000, lores_fonts_size);
+					CurrentMachine->CopyDataToInterpreterMemory(hires_fonts, 0x050, hires_fonts_size);
 					if (CurrentMachine->LoadProgram(program_data, 0x200, program_size))
 					{
 						LoadProgramDisplay.LoadingProgram.hidden = true;
@@ -364,7 +526,7 @@ Hyper_BandCHIP::Application::Application() : MainWindow(nullptr), MainRenderer(n
 												}
 												case MenuDisplay::Configuration:
 												{
-													ConfigurationMenu.CurrentSelectableItemId = (ConfigurationMenu.CurrentSelectableItemId == 0) ? 7 : ConfigurationMenu.CurrentSelectableItemId - 1;
+													ConfigurationMenu.CurrentSelectableItemId = (ConfigurationMenu.CurrentSelectableItemId == 0) ? 8 : ConfigurationMenu.CurrentSelectableItemId - 1;
 													break;
 												}
 												case MenuDisplay::CPUSettings:
@@ -388,7 +550,7 @@ Hyper_BandCHIP::Application::Application() : MainWindow(nullptr), MainRenderer(n
 														}
 														case MachineCore::BandCHIP_XOCHIP:
 														{
-															BehaviorsMenu.CurrentSelectableItemId = (BehaviorsMenu.CurrentSelectableItemId == 0) ? 2 : BehaviorsMenu.CurrentSelectableItemId - 1;
+															BehaviorsMenu.CurrentSelectableItemId = (BehaviorsMenu.CurrentSelectableItemId == 0) ? 3 : BehaviorsMenu.CurrentSelectableItemId - 1;
 															break;
 														}
 													}
@@ -397,6 +559,11 @@ Hyper_BandCHIP::Application::Application() : MainWindow(nullptr), MainRenderer(n
 												case MenuDisplay::PaletteSettings:
 												{
 													PaletteSettingsMenu.CurrentSelectableItemId = (PaletteSettingsMenu.CurrentSelectableItemId == 0) ? 5 : PaletteSettingsMenu.CurrentSelectableItemId - 1;
+													break;
+												}
+												case MenuDisplay::FontSettings:
+												{
+													FontSettingsMenu.CurrentSelectableItemId = (FontSettingsMenu.CurrentSelectableItemId == 0) ? 2 : FontSettingsMenu.CurrentSelectableItemId - 1;
 													break;
 												}
 												case MenuDisplay::KeyboardRemapping:
@@ -500,7 +667,7 @@ Hyper_BandCHIP::Application::Application() : MainWindow(nullptr), MainRenderer(n
 												}
 												case MenuDisplay::Configuration:
 												{
-													ConfigurationMenu.CurrentSelectableItemId = (ConfigurationMenu.CurrentSelectableItemId == 7) ? 0 : ConfigurationMenu.CurrentSelectableItemId + 1;
+													ConfigurationMenu.CurrentSelectableItemId = (ConfigurationMenu.CurrentSelectableItemId == 8) ? 0 : ConfigurationMenu.CurrentSelectableItemId + 1;
 													break;
 												}
 												case MenuDisplay::CPUSettings:
@@ -524,7 +691,7 @@ Hyper_BandCHIP::Application::Application() : MainWindow(nullptr), MainRenderer(n
 														}
 														case MachineCore::BandCHIP_XOCHIP:
 														{
-															BehaviorsMenu.CurrentSelectableItemId = (BehaviorsMenu.CurrentSelectableItemId == 2) ? 0 : BehaviorsMenu.CurrentSelectableItemId + 1;
+															BehaviorsMenu.CurrentSelectableItemId = (BehaviorsMenu.CurrentSelectableItemId == 3) ? 0 : BehaviorsMenu.CurrentSelectableItemId + 1;
 															break;
 														}
 													}
@@ -533,6 +700,11 @@ Hyper_BandCHIP::Application::Application() : MainWindow(nullptr), MainRenderer(n
 												case MenuDisplay::PaletteSettings:
 												{
 													PaletteSettingsMenu.CurrentSelectableItemId = (PaletteSettingsMenu.CurrentSelectableItemId == 5) ? 0 : PaletteSettingsMenu.CurrentSelectableItemId + 1;
+													break;
+												}
+												case MenuDisplay::FontSettings:
+												{
+													FontSettingsMenu.CurrentSelectableItemId = (FontSettingsMenu.CurrentSelectableItemId == 2) ? 0 : FontSettingsMenu.CurrentSelectableItemId + 1;
 													break;
 												}
 												case MenuDisplay::KeyboardRemapping:
@@ -560,7 +732,7 @@ Hyper_BandCHIP::Application::Application() : MainWindow(nullptr), MainRenderer(n
 											{
 												case MenuDisplay::Configuration:
 												{
-													unsigned int event_id = 0;
+													unsigned int event_id = 0xFFFFFFFF;
 													switch (ConfigurationMenu.CurrentSelectableItemId)
 													{
 														case 0:
@@ -585,20 +757,25 @@ Hyper_BandCHIP::Application::Application() : MainWindow(nullptr), MainRenderer(n
 														}
 														case 4:
 														{
-															event_id = ConfigurationMenu.KeyboardRemapping.event_id;
+															event_id = ConfigurationMenu.FontSettings.event_id;
 															break;
 														}
 														case 5:
 														{
-															event_id = ConfigurationMenu.LoadConfiguration.event_id;
+															event_id = ConfigurationMenu.KeyboardRemapping.event_id;
 															break;
 														}
 														case 6:
 														{
-															event_id = ConfigurationMenu.SaveConfiguration.event_id;
+															event_id = ConfigurationMenu.LoadConfiguration.event_id;
 															break;
 														}
 														case 7:
+														{
+															event_id = ConfigurationMenu.SaveConfiguration.event_id;
+															break;
+														}
+														case 8:
 														{
 															event_id = ConfigurationMenu.ReturnToMainMenu.event_id;
 															break;
@@ -720,10 +897,15 @@ Hyper_BandCHIP::Application::Application() : MainWindow(nullptr), MainRenderer(n
 															{
 																case 0:
 																{
-																	BehaviorsMenu.SuperCHIP_LoadStore.toggle = (BehaviorsMenu.SuperCHIP_LoadStore.toggle) ? false : true;
+																	BehaviorsMenu.SuperCHIP_Shift.toggle = (BehaviorsMenu.SuperCHIP_Shift.toggle) ? false : true;
 																	break;
 																}
 																case 1:
+																{
+																	BehaviorsMenu.SuperCHIP_LoadStore.toggle = (BehaviorsMenu.SuperCHIP_LoadStore.toggle) ? false : true;
+																	break;
+																}
+																case 2:
 																{
 																	BehaviorsMenu.Octo_LoResSprite.toggle = (BehaviorsMenu.Octo_LoResSprite.toggle) ? false : true;
 																	break;
@@ -779,6 +961,84 @@ Hyper_BandCHIP::Application::Application() : MainWindow(nullptr), MainRenderer(n
 													}
 													break;
 												}
+												case MenuDisplay::FontSettings:
+												{
+													unsigned int event_id = 0xFFFFFFFF;
+													switch (FontSettingsMenu.CurrentSelectableItemId)
+													{
+														case 0:
+														{
+															event_id = FontSettingsMenu.LoResFontStyle.event_id;
+															break;
+														}
+														case 1:
+														{
+															event_id = FontSettingsMenu.HiResFontStyle.event_id;
+															break;
+														}
+														case 2:
+														{
+															event_id = FontSettingsMenu.ReturnToConfiguration.event_id;
+															break;
+														}
+													}
+													switch (static_cast<FontSettingsMenuEvent>(event_id))
+													{
+														case FontSettingsMenuEvent::ChangeLoResFont:
+														{
+															switch (CurrentLoResFontStyle)
+															{
+																case LoResFontStyle::VIP:
+																{
+																	CurrentLoResFontStyle = LoResFontStyle::KCHIP8;
+																	FontSettingsMenu.LoResFontStyle.current_option = 2;
+																	break;
+																}
+																case LoResFontStyle::SuperCHIP:
+																{
+																	CurrentLoResFontStyle = LoResFontStyle::VIP;
+																	FontSettingsMenu.LoResFontStyle.current_option = 0;
+																	break;
+																}
+																case LoResFontStyle::KCHIP8:
+																{
+																	CurrentLoResFontStyle = LoResFontStyle::SuperCHIP;
+																	FontSettingsMenu.LoResFontStyle.current_option = 1;
+																	break;
+																}
+															}
+															ShowMenu(CurrentMenu);
+															break;
+														}
+														case FontSettingsMenuEvent::ChangeHiResFont:
+														{
+															switch (CurrentHiResFontStyle)
+															{
+																case HiResFontStyle::SuperCHIP:
+																{
+																	CurrentHiResFontStyle = HiResFontStyle::KCHIP8;
+																	FontSettingsMenu.HiResFontStyle.current_option = 2;
+																	break;
+																}
+																case HiResFontStyle::Octo:
+																{
+																	CurrentHiResFontStyle = HiResFontStyle::SuperCHIP;
+																	FontSettingsMenu.HiResFontStyle.current_option = 0;
+																	break;
+																}
+																case HiResFontStyle::KCHIP8:
+																{
+																	CurrentHiResFontStyle = HiResFontStyle::Octo;
+																	FontSettingsMenu.HiResFontStyle.current_option = 1;
+																	break;
+																}
+															}
+															ShowMenu(CurrentMenu);
+															break;
+														}
+													}
+													break;
+												}
 												case MenuDisplay::KeyboardRemapping:
 												{
 													if (!KeyboardRemappingMenu.input_mode)
@@ -800,7 +1060,7 @@ Hyper_BandCHIP::Application::Application() : MainWindow(nullptr), MainRenderer(n
 											{
 												case MenuDisplay::Configuration:
 												{
-													unsigned int event_id = 0;
+													unsigned int event_id = 0xFFFFFFFF;
 													switch (ConfigurationMenu.CurrentSelectableItemId)
 													{
 														case 0:
@@ -825,20 +1085,25 @@ Hyper_BandCHIP::Application::Application() : MainWindow(nullptr), MainRenderer(n
 														}
 														case 4:
 														{
-															event_id = ConfigurationMenu.KeyboardRemapping.event_id;
+															event_id = ConfigurationMenu.FontSettings.event_id;
 															break;
 														}
 														case 5:
 														{
-															event_id = ConfigurationMenu.LoadConfiguration.event_id;
+															event_id = ConfigurationMenu.KeyboardRemapping.event_id;
 															break;
 														}
 														case 6:
 														{
-															event_id = ConfigurationMenu.SaveConfiguration.event_id;
+															event_id = ConfigurationMenu.LoadConfiguration.event_id;
 															break;
 														}
 														case 7:
+														{
+															event_id = ConfigurationMenu.SaveConfiguration.event_id;
+															break;
+														}
+														case 8:
 														{
 															event_id = ConfigurationMenu.ReturnToMainMenu.event_id;
 															break;
@@ -959,10 +1224,15 @@ Hyper_BandCHIP::Application::Application() : MainWindow(nullptr), MainRenderer(n
 															{
 																case 0:
 																{
-																	BehaviorsMenu.SuperCHIP_LoadStore.toggle = (BehaviorsMenu.SuperCHIP_LoadStore.toggle) ? false : true;
+																	BehaviorsMenu.SuperCHIP_Shift.toggle = (BehaviorsMenu.SuperCHIP_Shift.toggle) ? false : true;
 																	break;
 																}
 																case 1:
+																{
+																	BehaviorsMenu.SuperCHIP_LoadStore.toggle = (BehaviorsMenu.SuperCHIP_LoadStore.toggle) ? false : true;
+																	break;
+																}
+																case 2:
 																{
 																	BehaviorsMenu.Octo_LoResSprite.toggle = (BehaviorsMenu.Octo_LoResSprite.toggle) ? false : true;
 																	break;
@@ -1013,6 +1283,84 @@ Hyper_BandCHIP::Application::Application() : MainWindow(nullptr), MainRenderer(n
 																++PaletteSettingsMenu.Blue.value;
 																ShowMenu(CurrentMenu);
 															}
+															break;
+														}
+													}
+													break;
+												}
+												case MenuDisplay::FontSettings:
+												{
+													unsigned int event_id = 0xFFFFFFFF;
+													switch (FontSettingsMenu.CurrentSelectableItemId)
+													{
+														case 0:
+														{
+															event_id = FontSettingsMenu.LoResFontStyle.event_id;
+															break;
+														}
+														case 1:
+														{
+															event_id = FontSettingsMenu.HiResFontStyle.event_id;
+															break;
+														}
+														case 2:
+														{
+															event_id = FontSettingsMenu.ReturnToConfiguration.event_id;
+															break;
+														}
+													}
+													switch (static_cast<FontSettingsMenuEvent>(event_id))
+													{
+														case FontSettingsMenuEvent::ChangeLoResFont:
+														{
+															switch (CurrentLoResFontStyle)
+															{
+																case LoResFontStyle::VIP:
+																{
+																	CurrentLoResFontStyle = LoResFontStyle::SuperCHIP;
+																	FontSettingsMenu.LoResFontStyle.current_option = 1;
+																	break;
+																}
+																case LoResFontStyle::SuperCHIP:
+																{
+																	CurrentLoResFontStyle = LoResFontStyle::KCHIP8;
+																	FontSettingsMenu.LoResFontStyle.current_option = 2;
+																	break;
+																}
+																case LoResFontStyle::KCHIP8:
+																{
+																	CurrentLoResFontStyle = LoResFontStyle::VIP;
+																	FontSettingsMenu.LoResFontStyle.current_option = 0;
+																	break;
+																}
+															}
+															ShowMenu(CurrentMenu);
+															break;
+														}
+														case FontSettingsMenuEvent::ChangeHiResFont:
+														{
+															switch (CurrentHiResFontStyle)
+															{
+																case HiResFontStyle::SuperCHIP:
+																{
+																	CurrentHiResFontStyle = HiResFontStyle::Octo;
+																	FontSettingsMenu.HiResFontStyle.current_option = 1;
+																	break;
+																}
+																case HiResFontStyle::Octo:
+																{
+																	CurrentHiResFontStyle = HiResFontStyle::KCHIP8;
+																	FontSettingsMenu.HiResFontStyle.current_option = 2;
+																	break;
+																}
+																case HiResFontStyle::KCHIP8:
+																{
+																	CurrentHiResFontStyle = HiResFontStyle::SuperCHIP;
+																	FontSettingsMenu.HiResFontStyle.current_option = 0;
+																	break;
+																}
+															}
+															ShowMenu(CurrentMenu);
 															break;
 														}
 													}
@@ -1182,20 +1530,25 @@ Hyper_BandCHIP::Application::Application() : MainWindow(nullptr), MainRenderer(n
 														}
 														case 4:
 														{
-															event_id = ConfigurationMenu.KeyboardRemapping.event_id;
+															event_id = ConfigurationMenu.FontSettings.event_id;
 															break;
 														}
 														case 5:
 														{
-															event_id = ConfigurationMenu.LoadConfiguration.event_id;
+															event_id = ConfigurationMenu.KeyboardRemapping.event_id;
 															break;
 														}
 														case 6:
 														{
-															event_id = ConfigurationMenu.SaveConfiguration.event_id;
+															event_id = ConfigurationMenu.LoadConfiguration.event_id;
 															break;
 														}
 														case 7:
+														{
+															event_id = ConfigurationMenu.SaveConfiguration.event_id;
+															break;
+														}
+														case 8:
 														{
 															event_id = ConfigurationMenu.ReturnToMainMenu.event_id;
 															break;
@@ -1254,6 +1607,12 @@ Hyper_BandCHIP::Application::Application() : MainWindow(nullptr), MainRenderer(n
 														case ConfigurationMenuEvent::PaletteSettings:
 														{
 															CurrentMenu = MenuDisplay::PaletteSettings;
+															ShowMenu(CurrentMenu);
+															break;
+														}
+														case ConfigurationMenuEvent::FontSettings:
+														{
+															CurrentMenu = MenuDisplay::FontSettings;
 															ShowMenu(CurrentMenu);
 															break;
 														}
@@ -1372,15 +1731,20 @@ Hyper_BandCHIP::Application::Application() : MainWindow(nullptr), MainRenderer(n
 															{
 																case 0:
 																{
-																	BehaviorsMenu.SuperCHIP_LoadStore.toggle = (BehaviorsMenu.SuperCHIP_LoadStore.toggle) ? false : true;
+																	BehaviorsMenu.SuperCHIP_Shift.toggle = (BehaviorsMenu.SuperCHIP_Shift.toggle) ? false : true;
 																	break;
 																}
 																case 1:
 																{
-																	BehaviorsMenu.Octo_LoResSprite.toggle = (BehaviorsMenu.Octo_LoResSprite.toggle) ? false : true;
+																	BehaviorsMenu.SuperCHIP_LoadStore.toggle = (BehaviorsMenu.SuperCHIP_LoadStore.toggle) ? false : true;
 																	break;
 																}
 																case 2:
+																{
+																	BehaviorsMenu.Octo_LoResSprite.toggle = (BehaviorsMenu.Octo_LoResSprite.toggle) ? false : true;
+																	break;
+																}
+																case 3:
 																{
 																	CurrentMenu = MenuDisplay::Configuration;
 																	break;
@@ -1424,6 +1788,90 @@ Hyper_BandCHIP::Application::Application() : MainWindow(nullptr), MainRenderer(n
 															break;
 														}
 														case PaletteSettingsMenuEvent::ReturnToConfiguration:
+														{
+															CurrentMenu = MenuDisplay::Configuration;
+															ShowMenu(CurrentMenu);
+															break;
+														}
+													}
+													break;
+												}
+												case MenuDisplay::FontSettings:
+												{
+													unsigned int event_id = 0xFFFFFFFF;
+													switch (FontSettingsMenu.CurrentSelectableItemId)
+													{
+														case 0:
+														{
+															event_id = FontSettingsMenu.LoResFontStyle.event_id;
+															break;
+														}
+														case 1:
+														{
+															event_id = FontSettingsMenu.HiResFontStyle.event_id;
+															break;
+														}
+														case 2:
+														{
+															event_id = FontSettingsMenu.ReturnToConfiguration.event_id;
+															break;
+														}
+													}
+													switch (static_cast<FontSettingsMenuEvent>(event_id))
+													{
+														case FontSettingsMenuEvent::ChangeLoResFont:
+														{
+															switch (CurrentLoResFontStyle)
+															{
+																case LoResFontStyle::VIP:
+																{
+																	CurrentLoResFontStyle = LoResFontStyle::SuperCHIP;
+																	FontSettingsMenu.LoResFontStyle.current_option = 1;
+																	break;
+																}
+																case LoResFontStyle::SuperCHIP:
+																{
+																	CurrentLoResFontStyle = LoResFontStyle::KCHIP8;
+																	FontSettingsMenu.LoResFontStyle.current_option = 2;
+																	break;
+																}
+																case LoResFontStyle::KCHIP8:
+																{
+																	CurrentLoResFontStyle = LoResFontStyle::VIP;
+																	FontSettingsMenu.LoResFontStyle.current_option = 0;
+																	break;
+																}
+															}
+															ShowMenu(CurrentMenu);
+															break;
+														}
+														case FontSettingsMenuEvent::ChangeHiResFont:
+														{
+															switch (CurrentHiResFontStyle)
+															{
+																case HiResFontStyle::SuperCHIP:
+																{
+																	CurrentHiResFontStyle = HiResFontStyle::Octo;
+																	FontSettingsMenu.HiResFontStyle.current_option = 1;
+																	break;
+																}
+																case HiResFontStyle::Octo:
+																{
+																	CurrentHiResFontStyle = HiResFontStyle::KCHIP8;
+																	FontSettingsMenu.HiResFontStyle.current_option = 2;
+																	break;
+																}
+																case HiResFontStyle::KCHIP8:
+																{
+																	CurrentHiResFontStyle = HiResFontStyle::SuperCHIP;
+																	FontSettingsMenu.HiResFontStyle.current_option = 0;
+																	break;
+																}
+															}
+															ShowMenu(CurrentMenu);
+															break;
+														}
+														case FontSettingsMenuEvent::ReturnToConfiguration:
 														{
 															CurrentMenu = MenuDisplay::Configuration;
 															ShowMenu(CurrentMenu);
@@ -1496,6 +1944,12 @@ Hyper_BandCHIP::Application::Application() : MainWindow(nullptr), MainRenderer(n
 													break;
 												}
 												case MenuDisplay::PaletteSettings:
+												{
+													CurrentMenu = MenuDisplay::Configuration;
+													ShowMenu(CurrentMenu);
+													break;
+												}
+												case MenuDisplay::FontSettings:
 												{
 													CurrentMenu = MenuDisplay::Configuration;
 													ShowMenu(CurrentMenu);
@@ -1866,10 +2320,11 @@ void Hyper_BandCHIP::Application::ShowMenu(Hyper_BandCHIP::MenuDisplay Menu)
 			DisplayItem(*MainRenderer, ConfigurationMenu.CPUSettings, (ConfigurationMenu.CurrentSelectableItemId == 1) ? 2 : 1);
 			DisplayItem(*MainRenderer, ConfigurationMenu.Behaviors, (ConfigurationMenu.CurrentSelectableItemId == 2) ? 2 : 1);
 			DisplayItem(*MainRenderer, ConfigurationMenu.PaletteSettings, (ConfigurationMenu.CurrentSelectableItemId == 3) ? 2 : 1);
-			DisplayItem(*MainRenderer, ConfigurationMenu.KeyboardRemapping, (ConfigurationMenu.CurrentSelectableItemId == 4) ? 2 : 1);
-			DisplayItem(*MainRenderer, ConfigurationMenu.LoadConfiguration, (ConfigurationMenu.CurrentSelectableItemId == 5) ? 2 : 1);
-			DisplayItem(*MainRenderer, ConfigurationMenu.SaveConfiguration, (ConfigurationMenu.CurrentSelectableItemId == 6) ? 2 : 1);
-			DisplayItem(*MainRenderer, ConfigurationMenu.ReturnToMainMenu, (ConfigurationMenu.CurrentSelectableItemId == 7) ? 2 : 1);
+			DisplayItem(*MainRenderer, ConfigurationMenu.FontSettings, (ConfigurationMenu.CurrentSelectableItemId == 4) ? 2 : 1);
+			DisplayItem(*MainRenderer, ConfigurationMenu.KeyboardRemapping, (ConfigurationMenu.CurrentSelectableItemId == 5) ? 2 : 1);
+			DisplayItem(*MainRenderer, ConfigurationMenu.LoadConfiguration, (ConfigurationMenu.CurrentSelectableItemId == 6) ? 2 : 1);
+			DisplayItem(*MainRenderer, ConfigurationMenu.SaveConfiguration, (ConfigurationMenu.CurrentSelectableItemId == 7) ? 2 : 1);
+			DisplayItem(*MainRenderer, ConfigurationMenu.ReturnToMainMenu, (ConfigurationMenu.CurrentSelectableItemId == 8) ? 2 : 1);
 			break;
 		}
 		case MenuDisplay::LoadProgramDisplay:
@@ -1922,9 +2377,10 @@ void Hyper_BandCHIP::Application::ShowMenu(Hyper_BandCHIP::MenuDisplay Menu)
 				}
 				case MachineCore::BandCHIP_XOCHIP:
 				{
-					DisplayItem(*MainRenderer, BehaviorsMenu.SuperCHIP_LoadStore, (BehaviorsMenu.CurrentSelectableItemId == 0) ? 2 : 1);
-					DisplayItem(*MainRenderer, BehaviorsMenu.Octo_LoResSprite, (BehaviorsMenu.CurrentSelectableItemId == 1) ? 2 : 1 );
-					DisplayItem(*MainRenderer, BehaviorsMenu.ReturnToConfiguration, (BehaviorsMenu.CurrentSelectableItemId == 2) ? 2 : 1);
+					DisplayItem(*MainRenderer, BehaviorsMenu.SuperCHIP_Shift, (BehaviorsMenu.CurrentSelectableItemId == 0) ? 2 : 1);
+					DisplayItem(*MainRenderer, BehaviorsMenu.SuperCHIP_LoadStore, (BehaviorsMenu.CurrentSelectableItemId == 1) ? 2 : 1);
+					DisplayItem(*MainRenderer, BehaviorsMenu.Octo_LoResSprite, (BehaviorsMenu.CurrentSelectableItemId == 2) ? 2 : 1 );
+					DisplayItem(*MainRenderer, BehaviorsMenu.ReturnToConfiguration, (BehaviorsMenu.CurrentSelectableItemId == 3) ? 2 : 1);
 					break;
 				}
 				default:
@@ -1944,6 +2400,14 @@ void Hyper_BandCHIP::Application::ShowMenu(Hyper_BandCHIP::MenuDisplay Menu)
 			DisplayItem(*MainRenderer, PaletteSettingsMenu.Blue, (PaletteSettingsMenu.CurrentSelectableItemId == 3) ? 2 : 1);
 			DisplayItem(*MainRenderer, PaletteSettingsMenu.CommitChanges, (PaletteSettingsMenu.CurrentSelectableItemId == 4) ? 2 : 1);
 			DisplayItem(*MainRenderer, PaletteSettingsMenu.ReturnToConfiguration, (PaletteSettingsMenu.CurrentSelectableItemId == 5) ? 2 : 1);
+			break;
+		}
+		case MenuDisplay::FontSettings:
+		{
+			DisplayItem(*MainRenderer, FontSettingsMenu.Title, 1);
+			DisplayItem(*MainRenderer, FontSettingsMenu.LoResFontStyle, (FontSettingsMenu.CurrentSelectableItemId == 0) ? 2 : 1);
+			DisplayItem(*MainRenderer, FontSettingsMenu.HiResFontStyle, (FontSettingsMenu.CurrentSelectableItemId == 1) ? 2 : 1);
+			DisplayItem(*MainRenderer, FontSettingsMenu.ReturnToConfiguration, (FontSettingsMenu.CurrentSelectableItemId == 2) ? 2 : 1);
 			break;
 		}
 		case MenuDisplay::KeyboardRemapping:
