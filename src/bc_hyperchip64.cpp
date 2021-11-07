@@ -591,7 +591,7 @@ void Hyper_BandCHIP::InstructionData<Hyper_BandCHIP::MachineCore::BandCHIP_Hyper
 									break;
 								}
 							}
-							unsigned char pixel = ((sprite[y_offset + (px / 8)] & (0x80 >> b_offset)) >> (7 - (px % 8)));
+							unsigned char pixel = ((sprite[((width / 8) * height * p) + y_offset + (px / 8)] & (0x80 >> b_offset)) >> (7 - (px % 8)));
 							unsigned int display_addr = (((y + py) * scale_factor % 64) * 128) + ((x + px) * scale_factor % 128);
 							switch (TargetMachine->CurrentResolutionMode)
 							{
