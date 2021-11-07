@@ -8,9 +8,11 @@ cartridges; support which is dependent on the interpreter that implements it) fo
 upgraded to utilize two channels (Stereo).
 
 Technical Specifications:
-- Standard CPU Clock:  Maxed at 120k cycles per second (Variable)
+- Standard CPU Clock:  Maxed at 6 million cycles per second (Variable)
 - Endianness:  Big (Same as the original CHIP-8)
 - RAM:  64KB (First 512 bytes still reserved)
+- 4 Color Support (Through bit planes; likely upgraded in the near future)
+- Stereo Audio with 4 Independent Voices
 
 Latchable Memory Map:
 
@@ -60,17 +62,18 @@ Here are the supported instructions below:
 |DXYN|Draw Sprite at VX, VY (If N == 0, then draw a 16x16 sprite) (VF = 01 if pixels were unset, 00 if no pixels were unset)|CHIP-8/SuperCHIP V1.0|No|
 |EX9E|Skip the Following Instruction If Hex Key Pressed == VX|CHIP-8|Yes, can skip two or more instructions if prefixes are found.|
 |EXA1|Skip the Following Instruction If Hex Key Not Pressed == VX|CHIP-8|Yes, can skip two or more instructions if prefixes are found.|
+|F000 NNNN|Set I to NNNN|XO-CHIP|No, provided for compatibility with XO-CHIP|
 |FN01|Sets the current drawing bit plane (N = 0 for No Draw, N = 1 for Plane 1, N = 2 for Plane 2, N = 3 for Plane 1 and 2)|XO-CHIP|No|
-|F002|Load the audio buffer from memory at I.|XO-CHIP|Yes, upgraded to support two channels.  Loads the data into each selected channel's (specified in a channel mask) audio buffer.|
+|F002|Load the audio buffer from memory at I.|XO-CHIP|Yes, upgraded to support multiple voices (up to 4 at the moment).  Loads the data into the selected voice's audio buffer.|
 |FX07|Store Delay Timer to VX|CHIP-8|Yes, can load data from another delay timer by the use of the Timer Select Prefix.|
 |FX0A|Wait for Keypress and Store in VX|CHIP-8|No|
 |FX15|Set Delay Timer to VX|CHIP-8|Yes, can modify another delay timer by the use of the Timer Select Prefix.|
-|FX18|Set Sound Timer to VX|CHIP-8|Yes, can modify one or more sound timers based on the audio channels selected in the Audio Channel Mask.|
+|FX18|Set Sound Timer to VX|CHIP-8|Yes, can modify another sound timer based on the currently selected voice.|
 |FX1E|Add Value Stored in VX to I|CHIP-8|No|
 |FX20|Indirect Jump to Address stored in I + VX|HyperCHIP-64|N/A|
 |FX21|Indirect Call Subroutine at Address stored in I + VX|HyperCHIP-64|N/A|
 |FX29|Point I to 5-byte font sprite for digit in VX (0-F)|CHIP-8|No|
-|FX30|Point I to 10-byte font sprite for digit in VX (0-F)|SuperCHIP V1.1, Octo|No|
+|FX30|Point I to 10-byte font sprite for digit in VX (0-F)|SuperCHIP V1.1|No|
 |FX33|Store BCD in VX at I, I+1, and I+2|CHIP-8|No|
 |FX3A|Sets the pitch to the value stored in VX|XO-CHIP|No|
 |FX3B|Sets the volume of the selected voice to the value stored in VX.|HyperCHIP-64|No|
