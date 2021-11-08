@@ -78,7 +78,7 @@ Here are the supported instructions below:
 |FX3A|Sets the pitch to the value stored in VX|XO-CHIP|Yes, can modify the pitch of the selected voice.|
 |FX3B|Sets the volume of the selected voice to the value stored in VX.|HyperCHIP-64|N/A|
 |FN3C|Sets the current voice specified by N for audio operations (Currently maxed at 4 voices, ranging from 0 to 3.)|HyperCHIP-64|N/A|
-|FX3D|Sets the audio channel mask for the selected voice (N = 0 for No Audio Output, N = 1 for Channel 1 (Left), N = 2 for Channel 2 (Right))|HyperCHIP-64|N/A|
+|FN3D|Sets the audio channel mask for the selected voice (N = 0 for No Audio Output, N = 1 for Channel 1 (Left), N = 2 for Channel 2 (Right))|HyperCHIP-64|N/A|
 |FX55|Store V0 to VX in memory starting at I (I = I + X + 1, CHIP-8 original behavior)|CHIP-8|No|
 |FX65|Load V0 to VX from memory starting at I (I = I + X + 1, CHIP-8 original behavior)|CHIP-8|No|
 |FX75|Store V0 to VX in RPL User Flags (X <= 15)|SuperCHIP V1.0, XO-CHIP 1.1|No|

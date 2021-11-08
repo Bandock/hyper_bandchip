@@ -344,6 +344,7 @@ Hyper_BandCHIP::Application::Application() : MainWindow(nullptr), MainRenderer(n
 							CurrentMachine->InitializeStack();
 							CurrentMachine->InitializeMemory();
 							CurrentMachine->InitializeVideo();
+							CurrentMachine->InitializeAudio();
 							CurrentMachine->InitializeKeyStatus();
 						}
 					}

@@ -735,8 +735,8 @@ void Hyper_BandCHIP::InstructionData<Hyper_BandCHIP::MachineCore::BandCHIP_Hyper
 					}
 					case 0x02:
 					{
-						XOCHIP_Audio *audio = std::get_if<XOCHIP_Audio>(&TargetMachine->audio_system);
-						audio->CopyToAudioBuffer(TargetMachine->memory, TargetMachine->I, 0);
+						HyperCHIP64_Audio *audio = std::get_if<HyperCHIP64_Audio>(&TargetMachine->audio_system);
+						audio->CopyToAudioBuffer(TargetMachine->memory, TargetMachine->I, TargetMachine->voice);
 						TargetMachine->PC += 2;
 						break;
 					}
@@ -990,9 +990,31 @@ void Hyper_BandCHIP::InstructionData<Hyper_BandCHIP::MachineCore::BandCHIP_Hyper
 					}
 					case 0x3A:
 					{
-						XOCHIP_Audio *audio = std::get_if<XOCHIP_Audio>(&TargetMachine->audio_system);
+						HyperCHIP64_Audio *audio = std::get_if<HyperCHIP64_Audio>(&TargetMachine->audio_system);
 						unsigned char pitch = TargetMachine->V[x];
-						audio->SetPlaybackRate(pitch);
+						audio->SetPlaybackRate(pitch, TargetMachine->voice);
+						TargetMachine->PC += 2;
+						break;
+					}
+					case 0x3B:
+					{
+						HyperCHIP64_Audio *audio = std::get_if<HyperCHIP64_Audio>(&TargetMachine->audio_system);
+						unsigned char volume = TargetMachine->V[x];
+						audio->SetVolume(volume, TargetMachine->voice);
+						TargetMachine->PC += 2;
+						break;
+					}
+					case 0x3C:
+					{
+						TargetMachine->voice = x;
+						TargetMachine->PC += 2;
+						break;
+					}
+					case 0x3D:
+					{
+						HyperCHIP64_Audio *audio = std::get_if<HyperCHIP64_Audio>(&TargetMachine->audio_system);
+						unsigned char channel_mask = x;
+						audio->SetChannelOutput(channel_mask, TargetMachine->voice);
 						TargetMachine->PC += 2;
 						break;
 					}

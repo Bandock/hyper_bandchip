@@ -44,7 +44,7 @@ namespace Hyper_BandCHIP
 
 	struct MainMenuData
 	{
-		const TextItem Title = { "Hyper BandCHIP V0.9", 220, 20, false };
+		const TextItem Title = { "Hyper BandCHIP V0.10", 220, 20, false };
 		const TextItem Author = { "By Joshua Moss", 250, 34, false };
 		StatusTextItem CurrentProgram = { "Current Program", 160, 60, "None", false };
 		StatusTextItem CurrentMachineStatus = { "Current Machine Status", 120, 74, "Non-Operational", false };

@@ -656,7 +656,7 @@ void Hyper_BandCHIP::InstructionData<Hyper_BandCHIP::MachineCore::BandCHIP_XOCHI
 					case 0x02:
 					{
 						XOCHIP_Audio *audio = std::get_if<XOCHIP_Audio>(&TargetMachine->audio_system);
-						audio->CopyToAudioBuffer(TargetMachine->memory, TargetMachine->I, 0);
+						audio->CopyToAudioBuffer(TargetMachine->memory, TargetMachine->I);
 						TargetMachine->PC += 2;
 						break;
 					}

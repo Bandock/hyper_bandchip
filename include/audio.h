@@ -38,19 +38,25 @@ namespace Hyper_BandCHIP
 			SDL_AudioDeviceID AudioDevice;
 	};
 
-	template <unsigned char channels>
+	template <unsigned char channels, unsigned char voices>
 	class SampleAudio
 	{
 		public:
-			SampleAudio() : playback_rate(4000.0), pause(true)
+			SampleAudio()
 			{
-				memset(audio_buffer.data(), 0x00, 16 * channels);
-				for (unsigned char i = 0; i < channels; ++i)
+				for (unsigned char i = 0; i < voices; ++i)
 				{
-					audio_channel_output_toggle[i] = true;
-					pos[i] = 0;
-					b_offset[i] = 0;
-					time[i] = 0.0;
+					memset(voice_list[i].audio_buffer.data(), 0x00, 16);
+					for (unsigned char c = 0; c < channels; ++c)
+					{
+						voice_list[i].channel_output[c] = true;
+					}
+					voice_list[i].playback_rate = 4000.0;
+					voice_list[i].volume = 1.0;
+					voice_list[i].pos = 0;
+					voice_list[i].b_offset = 0;
+					voice_list[i].time = 0.0;
+					voice_list[i].pause = true;
 				}
 				SDL_AudioSpec desired;
 				desired.freq = 96000;
@@ -67,95 +73,132 @@ namespace Hyper_BandCHIP
 				SDL_PauseAudioDevice(AudioDevice, 1);
 				SDL_CloseAudioDevice(AudioDevice);
 			}
-			void InitializeAudioBuffer()
+			void InitializeAudioBuffer(unsigned char voice = 0)
 			{
-				memset(audio_buffer.data(), 0x00, 16 * channels);
-			}
-			void Reset()
-			{
-				for (unsigned char i = 0; i < channels; ++i)
+				if (voice < voices)
 				{
-					pos[i] = 0;
-					b_offset[i] = 0;
-					time[i] = 0.0;
+					memset(voice_list[voice].audio_buffer.data(), 0x00, 16);
 				}
 			}
-			void SetPlaybackRate(unsigned char rate)
+			void Reset(unsigned char voice = 0)
 			{
-				playback_rate = 4000.0 * std::pow(2.0, ((static_cast<double>(rate) - 64.0) / 48.0));
-			}
-			void CopyToAudioBuffer(const unsigned char *memory, unsigned short start_address, unsigned char channel)
-			{
-				if (channel < channels)
+				if (voice < voices)
 				{
-					for (unsigned char i = 0; i < 16; ++i)
+					voice_list[voice].pos = 0;
+					voice_list[voice].b_offset = 0;
+					voice_list[voice].time = 0.0;
+				}
+			}
+			void SetChannelOutput(unsigned char channel_mask, unsigned char voice)
+			{
+				if (voice < voices)
+				{
+					for (unsigned char c = 0; c < channels; ++c)
 					{
-						audio_buffer[(channel * 16) + i] = memory[static_cast<unsigned short>(start_address + i)];
+						voice_list[voice].channel_output[c] = (channel_mask & (0x01 << c));
 					}
 				}
 			}
-			void PauseAudio(bool pause)
+			void SetPlaybackRate(unsigned char rate, unsigned char voice = 0)
 			{
-				if (this->pause != pause)
+				if (voice < voices)
 				{
-					this->pause = pause;
+					voice_list[voice].playback_rate = 4000.0 * std::pow(2.0, ((static_cast<double>(rate) - 64.0) / 48.0));
 				}
 			}
-			bool IsPaused() const
+			void SetVolume(unsigned char volume, unsigned char voice)
 			{
-				return pause;
+				if (voice < voices)
+				{
+					voice_list[voice].volume = static_cast<double>(volume) / 255.0;
+				}
+			}
+			void CopyToAudioBuffer(const unsigned char *memory, unsigned short start_address, unsigned char voice = 0)
+			{
+				if (voice < voices)
+				{
+					for (unsigned char i = 0; i < 16; ++i)
+					{
+						voice_list[voice].audio_buffer[i] = memory[static_cast<unsigned short>(start_address + i)];
+					}
+				}
+			}
+			void PauseAudio(bool pause, unsigned char voice = 0)
+			{
+				if (voice < voices)
+				{
+					if (voice_list[voice].pause != pause)
+					{
+						voice_list[voice].pause = pause;
+					}
+				}
+			}
+			bool IsPaused(unsigned char voice = 0) const
+			{
+				return voice_list[voice].pause;
 			}
 			static void AudioHandler(void *userdata, Uint8 *stream, int len)
 			{
-				SampleAudio<channels> *Audio = static_cast<SampleAudio<channels> *>(userdata);
+				SampleAudio<channels, voices> *Audio = static_cast<SampleAudio<channels, voices> *>(userdata);
 				for (int i = 0; i < len / sizeof(short); ++i)
 				{
+					short value = 0;
 					unsigned char current_channel = static_cast<unsigned char>(i % channels);
-					if (Audio->audio_channel_output_toggle[current_channel] && !Audio->pause)
+					for (unsigned char v = 0; v < voices; ++v)
 					{
-						short value = 0;
-						if (Audio->audio_buffer[Audio->pos[current_channel]] & (0x80 >> (Audio->b_offset[current_channel])))
+						if (!Audio->voice_list[v].pause)
 						{
-							value = static_cast<short>(32767.0 * 0.20);
-						}
-						else
-						{
-							value = 0;
-						}
-						memcpy(&stream[i * sizeof(short)], &value, sizeof(short));
-						Audio->time[current_channel] += 1.0 / static_cast<double>(Audio->audio_spec.freq);
-						while (Audio->time[current_channel] >= 1.0 / Audio->playback_rate)
-						{
-							Audio->time[current_channel] -= 1.0 / Audio->playback_rate;
-							++Audio->b_offset[current_channel];
-							if (Audio->b_offset[current_channel] > 7)
+							if (Audio->voice_list[v].channel_output[current_channel])
 							{
-								Audio->b_offset[current_channel] = 0;
-								if (Audio->pos[current_channel] < 15)
+								if (Audio->voice_list[v].audio_buffer[Audio->voice_list[v].pos] & (0x80 >> (Audio->voice_list[v].b_offset)))
 								{
-									++Audio->pos[current_channel];
+									short tmp = value + static_cast<short>(32767.0 * Audio->voice_list[v].volume);
+									if (tmp < value)
+									{
+										tmp = 32767;
+									}
+									value = tmp;
 								}
-								else
+							}
+							if (current_channel == channels - 1)
+							{
+								Audio->voice_list[v].time += 1.0 / static_cast<double>(Audio->audio_spec.freq);
+								while (Audio->voice_list[v].time >= 1.0 / Audio->voice_list[v].playback_rate)
 								{
-									Audio->pos[current_channel] = 0;
+									Audio->voice_list[v].time -= 1.0 / Audio->voice_list[v].playback_rate;
+									++Audio->voice_list[v].b_offset;
+									if (Audio->voice_list[v].b_offset > 7)
+									{
+										Audio->voice_list[v].b_offset = 0;
+										if (Audio->voice_list[v].pos < 15)
+										{
+											++Audio->voice_list[v].pos;
+										}
+										else
+										{
+											Audio->voice_list[v].pos = 0;
+										}
+									}
 								}
 							}
 						}
 					}
-					else
-					{
-						memset(&stream[i * sizeof(short)], 0, sizeof(short));
-					}
+					value = static_cast<short>(static_cast<double>(value) * 0.20);
+					memcpy(&stream[i * sizeof(short)], &value, sizeof(short));
 				}
 			}
 		private:
-			std::array<unsigned char, 16 * channels> audio_buffer;
-			std::array<bool, channels> audio_channel_output_toggle;
-			std::array<int, channels> pos;
-			std::array<unsigned char, channels> b_offset;
-			double playback_rate;
-			std::array<double, channels> time;
-			bool pause;
+			struct
+			{
+				std::array<unsigned char, 16> audio_buffer;
+				std::array<bool, channels> channel_output;
+				double playback_rate;
+				double volume;
+				int pos;
+				unsigned char b_offset;
+				double time;
+				bool pause;
+			} voice_list[voices];
 			SDL_AudioSpec audio_spec;
 			SDL_AudioDeviceID AudioDevice;
 	};

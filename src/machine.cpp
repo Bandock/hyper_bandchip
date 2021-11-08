@@ -4,7 +4,7 @@
 #include <fstream>
 #include <bit>
 
-Hyper_BandCHIP::Machine::Machine(MachineCore Core, unsigned int cycles_per_second, unsigned int memory_size, unsigned short display_width, unsigned short display_height) : CurrentMachineCore(Core), CurrentResolutionMode(ResolutionMode::LoRes), cycles_per_second(cycles_per_second), delay_timer(0), sound_timer(0), PC(0), I(0), SP(0), memory(nullptr), display(nullptr), plane(0x01), prefix_flags(0), address_nibble_store(0), register_store(0), rng_engine(system_clock::now().time_since_epoch().count()), rng_distrib(0, 255), cycle_accumulator(0.0), dt_accumulator(0.0), st_accumulator(0.0), pause(true), operational(true), error_state(MachineError::NoError)
+Hyper_BandCHIP::Machine::Machine(MachineCore Core, unsigned int cycles_per_second, unsigned int memory_size, unsigned short display_width, unsigned short display_height) : CurrentMachineCore(Core), CurrentResolutionMode(ResolutionMode::LoRes), cycles_per_second(cycles_per_second), delay_timer(0), sound_timer{ 0, 0, 0, 0 }, PC(0), I(0), SP(0), memory(nullptr), display(nullptr), plane(0x01), voice(0), prefix_flags(0), address_nibble_store(0), register_store(0), rng_engine(system_clock::now().time_since_epoch().count()), rng_distrib(0, 255), cycle_accumulator(0.0), dt_accumulator(0.0), st_accumulator{ 0.0, 0.0, 0.0, 0.0 } , pause(true), operational(true), error_state(MachineError::NoError)
 {
 	switch (CurrentMachineCore)
 	{
@@ -42,8 +42,8 @@ Hyper_BandCHIP::Machine::Machine(MachineCore Core, unsigned int cycles_per_secon
 		}
 		case MachineCore::BandCHIP_HyperCHIP64:
 		{
-			CurrentMachineAudioModel = MachineAudioModel::Sampled_XOCHIP;
-			audio_system.emplace<XOCHIP_Audio>();
+			CurrentMachineAudioModel = MachineAudioModel::Sampled_HyperCHIP64;
+			audio_system.emplace<HyperCHIP64_Audio>();
 			rpl_user_flags_file.open("RPLUserFlags.bin", std::ios::binary | std::ios::in | std::ios::out);
 			if (!rpl_user_flags_file.is_open())
 			{
@@ -105,8 +105,8 @@ void Hyper_BandCHIP::Machine::InitializeTimers()
 {
 	delay_timer = 0;
 	dt_accumulator = 0.0;
-	sound_timer = 0;
-	st_accumulator = 0.0;
+	sound_timer = { 0, 0, 0, 0 };
+	st_accumulator = { 0.0, 0.0, 0.0, 0.0 };
 }
 
 void Hyper_BandCHIP::Machine::InitializeStack()
@@ -122,6 +122,7 @@ void Hyper_BandCHIP::Machine::InitializeMemory()
 
 void Hyper_BandCHIP::Machine::InitializeVideo()
 {
+
 	memset(display, 0x00, display_width * display_height);
 	plane = 0x01;
 }
@@ -137,6 +138,19 @@ void Hyper_BandCHIP::Machine::InitializeAudio()
 			audio->Reset();
 			audio->SetPlaybackRate(64);
 			break;
+		}
+		case MachineAudioModel::Sampled_HyperCHIP64:
+		{
+			HyperCHIP64_Audio *audio = std::get_if<HyperCHIP64_Audio>(&audio_system);
+			voice = 0;
+			for (unsigned char v = 0; v < 4; ++v)
+			{
+				audio->InitializeAudioBuffer(v);
+				audio->Reset(v);
+				audio->SetChannelOutput(0x03, v);
+				audio->SetPlaybackRate(64, v);
+				break;
+			}
 		}
 	}
 }
@@ -193,11 +207,11 @@ void Hyper_BandCHIP::Machine::SetDelayTimer(unsigned char delay_timer)
 
 void Hyper_BandCHIP::Machine::SetSoundTimer(unsigned char sound_timer)
 {
-	this->sound_timer = sound_timer;
-	st_accumulator = 0.0;
-	if (this->sound_timer > 0)
+	this->sound_timer[voice] = sound_timer;
+	st_accumulator[voice] = 0.0;
+	if (this->sound_timer[voice] > 0)
 	{
-		st_tp = current_tp;
+		st_tp[voice] = current_tp;
 		switch (CurrentMachineAudioModel)
 		{
 			case MachineAudioModel::Synthesizer:
@@ -220,6 +234,15 @@ void Hyper_BandCHIP::Machine::SetSoundTimer(unsigned char sound_timer)
 				if (audio->IsPaused())
 				{
 					audio->PauseAudio(false);
+				}
+				break;
+			}
+			case MachineAudioModel::Sampled_HyperCHIP64:
+			{
+				HyperCHIP64_Audio *audio = std::get_if<HyperCHIP64_Audio>(&audio_system);
+				if (audio->IsPaused(voice))
+				{
+					audio->PauseAudio(false, voice);
 				}
 				break;
 			}
@@ -251,6 +274,16 @@ void Hyper_BandCHIP::Machine::SetSoundTimer(unsigned char sound_timer)
 				{
 					audio->PauseAudio(true);
 					audio->Reset();
+				}
+				break;
+			}
+			case MachineAudioModel::Sampled_HyperCHIP64:
+			{
+				HyperCHIP64_Audio *audio = std::get_if<HyperCHIP64_Audio>(&audio_system);
+				if (!audio->IsPaused(voice))
+				{
+					audio->PauseAudio(true, voice);
+					audio->Reset(voice);
 				}
 				break;
 			}
@@ -301,28 +334,56 @@ void Hyper_BandCHIP::Machine::PauseProgram(bool pause)
 			{
 				dt_tp = current_tp;
 			}
-			if (sound_timer > 0)
+			unsigned char voice_count = 0;
+			switch (CurrentMachineCore)
 			{
-				st_tp = current_tp;
-				switch (CurrentMachineAudioModel)
+				case MachineCore::BandCHIP_CHIP8:
+				case MachineCore::BandCHIP_SuperCHIP:
+				case MachineCore::BandCHIP_XOCHIP:
 				{
-					case MachineAudioModel::Synthesizer:
+					voice_count = 1;
+					break;
+				}
+				case MachineCore::BandCHIP_HyperCHIP64:
+				{
+					voice_count = 4;
+					break;
+				}
+			}
+			for (unsigned char v = 0; v < voice_count; ++v)
+			{
+				if (sound_timer[v] > 0)
+				{
+					st_tp[v] = current_tp;
+					switch (CurrentMachineAudioModel)
 					{
-						Audio *audio = std::get_if<Audio>(&audio_system);
-						if (audio->GetEnvelopeGeneratorState() == EnvelopeGeneratorState::Off)
+						case MachineAudioModel::Synthesizer:
 						{
-							audio->SetEnvelopeGeneratorState(EnvelopeGeneratorState::Attack);
+							Audio *audio = std::get_if<Audio>(&audio_system);
+							if (audio->GetEnvelopeGeneratorState() == EnvelopeGeneratorState::Off)
+							{
+								audio->SetEnvelopeGeneratorState(EnvelopeGeneratorState::Attack);
+							}
+							break;
 						}
-						break;
-					}
-					case MachineAudioModel::Sampled_XOCHIP:
-					{
-						XOCHIP_Audio *audio = std::get_if<XOCHIP_Audio>(&audio_system);
-						if (audio->IsPaused())
+						case MachineAudioModel::Sampled_XOCHIP:
 						{
-							audio->PauseAudio(false);
+							XOCHIP_Audio *audio = std::get_if<XOCHIP_Audio>(&audio_system);
+							if (audio->IsPaused())
+							{
+								audio->PauseAudio(false);
+							}
+							break;
 						}
-						break;
+						case MachineAudioModel::Sampled_HyperCHIP64:
+						{
+							HyperCHIP64_Audio *audio = std::get_if<HyperCHIP64_Audio>(&audio_system);
+							if (audio->IsPaused(v))
+							{
+								audio->PauseAudio(false, v);
+							}
+							break;
+						}
 					}
 				}
 			}
@@ -344,39 +405,67 @@ void Hyper_BandCHIP::Machine::PauseProgram(bool pause)
 				}
 				dt_accumulator += delta_time.count();
 			}
-			if (sound_timer > 0)
+			unsigned char voice_count = 0;
+			switch (CurrentMachineCore)
 			{
-				delta_time = current_tp - st_tp;
-				if (delta_time.count() > 0.25)
+				case MachineCore::BandCHIP_CHIP8:
+				case MachineCore::BandCHIP_SuperCHIP:
+				case MachineCore::BandCHIP_XOCHIP:
 				{
-					delta_time = duration<double>(0.25);
+					voice_count = 1;
+					break;
 				}
-				st_accumulator += delta_time.count();
-				switch (CurrentMachineAudioModel)
+				case MachineCore::BandCHIP_HyperCHIP64:
 				{
-					case MachineAudioModel::Synthesizer:
+					voice_count = 4;
+					break;
+				}
+			}
+			for (unsigned char v = 0; v < voice_count; ++v)
+			{
+				if (sound_timer[v] > 0)
+				{
+					delta_time = current_tp - st_tp[v];
+					if (delta_time.count() > 0.25)
 					{
-						Audio *audio = std::get_if<Audio>(&audio_system);
-						switch (audio->GetEnvelopeGeneratorState())
-						{
-							case EnvelopeGeneratorState::Attack:
-							case EnvelopeGeneratorState::Decay:
-							case EnvelopeGeneratorState::Sustain:
-							{
-								audio->SetEnvelopeGeneratorState(EnvelopeGeneratorState::Release);
-								break;
-							}
-						}
-						break;
+						delta_time = duration<double>(0.25);
 					}
-					case MachineAudioModel::Sampled_XOCHIP:
+					st_accumulator[v] += delta_time.count();
+					switch (CurrentMachineAudioModel)
 					{
-						XOCHIP_Audio *audio = std::get_if<XOCHIP_Audio>(&audio_system);
-						if (!audio->IsPaused())
+						case MachineAudioModel::Synthesizer:
 						{
-							audio->PauseAudio(true);
+							Audio *audio = std::get_if<Audio>(&audio_system);
+							switch (audio->GetEnvelopeGeneratorState())
+							{
+								case EnvelopeGeneratorState::Attack:
+								case EnvelopeGeneratorState::Decay:
+								case EnvelopeGeneratorState::Sustain:
+								{
+									audio->SetEnvelopeGeneratorState(EnvelopeGeneratorState::Release);
+									break;
+								}
+							}
+							break;
 						}
-						break;
+						case MachineAudioModel::Sampled_XOCHIP:
+						{
+							XOCHIP_Audio *audio = std::get_if<XOCHIP_Audio>(&audio_system);
+							if (!audio->IsPaused())
+							{
+								audio->PauseAudio(true);
+							}
+							break;
+						}
+						case MachineAudioModel::Sampled_HyperCHIP64:
+						{
+							HyperCHIP64_Audio *audio = std::get_if<HyperCHIP64_Audio>(&audio_system);
+							if (!audio->IsPaused(v))
+							{
+								audio->PauseAudio(true, v);
+							}
+							break;
+						}
 					}
 				}
 			}
@@ -412,7 +501,7 @@ Hyper_BandCHIP::MachineState Hyper_BandCHIP::Machine::GetMachineState() const
 	State.PC = PC;
 	State.I = I;
 	State.DT = delay_timer;
-	State.ST = sound_timer;
+	State.ST = sound_timer[0];
 	return State;
 }
 
@@ -507,49 +596,75 @@ void Hyper_BandCHIP::Machine::RunDelayTimer()
 
 void Hyper_BandCHIP::Machine::RunSoundTimer()
 {
-	if (sound_timer > 0)
+	unsigned char voice_count = 0;
+	switch (CurrentMachineCore)
 	{
-		duration<double> delta_time = current_tp - st_tp;
-		if (delta_time.count() > 0.25)
+		case MachineCore::BandCHIP_CHIP8:
+		case MachineCore::BandCHIP_SuperCHIP:
+		case MachineCore::BandCHIP_XOCHIP:
 		{
-			delta_time = duration<double>(0.25);
+			voice_count = 1;
+			break;
 		}
-		st_accumulator += delta_time.count();
-		st_tp = current_tp;
-		if (st_accumulator >= 1.0 / 60.0)
+		case MachineCore::BandCHIP_HyperCHIP64:
 		{
-			unsigned char tick_count = static_cast<unsigned char>(st_accumulator / (1.0 / 60.0));
-			if (sound_timer >= tick_count)
+			voice_count = 4;
+			break;
+		}
+	}
+	for (unsigned char v = 0; v < voice_count; ++v)
+	{
+		if (sound_timer[v] > 0)
+		{
+			duration<double> delta_time = current_tp - st_tp[v];
+			if (delta_time.count() > 0.25)
 			{
-				sound_timer -= tick_count;
+				delta_time = duration<double>(0.25);
 			}
-			else
+			st_accumulator[v] += delta_time.count();
+			st_tp[v] = current_tp;
+			if (st_accumulator[v] >= 1.0 / 60.0)
 			{
-				sound_timer = 0;
-			}
-			if (sound_timer == 0)
-			{
-				st_accumulator = 0.0;
-				switch (CurrentMachineAudioModel)
+				unsigned char tick_count = static_cast<unsigned char>(st_accumulator[v] / (1.0 / 60.0));
+				if (sound_timer[v] >= tick_count)
 				{
-					case MachineAudioModel::Synthesizer:
+					sound_timer[v] -= tick_count;
+				}
+				else
+				{
+					sound_timer[v] = 0;
+				}
+				if (sound_timer[v] == 0)
+				{
+					st_accumulator[v] = 0.0;
+					switch (CurrentMachineAudioModel)
 					{
-						Audio *audio = std::get_if<Audio>(&audio_system);
-						audio->SetEnvelopeGeneratorState(EnvelopeGeneratorState::Release);
-						break;
-					}
-					case MachineAudioModel::Sampled_XOCHIP:
-					{
-						XOCHIP_Audio *audio = std::get_if<XOCHIP_Audio>(&audio_system);
-						audio->PauseAudio(true);
-						audio->Reset();
-						break;
+						case MachineAudioModel::Synthesizer:
+						{
+							Audio *audio = std::get_if<Audio>(&audio_system);
+							audio->SetEnvelopeGeneratorState(EnvelopeGeneratorState::Release);
+							break;
+						}
+						case MachineAudioModel::Sampled_XOCHIP:
+						{
+							XOCHIP_Audio *audio = std::get_if<XOCHIP_Audio>(&audio_system);
+							audio->PauseAudio(true);
+							audio->Reset();
+							break;
+						}
+						case MachineAudioModel::Sampled_HyperCHIP64:
+						{
+							HyperCHIP64_Audio *audio = std::get_if<HyperCHIP64_Audio>(&audio_system);
+							audio->PauseAudio(true, v);
+							audio->Reset(v);
+							break;
+						}
 					}
 				}
-			}
-			else
-			{
-				st_accumulator -= (static_cast<double>(tick_count) / 60.0);
+				else
+				{
+					st_accumulator[v] -= (static_cast<double>(tick_count) / 60.0);
+				}
 			}
 		}
 	}

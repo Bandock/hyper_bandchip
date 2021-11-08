@@ -2,6 +2,7 @@
 #define _MACHINE_H_
 
 #include <fstream>
+#include <array>
 #include <chrono>
 #include <random>
 #include <variant>
@@ -15,8 +16,8 @@ namespace Hyper_BandCHIP
 {
 	class Machine;
 
-	using XOCHIP_Audio = SampleAudio<1>;
-	using HyperCHIP64_Audio = SampleAudio<2>;
+	using XOCHIP_Audio = SampleAudio<1, 1>;
+	using HyperCHIP64_Audio = SampleAudio<2, 4>;
 
 	enum class MachineCore
 	{
@@ -170,7 +171,7 @@ namespace Hyper_BandCHIP
 			std::variant<Audio, XOCHIP_Audio, HyperCHIP64_Audio> audio_system;
 			unsigned int cycles_per_second;
 			unsigned char delay_timer;
-			unsigned char sound_timer;
+			std::array<unsigned char, 4> sound_timer;
 			unsigned char V[16];
 			unsigned short start_address;
 			unsigned short PC;
@@ -184,6 +185,7 @@ namespace Hyper_BandCHIP
 			unsigned short display_height;
 			unsigned char key_status[0x10];
 			unsigned char plane;
+			unsigned char voice;
 			unsigned char prefix_flags;
 			unsigned char address_nibble_store;
 			unsigned char register_store;
@@ -194,8 +196,8 @@ namespace Hyper_BandCHIP
 			double cycle_accumulator;
 			high_resolution_clock::time_point dt_tp;
 			double dt_accumulator;
-			high_resolution_clock::time_point st_tp;
-			double st_accumulator;
+			std::array<high_resolution_clock::time_point, 4> st_tp;
+			std::array<double, 4> st_accumulator;
 			bool pause;
 			bool operational;
 			MachineError error_state;
