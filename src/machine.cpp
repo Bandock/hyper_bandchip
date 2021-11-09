@@ -207,85 +207,104 @@ void Hyper_BandCHIP::Machine::SetDelayTimer(unsigned char delay_timer)
 
 void Hyper_BandCHIP::Machine::SetSoundTimer(unsigned char sound_timer)
 {
-	this->sound_timer[voice] = sound_timer;
-	st_accumulator[voice] = 0.0;
-	if (this->sound_timer[voice] > 0)
+	unsigned char voice_count = 0;
+	switch (CurrentMachineCore)
 	{
-		st_tp[voice] = current_tp;
-		switch (CurrentMachineAudioModel)
+		case MachineCore::BandCHIP_CHIP8:
+		case MachineCore::BandCHIP_SuperCHIP:
+		case MachineCore::BandCHIP_XOCHIP:
 		{
-			case MachineAudioModel::Synthesizer:
-			{
-				Audio *audio = std::get_if<Audio>(&audio_system);
-				switch (audio->GetEnvelopeGeneratorState())
-				{
-					case EnvelopeGeneratorState::Release:
-					case EnvelopeGeneratorState::Off:
-					{
-						audio->SetEnvelopeGeneratorState(EnvelopeGeneratorState::Attack);
-						break;
-					}
-				}
-				break;
-			}
-			case MachineAudioModel::Sampled_XOCHIP:
-			{
-				XOCHIP_Audio *audio = std::get_if<XOCHIP_Audio>(&audio_system);
-				if (audio->IsPaused())
-				{
-					audio->PauseAudio(false);
-				}
-				break;
-			}
-			case MachineAudioModel::Sampled_HyperCHIP64:
-			{
-				HyperCHIP64_Audio *audio = std::get_if<HyperCHIP64_Audio>(&audio_system);
-				if (audio->IsPaused(voice))
-				{
-					audio->PauseAudio(false, voice);
-				}
-				break;
-			}
+			voice_count = 1;
+			break;
+		}
+		case MachineCore::BandCHIP_HyperCHIP64:
+		{
+			voice_count = 4;
+			break;
 		}
 	}
-	else
+	if (voice < voice_count)
 	{
-		switch (CurrentMachineAudioModel)
+		this->sound_timer[voice] = sound_timer;
+		st_accumulator[voice] = 0.0;
+		if (this->sound_timer[voice] > 0)
 		{
-			case MachineAudioModel::Synthesizer:
+			st_tp[voice] = current_tp;
+			switch (CurrentMachineAudioModel)
 			{
-				Audio *audio = std::get_if<Audio>(&audio_system);
-				switch (audio->GetEnvelopeGeneratorState())
+				case MachineAudioModel::Synthesizer:
 				{
-					case EnvelopeGeneratorState::Attack:
-					case EnvelopeGeneratorState::Decay:
-					case EnvelopeGeneratorState::Sustain:
+					Audio *audio = std::get_if<Audio>(&audio_system);
+					switch (audio->GetEnvelopeGeneratorState())
 					{
-						audio->SetEnvelopeGeneratorState(EnvelopeGeneratorState::Release);
-						break;
+						case EnvelopeGeneratorState::Release:
+						case EnvelopeGeneratorState::Off:
+						{
+							audio->SetEnvelopeGeneratorState(EnvelopeGeneratorState::Attack);
+							break;
+						}
 					}
+					break;
 				}
-				break;
-			}
-			case MachineAudioModel::Sampled_XOCHIP:
-			{
-				XOCHIP_Audio *audio = std::get_if<XOCHIP_Audio>(&audio_system);
-				if (!audio->IsPaused())
+				case MachineAudioModel::Sampled_XOCHIP:
 				{
-					audio->PauseAudio(true);
-					audio->Reset();
+					XOCHIP_Audio *audio = std::get_if<XOCHIP_Audio>(&audio_system);
+					if (audio->IsPaused())
+					{
+						audio->PauseAudio(false);
+					}
+					break;
 				}
-				break;
-			}
-			case MachineAudioModel::Sampled_HyperCHIP64:
-			{
-				HyperCHIP64_Audio *audio = std::get_if<HyperCHIP64_Audio>(&audio_system);
-				if (!audio->IsPaused(voice))
+				case MachineAudioModel::Sampled_HyperCHIP64:
 				{
-					audio->PauseAudio(true, voice);
-					audio->Reset(voice);
+					HyperCHIP64_Audio *audio = std::get_if<HyperCHIP64_Audio>(&audio_system);
+					if (audio->IsPaused(voice))
+					{
+						audio->PauseAudio(false, voice);
+					}
+					break;
 				}
-				break;
+			}
+		}
+		else
+		{
+			switch (CurrentMachineAudioModel)
+			{
+				case MachineAudioModel::Synthesizer:
+				{
+					Audio *audio = std::get_if<Audio>(&audio_system);
+					switch (audio->GetEnvelopeGeneratorState())
+					{
+						case EnvelopeGeneratorState::Attack:
+						case EnvelopeGeneratorState::Decay:
+						case EnvelopeGeneratorState::Sustain:
+						{
+							audio->SetEnvelopeGeneratorState(EnvelopeGeneratorState::Release);
+							break;
+						}
+					}
+					break;
+				}
+				case MachineAudioModel::Sampled_XOCHIP:
+				{
+					XOCHIP_Audio *audio = std::get_if<XOCHIP_Audio>(&audio_system);
+					if (!audio->IsPaused())
+					{
+						audio->PauseAudio(true);
+						audio->Reset();
+					}
+					break;
+				}
+				case MachineAudioModel::Sampled_HyperCHIP64:
+				{
+					HyperCHIP64_Audio *audio = std::get_if<HyperCHIP64_Audio>(&audio_system);
+					if (!audio->IsPaused(voice))
+					{
+						audio->PauseAudio(true, voice);
+						audio->Reset(voice);
+					}
+					break;
+				}
 			}
 		}
 	}
