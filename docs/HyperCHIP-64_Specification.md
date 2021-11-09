@@ -14,12 +14,6 @@ Technical Specifications:
 - 4 Color Support (Through bit planes; likely upgraded in the near future)
 - Stereo Audio with 4 Independent Voices
 
-Latchable Memory Map:
-
-|Latch Target ID |Memory Range |Description |Required |
-|----------------|-------------|------------|---------|
-|0x00|0xF000-0xFFFF|Program External Storage|No|
-
 Here are the supported instructions below:
 
 |Instruction |Description |Extension Inherited From |HyperCHIP-64 Modified|
@@ -70,8 +64,8 @@ Here are the supported instructions below:
 |FX15|Set Delay Timer to VX|CHIP-8|Yes, can modify another delay timer by the use of the Timer Select Prefix.|
 |FX18|Set Sound Timer to VX|CHIP-8|Yes, can modify another sound timer based on the currently selected voice.|
 |FX1E|Add Value Stored in VX to I|CHIP-8|No|
-|FX20|Indirect Jump to Address stored in I + VX|HyperCHIP-64|N/A|
-|FX21|Indirect Call Subroutine at Address stored in I + VX|HyperCHIP-64|N/A|
+|FX20|Indirect Jump to Address stored in I + VX (Big Endian)|HyperCHIP-64|N/A|
+|FX21|Indirect Call Subroutine at Address stored in I + VX (Big Endian)|HyperCHIP-64|N/A|
 |FX29|Point I to 5-byte font sprite for digit in VX (0-F)|CHIP-8|No|
 |FX30|Point I to 10-byte font sprite for digit in VX (0-F)|SuperCHIP V1.1|No|
 |FX33|Store BCD in VX at I, I+1, and I+2|CHIP-8|No|
@@ -83,9 +77,7 @@ Here are the supported instructions below:
 |FX65|Load V0 to VX from memory starting at I (I = I + X + 1, CHIP-8 original behavior)|CHIP-8|No|
 |FX75|Store V0 to VX in RPL User Flags (X <= 15)|SuperCHIP V1.0, XO-CHIP 1.1|No|
 |FX85|Load V0 to VX from RPL User Flags (X <= 15)|SuperCHIP V1.0, XO-CHIP 1.1|No|
-|FXA0|Latch To Memory Instruction (VF = 01 if Latch Target is supported, 00 if Latch Target is not supported, VF is set by the implementing interpreter) *WIP*|HyperCHIP-64|N/A|
-|FXA1|Unlatch From Memory Instruction *WIP*|HyperCHIP-64|N/A|
-|FXA2|Set I to [I + VX]|HyperCHIP-64|N/A|
+|FXA2|Set I to the address stored in I + VX (Big Endian)|HyperCHIP-64|N/A|
 |FNB0|4-bit Absolute Address Extend Prefix (N is stored in the last nibble of the 16-bit address when used on a supported instruction.)|HyperCHIP-64|N/A|
 |FXB1|V Register Offset Override Prefix (Replaces the default register and instead uses another register as the offset.)|HyperCHIP-64|N/A|
 |FNB2|Delay Timer Select Prefix (Selects timer N instead of the default)|HyperCHIP-64|N/A|
