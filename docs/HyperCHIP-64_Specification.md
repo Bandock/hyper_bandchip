@@ -27,11 +27,11 @@ Here are the supported instructions below:
 |00FD|Exit Interpreter|SuperCHIP V1.0|No|
 |00FE|Disable High Resolution Mode|SuperCHIP V1.0|No|
 |00FF|Enable High Resolution Mode|SuperCHIP V1.0|No|
-|1NNN|Jump to Address at NNN|CHIP-8|Yes, can be extended to 16-bits by the 4-bit Absolute Address Extend Prefix.|
-|2NNN|Call Subroutine at Address NNN|CHIP-8|Yes, can be extended to 16-bit by the 4-bit Absolute Address Extend Prefix.|
-|3XNN|Skip the Following Instruction If VX == NN|CHIP-8|Yes, can skip two or more instructions if prefixes are found.|
-|4XNN|Skip the Following Instruction If VX != NN|CHIP-8|Yes, can skip two or more instructions if prefixes are found.|
-|5XY0|Skip the Following Instruction If VX == VY|CHIP-8|Yes, can skip two or more instructions if prefixes are found.|
+|1NNN|Jump to Address at NNN|CHIP-8|No|
+|2NNN|Call Subroutine at Address NNN|CHIP-8|No|
+|3XNN|Skip the Following Instruction If VX == NN|CHIP-8|No|
+|4XNN|Skip the Following Instruction If VX != NN|CHIP-8|No|
+|5XY0|Skip the Following Instruction If VX == VY|CHIP-8|No|
 |5XY2|Store VX to VY in memory starting at I (Does not increment I)|CHIP-8E|No|
 |5XY3|Load VX to VY from memory starting at I (Does not increment I)|CHIP-8E|No|
 |6XNN|Set VX to NN|CHIP-8|No|
@@ -49,19 +49,19 @@ Here are the supported instructions below:
 |8XYA|Test VX AND VY (VF = 00 for Zero Result, 01 for Non-Zero Result)|HyperCHIP-64|N/A|
 |8XYB|Set VX to NOT VY|HyperCHIP-64|N/A|
 |8XYE|Store VY shifted one bit to the left in VX (VF = MSB)|CHIP-8|No|
-|9XY0|Skip the Following Instruction If VX != VY|CHIP-8|Yes, can skip two or more instructions if prefixes are found.|
-|ANNN|Set I to NNN|CHIP-8|Yes, can be extended to 16-bit by the 4-bit Absolute Address Extend Prefix.|
-|BNNN|Jump to Address at NNN + V0|CHIP-8|Yes, can be extended to 16-bit by the 4-bit Absolute Address Extend Prefix.  Can also override the V0 register by the V Register Offset Override Prefix.|
+|9XY0|Skip the Following Instruction If VX != VY|CHIP-8|No|
+|ANNN|Set I to NNN|CHIP-8|No|
+|BNNN|Jump to Address at NNN + V0|CHIP-8|No|
 |CXNN|Set VX to Random Number (Mask = NN)|CHIP-8|No|
 |DXYN|Draw Sprite at VX, VY (If N == 0, then draw a 16x16 sprite) (VF = 01 if pixels were unset, 00 if no pixels were unset)|CHIP-8/SuperCHIP V1.0|No|
-|EX9E|Skip the Following Instruction If Hex Key Pressed == VX|CHIP-8|Yes, can skip two or more instructions if prefixes are found.|
-|EXA1|Skip the Following Instruction If Hex Key Not Pressed == VX|CHIP-8|Yes, can skip two or more instructions if prefixes are found.|
+|EX9E|Skip the Following Instruction If Hex Key Pressed == VX|CHIP-8|No|
+|EXA1|Skip the Following Instruction If Hex Key Not Pressed == VX|CHIP-8|No|
 |F000 NNNN|Set I to NNNN|XO-CHIP|No, provided for compatibility with XO-CHIP|
 |FN01|Sets the current drawing bit plane (N = 0 for No Draw, N = 1 for Plane 1, N = 2 for Plane 2, N = 3 for Plane 1 and 2)|XO-CHIP|No|
 |F002|Load the audio buffer from memory at I.|XO-CHIP|Yes, upgraded to support multiple voices (up to 4 at the moment).  Loads the data into the selected voice's audio buffer.|
-|FX07|Store Delay Timer to VX|CHIP-8|Yes, can load data from another delay timer by the use of the Timer Select Prefix.|
+|FX07|Store Delay Timer to VX|CHIP-8|No|
 |FX0A|Wait for Keypress and Store in VX|CHIP-8|No|
-|FX15|Set Delay Timer to VX|CHIP-8|Yes, can modify another delay timer by the use of the Timer Select Prefix.|
+|FX15|Set Delay Timer to VX|CHIP-8|No|
 |FX18|Set Sound Timer to VX|CHIP-8|Yes, can modify another sound timer based on the currently selected voice.|
 |FX1E|Add Value Stored in VX to I|CHIP-8|No|
 |FX20|Indirect Jump to Address stored in I + VX (Big Endian)|HyperCHIP-64|N/A|
@@ -78,8 +78,5 @@ Here are the supported instructions below:
 |FX75|Store V0 to VX in RPL User Flags (X <= 15)|SuperCHIP V1.0, XO-CHIP 1.1|No|
 |FX85|Load V0 to VX from RPL User Flags (X <= 15)|SuperCHIP V1.0, XO-CHIP 1.1|No|
 |FXA2|Set I to the address stored in I + VX (Big Endian)|HyperCHIP-64|N/A|
-|FNB0|4-bit Absolute Address Extend Prefix (N is stored in the last nibble of the 16-bit address when used on a supported instruction.)|HyperCHIP-64|N/A|
-|FXB1|V Register Offset Override Prefix (Replaces the default register and instead uses another register as the offset.)|HyperCHIP-64|N/A|
-|FNB2|Delay Timer Select Prefix (Selects timer N instead of the default)|HyperCHIP-64|N/A|
 
 Currently Work-In-Progress.

@@ -186,9 +186,6 @@ namespace Hyper_BandCHIP
 			unsigned char key_status[0x10];
 			unsigned char plane;
 			unsigned char voice;
-			unsigned char prefix_flags;
-			unsigned char address_nibble_store;
-			unsigned char register_store;
 			mt19937 rng_engine;
 			uniform_int_distribution<unsigned char> rng_distrib;
 			high_resolution_clock::time_point current_tp;
