@@ -517,7 +517,10 @@ Hyper_BandCHIP::MachineState Hyper_BandCHIP::Machine::GetMachineState() const
 	State.PC = PC;
 	State.I = I;
 	State.DT = delay_timer;
-	State.ST = sound_timer[0];
+	for (unsigned char i = 0; i < 4; ++i)
+	{
+		State.ST[i] = sound_timer[i];
+	}
 	return State;
 }
 

@@ -2,21 +2,22 @@
 
 Next generation CHIP-8 emulator that is designed to take advantage of a new extension built from different foundations.
 This includes the original CHIP-8, SuperCHIP V1.1, and XO-CHIP instruction sets.  You can also run different supported cores
-such as the original CHIP-8, SuperCHIP, and XO-CHIP.
+such as the original CHIP-8, SuperCHIP, XO-CHIP and HyperCHIP-64.
 
-As of right now, only the OpenGL ES 3.0 renderer is built.  OpenGL and Direct3D renderers should be built in the near future.
+As of right now, only the OpenGL ES 2.0 and OpenGL ES 3.0 renderers are built.  OpenGL and Direct3D renderers should be built
+in the near future.
 
 ## Requirements for Compiling
 
 - [CMake](https://www.cmake.org/download/) (at least 3.10)
-- [GLEW](http://glew.sourceforge.net) (If you're compiling with OpenGL or OpenGL ES 3.0 renderer support)
+- [GLEW](http://glew.sourceforge.net) (If you're compiling with OpenGL, OpenGL ES 2.0, or OpenGL ES 3.0 renderer support)
 - [SDL2](https://www.libsdl.org/download-2.0.php) (Latest stable development versions should work fine)
 - C++ Compiler with C++20 Support (mainly for Concepts and some other features)
 
 ## How to use
 
 To get started with this current build of the emulator, simply go to the Configuration menu and change the Core (using left/right 
-arrow keys or even return) to either CHIP-8, SuperCHIP, or XO-CHIP (HyperCHIP-64 is a WIP).  Next is to alter the behaviors through the 
+arrow keys or even return) to either CHIP-8, SuperCHIP, XO-CHIP, or HyperCHIP-64.  Next is to alter the behaviors through the 
 Behaviors menu (which varies depending on the core selected).  Might want to toy with different behaviors due to games that take 
 advantage of these quirks.
 

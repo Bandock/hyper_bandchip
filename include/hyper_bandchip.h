@@ -24,7 +24,7 @@ namespace Hyper_BandCHIP
 	enum class OperationMode { Menu = 0, Emulator = 1 };
 	enum class MenuDisplay {
 		Main, LoadProgram, Configuration, LoadProgramDisplay, CPUSettings, Behaviors, PaletteSettings, FontSettings, KeyboardRemapping,
-		ErrorDisplay
+		LoadConfiguration, SaveConfiguration, ErrorDisplay
 	};
 
 	enum class LoResFontStyle { VIP, SuperCHIP, KCHIP8 };
@@ -34,17 +34,21 @@ namespace Hyper_BandCHIP
 
 	enum class MainMenuEvent { RunProgram, LoadProgram, Configuration, Exit };
 	enum class LoadProgramMenuEvent { ChangeDirectory, Load };
-	enum class ConfigurationMenuEvent { ChangeCore, CPUSettings, Behaviors, PaletteSettings, FontSettings, KeyboardRemapping, ReturnToMainMenu };
+	enum class ConfigurationMenuEvent {
+		ChangeCore, CPUSettings, Behaviors, PaletteSettings, FontSettings, KeyboardRemapping, LoadConfiguration, ReturnToMainMenu
+	};
 	enum class LoadProgramDisplayMenuEvent { Ok };
 	enum class CPUSettingsMenuEvent { CommitChanges, ReturnToConfiguration };
 	enum class BehaviorMenuEvent { ReturnToConfiguration };
 	enum class PaletteSettingsMenuEvent { CommitChanges, ReturnToConfiguration };
 	enum class FontSettingsMenuEvent { ChangeLoResFont, ChangeHiResFont, ReturnToConfiguration };
 	enum class KeyboardRemappingMenuEvent { ReturnToConfiguration };
+	enum class LoadConfigurationMenuEvent { Load };
+	enum class SaveConfigurationMenuEvent { };
 
 	struct MainMenuData
 	{
-		const TextItem Title = { "Hyper BandCHIP V0.10", 220, 20, false };
+		const TextItem Title = { "Hyper BandCHIP V0.11", 220, 20, false };
 		const TextItem Author = { "By Joshua Moss", 250, 34, false };
 		StatusTextItem CurrentProgram = { "Current Program", 160, 60, "None", false };
 		StatusTextItem CurrentMachineStatus = { "Current Machine Status", 120, 74, "Non-Operational", false };
@@ -79,7 +83,7 @@ namespace Hyper_BandCHIP
 		const ButtonItem PaletteSettings = { "Palette Settings", 200, 102, static_cast<unsigned int>(ConfigurationMenuEvent::PaletteSettings), false };
 		const ButtonItem FontSettings { "Font Settings", 200, 116, static_cast<unsigned int>(ConfigurationMenuEvent::FontSettings), false };
 		const ButtonItem KeyboardRemapping = { "Keyboard Remapping", 200, 130, static_cast<unsigned int>(ConfigurationMenuEvent::KeyboardRemapping), false };
-		const ButtonItem LoadConfiguration = { "Load Configuration", 200, 144, 0xFFFFFFFF, false };
+		const ButtonItem LoadConfiguration = { "Load Configuration", 200, 144, static_cast<unsigned int>(ConfigurationMenuEvent::LoadConfiguration), false };
 		const ButtonItem SaveConfiguration = { "Save Configuration", 200, 158, 0xFFFFFFFF, false };
 		const ButtonItem ReturnToMainMenu = { "Return to Main Menu", 200, 172, static_cast<unsigned int>(ConfigurationMenuEvent::ReturnToMainMenu), false };
 		unsigned int CurrentSelectableItemId = 0;
@@ -97,7 +101,7 @@ namespace Hyper_BandCHIP
 	{
 		const TextItem Title = { "CPU Settings", 266, 20, false };
 		StatusTextItem ChangeStatus = { "Change Status", 200, 40, "Unchanged", false };
-		AdjustableValueItem CPUCycles = { "CPU Cycles", 200, 60, 60, 6000000, ValueBaseType::Dec, 600, 0, false };
+		AdjustableValueItem CPUCycles = { "CPU Cycles", 200, 60, 60, 12000000, ValueBaseType::Dec, 600, 0, false };
 		AdjustableValueItem AdjustmentModifier { "Adjustment Modifier", 200, 74, 60, 600000, ValueBaseType::Dec, 60, 0, false };
 		const ButtonItem CommitChanges = { "Commit Changes", 200, 176, static_cast<unsigned int>(CPUSettingsMenuEvent::CommitChanges), false };
 		const ButtonItem ReturnToConfiguration = { "Return to Configuration", 200, 190, static_cast<unsigned int>(CPUSettingsMenuEvent::ReturnToConfiguration), false };
@@ -120,7 +124,7 @@ namespace Hyper_BandCHIP
 	struct PaletteSettingsMenuData
 	{
 		const TextItem Title = { "Palette Settings", 250, 20, false };
-		AdjustableValueItem CurrentIndex = { "Current Index", 200, 60, 0, 3, ValueBaseType::Dec, 0, 0, false };
+		AdjustableValueItem CurrentIndex = { "Current Index", 200, 60, 0, 15, ValueBaseType::Dec, 0, 0, false };
 		AdjustableValueItem Red = { "Red", 200, 74, 0, 255, ValueBaseType::Dec, 0, 0, false };
 		AdjustableValueItem Green = { "Green", 200, 88, 0, 255, ValueBaseType::Dec, 0, 0, false };
 		AdjustableValueItem Blue = { "Blue", 200, 102, 0, 255, ValueBaseType::Dec, 0, 0, false };
@@ -164,6 +168,21 @@ namespace Hyper_BandCHIP
 		bool input_mode = false;
 	};
 
+	struct LoadConfigurationMenuData
+	{
+		const TextItem Title = { "Load Configuration", 230, 20, false };
+		DirectoryEntryData MenuEntry[16];
+		unsigned int CurrentSelectableItemId = 0;
+		unsigned int CurrentConfigurationFileCount = 0;
+		unsigned int StartEntry = 0;
+	};
+
+	struct SaveConfigurationMenuData
+	{
+		const TextItem Title = { "Save Configuration", 230, 20, false };
+		InputItem<32> ConfigurationFileName = { "File Name (31 Character Limit)", 160, 40, false, "\0" };
+	};
+
 	struct ErrorDisplayData
 	{
 		StatusTextItem Error = { "Error", 100, 20, "", false };
@@ -187,7 +206,12 @@ namespace Hyper_BandCHIP
 		ValueItem ProgramCounterValue = { "PC", 300, 60, ValueBaseType::Hex, 0x0000, 4, false };
 		ValueItem AddressRegisterValue = { "I", 300, 74, ValueBaseType::Hex, 0x0000, 4, false };
 		ValueItem DelayTimerValue = { "DT", 300, 88, ValueBaseType::Dec, 0, false };
-		ValueItem SoundTimerValue = { "ST", 300, 102, ValueBaseType::Dec, 0, false };
+		ValueItem SoundTimerValue[0x4] = {
+			{ "ST0", 300, 102, ValueBaseType::Dec, 0, false },
+			{ "ST1", 300, 116, ValueBaseType::Dec, 0, false },
+			{ "ST2", 300, 130, ValueBaseType::Dec, 0, false },
+			{ "ST3", 300, 144, ValueBaseType::Dec, 0, false }
+		};
 	};
 
 	class Application
@@ -220,6 +244,8 @@ namespace Hyper_BandCHIP
 			PaletteSettingsMenuData PaletteSettingsMenu;
 			FontSettingsMenuData FontSettingsMenu;
 			KeyboardRemappingMenuData KeyboardRemappingMenu;
+			LoadConfigurationMenuData LoadConfigurationMenu;
+			SaveConfigurationMenuData SaveConfigurationMenu;
 			ErrorDisplayData ErrorDisplay;
 			Machine *CurrentMachine;
 			std::chrono::high_resolution_clock::time_point refresh_tp;

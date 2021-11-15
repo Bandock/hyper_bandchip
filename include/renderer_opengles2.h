@@ -1,5 +1,5 @@
-#ifndef _RENDERER_OPENGLES3_H_
-#define _RENDERER_OPENGLES3_H_
+#ifndef _RENDERER_OPENGLES2_H_
+#define _RENDERER_OPENGLES2_H_
 
 #include <SDL.h>
 #include <GL/glew.h>
@@ -9,7 +9,7 @@
 namespace Hyper_BandCHIP
 {
 	enum class DisplayMode { Emulator, Menu };
-
+	
 	struct Vertex
 	{
 		float pos[4];
@@ -28,7 +28,7 @@ namespace Hyper_BandCHIP
 
 	struct FontControl
 	{
-		unsigned int FontColor;
+		int FontColor;
 	};
 
 	struct RGBColorData
@@ -59,15 +59,15 @@ namespace Hyper_BandCHIP
 			SDL_GLContext GLContext;
 			GLuint VertexShaderId, FragmentShaderId, MenuFragmentShaderId,
 			       MainProgramId, MenuProgramId, VAOId, VBOId, IBOId,
-			       DisplayControlUBOId, FontControlUBOId, DisplayTextureId,
-			       MenuFBOId, MenuTextureId, MenuFontTextureId,
-			       CurrentBoundTextureId, CurrentFramebuffer,
-			       CurrentProgramId;
+			       DisplayTextureId, MenuFBOId, MenuTextureId,
+			       MenuFontTextureId, CurrentBoundTextureId,
+			       CurrentFramebuffer,CurrentProgramId;
+			GLint PosAttribId, TexAttribId, PaletteUniformId, FontColorUniformId;
 			Vertex vertices[4];
 			unsigned char indices[4];
 			DisplayControl disp_ctrl;
 			FontControl font_ctrl;
-			unsigned char *display;
+			unsigned int *display;
 			unsigned short display_width;
 			unsigned short display_height;
 			DisplayMode CurrentDisplayMode;

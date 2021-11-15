@@ -1,5 +1,7 @@
 #include "../include/hyper_bandchip.h"
-#ifdef RENDERER_OPENGLES3
+#if defined(RENDERER_OPENGLES2)
+#include "../include/renderer_opengles2.h"
+#elif defined(RENDERER_OPENGLES3)
 #include "../include/renderer_opengles3.h"
 #endif
 #include "../include/menu_fonts.h"
@@ -22,10 +24,15 @@ Hyper_BandCHIP::Application::Application() : MainWindow(nullptr), MainRenderer(n
 	double refresh_time_accumulator = 0.0;
 	unsigned int frame_count = 0;
 	SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO);
-#ifdef RENDERER_OPENGLES3
+#if defined(RENDERER_OPENGLES2) || defined(RENDERER_OPENGLES3)
 	flags |= SDL_WINDOW_OPENGL;
+#if defined(RENDERER_OPENGLES2)
+	SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 2);
+	SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 0);
+#elif defined(RENDERER_OPENGLES3)
 	SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
 	SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 0);
+#endif
 	SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_ES);
 #endif
 	MainWindow = SDL_CreateWindow("Hyper BandCHIP Emulator", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 1280, 640, flags);
@@ -924,7 +931,7 @@ Hyper_BandCHIP::Application::Application() : MainWindow(nullptr), MainRenderer(n
 													{
 														case 0:
 														{
-															PaletteSettingsMenu.CurrentIndex.value = (PaletteSettingsMenu.CurrentIndex.value == 0) ? 3 : PaletteSettingsMenu.CurrentIndex.value - 1;
+															PaletteSettingsMenu.CurrentIndex.value = (PaletteSettingsMenu.CurrentIndex.value == 0) ? PaletteSettingsMenu.CurrentIndex.max : PaletteSettingsMenu.CurrentIndex.value - 1;
 															RGBColorData data = MainRenderer->GetPaletteIndex(PaletteSettingsMenu.CurrentIndex.value);
 															PaletteSettingsMenu.Red.value = data.r;
 															PaletteSettingsMenu.Green.value = data.g;
@@ -1623,6 +1630,12 @@ Hyper_BandCHIP::Application::Application() : MainWindow(nullptr), MainRenderer(n
 															ShowMenu(CurrentMenu);
 															break;
 														}
+														case ConfigurationMenuEvent::LoadConfiguration:
+														{
+															CurrentMenu = MenuDisplay::LoadConfiguration;
+															ShowMenu(CurrentMenu);
+															break;
+														}
 														case ConfigurationMenuEvent::ReturnToMainMenu:
 														{
 															CurrentMenu = MenuDisplay::Main;
@@ -1971,6 +1984,12 @@ Hyper_BandCHIP::Application::Application() : MainWindow(nullptr), MainRenderer(n
 													ShowMenu(CurrentMenu);
 													break;
 												}
+												case MenuDisplay::LoadConfiguration:
+												{
+													CurrentMenu = MenuDisplay::Configuration;
+													ShowMenu(CurrentMenu);
+													break;
+												}
 												case MenuDisplay::ErrorDisplay:
 												{
 													CurrentMenu = MenuDisplay::Main;
@@ -2129,7 +2148,10 @@ Hyper_BandCHIP::Application::Application() : MainWindow(nullptr), MainRenderer(n
 					ErrorDisplay.ProgramCounterValue.value = State.PC;
 					ErrorDisplay.AddressRegisterValue.value = State.I;
 					ErrorDisplay.DelayTimerValue.value = State.DT;
-					ErrorDisplay.SoundTimerValue.value = State.ST;
+					for (unsigned char i = 0; i < 4; ++i)
+					{
+						ErrorDisplay.SoundTimerValue[i].value = State.ST[i];
+					}
 					CurrentOperationMode = OperationMode::Menu;
 					CurrentMenu = MenuDisplay::ErrorDisplay;
 					MainRenderer->SetDisplayMode(DisplayMode::Menu);
@@ -2281,6 +2303,28 @@ void Hyper_BandCHIP::Application::ConstructMenus()
 		++count;
 	}
 	LoadProgramMenu.CurrentDirectoryCount += count;
+	start_y = 40;
+	count = 0;
+	for (unsigned char i = 0; i < 16; ++i)
+	{
+		LoadConfigurationMenu.MenuEntry[i].Entry = { "", 100, static_cast<unsigned short>(start_y + (i * 14)), 0xFFFFFFFF, true };
+	}
+	for (auto i : std::filesystem::directory_iterator(current_dir))
+	{
+		std::filesystem::path c_path = i.path();
+		if (std::filesystem::is_regular_file(c_path))
+		{
+			if (count < 16)
+			{
+				LoadConfigurationMenu.MenuEntry[count].Type = DirEntryType::File;
+				LoadConfigurationMenu.MenuEntry[count].Entry.Text = c_path.filename();
+				LoadConfigurationMenu.MenuEntry[count].Entry.event_id = static_cast<unsigned int>(LoadConfigurationMenuEvent::Load);
+				LoadConfigurationMenu.MenuEntry[count].Entry.hidden = false;
+			}
+			++count;
+		}
+	}
+	LoadConfigurationMenu.CurrentConfigurationFileCount = count;
 }
 
 void Hyper_BandCHIP::Application::ShowMenu(Hyper_BandCHIP::MenuDisplay Menu)
@@ -2421,6 +2465,19 @@ void Hyper_BandCHIP::Application::ShowMenu(Hyper_BandCHIP::MenuDisplay Menu)
 			DisplayItem(*MainRenderer, KeyboardRemappingMenu.ReturnToConfiguration, (KeyboardRemappingMenu.CurrentSelectableItemId == 16) ? 2 : 1);
 			break;
 		}
+		case MenuDisplay::LoadConfiguration:
+		{
+			DisplayItem(*MainRenderer, LoadConfigurationMenu.Title, 1);
+			for (unsigned char i = 0; i < 16; ++i)
+			{
+				DirectoryEntryData &CurrentMenuEntry = LoadConfigurationMenu.MenuEntry[i];
+				if (!CurrentMenuEntry.Entry.hidden)
+				{
+					DisplayItem(*MainRenderer, CurrentMenuEntry.Entry, (LoadConfigurationMenu.CurrentSelectableItemId == i) ? 3 : 1);
+				}
+			}
+			break;
+		}
 		case MenuDisplay::ErrorDisplay:
 		{
 			DisplayItem(*MainRenderer, ErrorDisplay.Error, 1);
@@ -2431,7 +2488,10 @@ void Hyper_BandCHIP::Application::ShowMenu(Hyper_BandCHIP::MenuDisplay Menu)
 			DisplayItem(*MainRenderer, ErrorDisplay.ProgramCounterValue, 1);
 			DisplayItem(*MainRenderer, ErrorDisplay.AddressRegisterValue, 1);
 			DisplayItem(*MainRenderer, ErrorDisplay.DelayTimerValue, 1);
-			DisplayItem(*MainRenderer, ErrorDisplay.SoundTimerValue, 1);
+			for (unsigned char i = 0; i < 4; ++i)
+			{
+				DisplayItem(*MainRenderer, ErrorDisplay.SoundTimerValue[i], 1);
+			}
 			break;
 		}
 	}

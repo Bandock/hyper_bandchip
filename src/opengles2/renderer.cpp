@@ -1,66 +1,54 @@
-#include "../../include/renderer_opengles3.h"
+#include "../../include/renderer_opengles2.h"
 #include <iostream>
 
 using std::cout;
 using std::endl;
 
-Hyper_BandCHIP::Renderer::Renderer(SDL_Window *Window) : Window(Window), VertexShaderId(0), FragmentShaderId(0), MenuFragmentShaderId(0), MainProgramId(0), MenuProgramId(0), VAOId(0), VBOId(0), IBOId(0), DisplayControlUBOId(0), FontControlUBOId(0), DisplayTextureId(0), MenuFBOId(0), MenuTextureId(0), MenuFontTextureId(0), CurrentBoundTextureId(0), CurrentFramebuffer(0), CurrentProgramId(0), display(nullptr), display_width(0), display_height(0), CurrentDisplayMode(DisplayMode::Menu), fail(false)
+Hyper_BandCHIP::Renderer::Renderer(SDL_Window *Window) : Window(Window), VertexShaderId(0), FragmentShaderId(0), MenuFragmentShaderId(0), MainProgramId(0), MenuProgramId(0), VAOId(0), VBOId(0), IBOId(0), PosAttribId(0), TexAttribId(0), PaletteUniformId(0), FontColorUniformId(0), DisplayTextureId(0), MenuFBOId(0), MenuTextureId(0), MenuFontTextureId(0), CurrentBoundTextureId(0), CurrentFramebuffer(0), CurrentProgramId(0), display(nullptr), display_width(0), display_height(0), CurrentDisplayMode(DisplayMode::Menu), fail(false)
 {
-	const char *VertexShaderCode = R"(#version 300 es
+	const char *VertexShaderCode = R"(#version 100
 
-layout(location = 0) in vec4 pos;
-layout(location = 1) in vec2 tex;
+attribute vec4 pos;
+attribute vec2 tex;
 
-out vec2 outTex;
+varying vec2 outTex;
 
 void main()
 {
 	gl_Position = pos;
 	outTex = tex;
 })";
-	const char *FragmentShaderCode = R"(#version 300 es
+	const char *FragmentShaderCode = R"(#version 100
 
 precision highp float;
 precision highp int;
-precision highp usampler2D;
+precision highp sampler2D;
 
-layout(std140) uniform DisplayControl
-{
-	vec4 Palette[16];
-};
+uniform vec4 Palette[16];
 
-in vec2 outTex;
-uniform usampler2D CurrentTexture;
-
-out vec4 outColor;
+varying vec2 outTex;
+uniform sampler2D CurrentTexture;
 
 void main()
 {
-	ivec2 texDim = textureSize(CurrentTexture, 0);
-	uvec4 color_data = texelFetch(CurrentTexture, ivec2(int(outTex.x * float(texDim.x)), int(outTex.y * float(texDim.y))), 0);
-	outColor = Palette[color_data.x];
+	vec4 color_data = texture2D(CurrentTexture, outTex);
+	gl_FragColor = Palette[int(color_data.r * 256.0f)];
 })";
-	const char *MenuFragmentShaderCode = R"(#version 300 es
+	const char *MenuFragmentShaderCode = R"(#version 100
 
 precision highp int;
 precision highp float;
-precision highp usampler2D;
+precision highp sampler2D;
 
-layout(std140) uniform FontControl
-{
-	uint FontColor;
-};
+uniform int FontColor;
 
-in vec2 outTex;
-uniform usampler2D CurrentTexture;
-
-layout(location = 0) out uint outColorIndex;
+varying vec2 outTex;
+uniform sampler2D CurrentTexture;
 
 void main()
 {
-	ivec2 texDim = textureSize(CurrentTexture, 0);
-	uvec4 color_data = texelFetch(CurrentTexture, ivec2(int(outTex.x * float(texDim.x)), int((outTex.y) * float(texDim.y))), 0);
-	outColorIndex = (color_data.x == uint(1)) ? FontColor : uint(0);
+	vec4 color_data = texture2D(CurrentTexture, outTex);
+	gl_FragColor = (int(color_data.r * 256.0f) == 1) ? vec4(float(FontColor) / 255.0f, 0.0f, 0.0f, 1.0f) : vec4(0.0f, 0.0f, 0.0f, 1.0f);
 })";
 	vertices[0] = {{ -1.0f, 1.0f, 0.0f, 1.0f }, { 0.0f, 1.0f }};
 	vertices[1] = {{ 1.0f, 1.0f, 0.0f, 1.0f }, { 1.0f, 1.0f }};
@@ -71,22 +59,22 @@ void main()
 	indices[2] = 1;
 	indices[3] = 3;
 	disp_ctrl.Palette = {
-		ColorData{ 0.0f, 0.0f, 0.0f, 1.0f },
-		ColorData{ 0.0f, 0.0f, 1.0f, 1.0f },
-		ColorData{ 0.0f, 1.0f, 0.0f, 1.0f },
-		ColorData{ 0.0f, 1.0f, 1.0f, 1.0f },
-		ColorData{ 0.5f, 0.0f, 0.0f, 1.0f },
-		ColorData{ 0.5f, 0.0f, 1.0f, 1.0f },
-		ColorData{ 0.5f, 1.0f, 0.0f, 1.0f },
-		ColorData{ 0.5f, 1.0f, 1.0f, 1.0f },
-		ColorData{ 0.75f, 0.0f, 0.0f, 1.0f },
-		ColorData{ 0.75f, 0.0f, 1.0f, 1.0f },
-		ColorData{ 0.75f, 1.0f, 0.0f, 1.0f },
-		ColorData{ 0.75f, 1.0f, 1.0f, 1.0f },
-		ColorData{ 1.0f, 0.0f, 0.0f, 1.0f },
-		ColorData{ 1.0f, 0.0f, 1.0f, 1.0f },
-		ColorData{ 1.0f, 1.0f, 0.0f, 1.0f },
-		ColorData{ 1.0f, 1.0f, 1.0f, 1.0f }
+		ColorData { 0.0f, 0.0f, 0.0f, 1.0f },
+		ColorData { 0.0f, 0.0f, 1.0f, 1.0f },
+		ColorData { 0.0f, 1.0f, 0.0f, 1.0f },
+		ColorData { 0.0f, 1.0f, 1.0f, 1.0f },
+		ColorData { 0.5f, 0.0f, 0.0f, 1.0f },
+		ColorData { 0.5f, 0.0f, 1.0f, 1.0f },
+		ColorData { 0.5f, 1.0f, 0.0f, 1.0f },
+		ColorData { 0.5f, 1.0f, 1.0f, 1.0f },
+		ColorData { 0.75f, 0.0f, 0.0f, 1.0f },
+		ColorData { 0.75f, 0.0f, 1.0f, 1.0f },
+		ColorData { 0.75f, 1.0f, 0.0f, 1.0f },
+		ColorData { 0.75f, 1.0f, 1.0f, 1.0f },
+		ColorData { 1.0f, 0.0f, 0.0f, 1.0f },
+		ColorData { 1.0f, 0.0f, 1.0f, 1.0f },
+		ColorData { 1.0f, 1.0f, 0.0f, 1.0f },
+		ColorData { 1.0f, 1.0f, 1.0f, 1.0f }
 	};
 	font_ctrl.FontColor = 1;
 	GLContext = SDL_GL_CreateContext(Window);
@@ -108,6 +96,7 @@ void main()
 	glGetShaderiv(VertexShaderId, GL_COMPILE_STATUS, &compile_status);
 	if (compile_status == GL_FALSE)
 	{
+
 		cout << "Vertex Shader compilation failed." << endl;
 		glGetShaderiv(VertexShaderId, GL_INFO_LOG_LENGTH, &info_log_len);
 		char *info_log = new char[info_log_len];
@@ -174,23 +163,20 @@ void main()
 		delete [] info_log;
 		return;
 	}
+	PosAttribId = glGetAttribLocation(MainProgramId, "pos");
+	TexAttribId = glGetAttribLocation(MainProgramId, "tex");
+	PaletteUniformId = glGetUniformLocation(MainProgramId, "Palette");
+	FontColorUniformId = glGetUniformLocation(MenuProgramId, "FontColor");
 	glGenVertexArrays(1, &VAOId);
 	glBindVertexArray(VAOId);
 	glGenBuffers(1, &VBOId);
 	glGenBuffers(1, &IBOId);
-	glGenBuffers(1, &DisplayControlUBOId);
-	glGenBuffers(1, &FontControlUBOId);
 	glBindBuffer(GL_ARRAY_BUFFER, VBOId);
 	glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), &vertices, GL_DYNAMIC_DRAW);
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, IBOId);
 	glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), &indices, GL_STATIC_DRAW);
-	glBindBuffer(GL_UNIFORM_BUFFER, FontControlUBOId);
-	glBufferData(GL_UNIFORM_BUFFER, sizeof(font_ctrl), &font_ctrl, GL_STATIC_DRAW);
-	glUniformBlockBinding(MainProgramId, 0, 0);
-	glBindBufferRange(GL_UNIFORM_BUFFER, 0, DisplayControlUBOId, 0, sizeof(disp_ctrl));
-	glBufferData(GL_UNIFORM_BUFFER, sizeof(disp_ctrl), &disp_ctrl, GL_STATIC_DRAW);
-	glVertexAttribPointer(0, 4, GL_FLOAT, GL_FALSE, sizeof(Vertex), reinterpret_cast<void *>(0));
-	glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), reinterpret_cast<void *>(sizeof(float) * 4));
+	glVertexAttribPointer(PosAttribId, 4, GL_FLOAT, GL_FALSE, sizeof(Vertex), reinterpret_cast<void *>(0));
+	glVertexAttribPointer(TexAttribId, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), reinterpret_cast<void *>(sizeof(float) * 4));
 	glEnableVertexAttribArray(0);
 	glEnableVertexAttribArray(1);
 	glGenTextures(1, &DisplayTextureId);
@@ -209,13 +195,14 @@ void main()
 	glBindTexture(GL_TEXTURE_2D, MenuTextureId);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_R8UI, 640, 320, 0, GL_RED_INTEGER, GL_UNSIGNED_BYTE, nullptr);
-	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, MenuFBOId);
-	glFramebufferTexture2D(GL_DRAW_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, MenuTextureId, 0);
-	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 640, 320, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
+	glBindFramebuffer(GL_FRAMEBUFFER, MenuFBOId);
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, MenuTextureId, 0);
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 	glBindTexture(GL_TEXTURE_2D, DisplayTextureId);
 	glUseProgram(MainProgramId);
 	CurrentProgramId = MainProgramId;
+	glUniform4fv(PaletteUniformId, 16, reinterpret_cast<const float *>(disp_ctrl.Palette.data()));
 	glEnable(GL_DEPTH_TEST);
 	glViewport(0, 0, 1280, 640);
 	glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
@@ -227,7 +214,7 @@ Hyper_BandCHIP::Renderer::~Renderer()
 	glUseProgram(0);
 	if (CurrentFramebuffer != 0)
 	{
-		glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
+		glBindFramebuffer(GL_FRAMEBUFFER, 0);
 	}
 	glDeleteFramebuffers(1, &MenuFBOId);
 	glBindTexture(GL_TEXTURE_2D, 0);
@@ -240,10 +227,6 @@ Hyper_BandCHIP::Renderer::~Renderer()
 	glDeleteBuffers(1, &VBOId);
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 	glDeleteBuffers(1, &IBOId);
-	glBindBufferRange(GL_UNIFORM_BUFFER, 0, 0, 0, 0);
-	glUniformBlockBinding(MainProgramId, 0, 0);
-	glDeleteBuffers(1, &DisplayControlUBOId);
-	glDeleteBuffers(1, &FontControlUBOId);
 	glBindVertexArray(0);
 	glDeleteVertexArrays(1, &VAOId);
 	glDetachShader(MenuProgramId, VertexShaderId);
@@ -286,10 +269,10 @@ void Hyper_BandCHIP::Renderer::SetupMenuFonts(const unsigned char *src)
 			CurrentBoundTextureId = MenuFontTextureId;
 			glBindTexture(GL_TEXTURE_2D, MenuFontTextureId);
 		}
-		unsigned char *font_data = new unsigned char[128 * 64];
+		unsigned int *font_data = new unsigned int[128 * 64];
 		unsigned int s_offset = (59 % 10) + ((59 / 10) * (10 * 16));
 		unsigned char s_bit_offset = 0;
-		memset(font_data, 0x00, 128 * 64);
+		memset(font_data, 0x00, 128 * 64 * sizeof(unsigned int));
 		for (unsigned int y = 0; y < 10 * 6; ++y)
 		{
 			unsigned char current_char = ' ' + (((59 - y) / 10) * 16);
@@ -310,7 +293,7 @@ void Hyper_BandCHIP::Renderer::SetupMenuFonts(const unsigned char *src)
 			}
 			s_offset = ((59 - y - 1) % 10) + (((59 - y - 1) / 10) * (10 * 16));
 		}
-		glTexImage2D(GL_TEXTURE_2D, 0, GL_R8UI, 128, 64, 0, GL_RED_INTEGER, GL_UNSIGNED_BYTE, font_data);
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 128, 64, 0, GL_RGBA, GL_UNSIGNED_BYTE, font_data);
 		delete [] font_data;
 	}
 }
@@ -325,15 +308,15 @@ void Hyper_BandCHIP::Renderer::SetupDisplay(unsigned short width, unsigned short
 		}
 		display_width = width;
 		display_height = height;
-		display = new unsigned char[display_width * display_height];
+		display = new unsigned int[display_width * display_height];
 	}
-	memset(display, 0, display_width * display_height);
+	memset(display, 0, display_width * display_height * sizeof(unsigned int));
 	if (CurrentBoundTextureId != DisplayTextureId)
 	{
 		CurrentBoundTextureId = DisplayTextureId;
 		glBindTexture(GL_TEXTURE_2D, DisplayTextureId);
 	}
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_R8UI, display_width, display_height, 0, GL_RED_INTEGER, GL_UNSIGNED_BYTE, display);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, display_width, display_height, 0, GL_RGBA, GL_UNSIGNED_BYTE, display);
 }
 
 void Hyper_BandCHIP::Renderer::WriteToDisplay(const unsigned char *src, unsigned short width, unsigned short height)
@@ -347,21 +330,24 @@ void Hyper_BandCHIP::Renderer::WriteToDisplay(const unsigned char *src, unsigned
 		}
 		for (unsigned short y = 0; y < height; ++y)
 		{
-			memcpy(&display[((height - y - 1) * width)], &src[y * width], width);
+			for (unsigned short x = 0; x < width; ++x)
+			{
+				display[((height - y - 1) * width) + x] = src[(y * width) + x];
+			}
 		}
-		glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, width, height, GL_RED_INTEGER, GL_UNSIGNED_BYTE, display);
+		glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, width, height, GL_RGBA, GL_UNSIGNED_BYTE, display);
 	}
 }
 
 void Hyper_BandCHIP::Renderer::ClearDisplay()
 {
-	memset(display, 0, display_width * display_height);
+	memset(display, 0, display_width * display_height * sizeof(unsigned int));
 	if (CurrentBoundTextureId != DisplayTextureId)
 	{
 		CurrentBoundTextureId = DisplayTextureId;
 		glBindTexture(GL_TEXTURE_2D, DisplayTextureId);
 	}
-	glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, display_width, display_height, GL_RED_INTEGER, GL_UNSIGNED_BYTE, display);
+	glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, display_width, display_height, GL_RGBA, GL_UNSIGNED_BYTE, display);
 }
 
 void Hyper_BandCHIP::Renderer::ClearMenu()
@@ -369,7 +355,7 @@ void Hyper_BandCHIP::Renderer::ClearMenu()
 	if (CurrentFramebuffer != MenuFBOId)
 	{
 		CurrentFramebuffer = MenuFBOId;
-		glBindFramebuffer(GL_DRAW_FRAMEBUFFER, MenuFBOId);
+		glBindFramebuffer(GL_FRAMEBUFFER, MenuFBOId);
 	}
 	glClear(GL_COLOR_BUFFER_BIT);
 }
@@ -379,14 +365,13 @@ void Hyper_BandCHIP::Renderer::OutputStringToMenu(std::string str, unsigned shor
 	if (CurrentFramebuffer != MenuFBOId)
 	{
 		CurrentFramebuffer = MenuFBOId;
-		glBindFramebuffer(GL_DRAW_FRAMEBUFFER, MenuFBOId);
+		glBindFramebuffer(GL_FRAMEBUFFER, MenuFBOId);
 	}
 	glViewport(0, 0, 640, 320);
 	if (CurrentProgramId != MenuProgramId)
 	{
 		glUseProgram(MenuProgramId);
 		CurrentProgramId = MenuProgramId;
-		glBindBufferRange(GL_UNIFORM_BUFFER, 0, FontControlUBOId, 0, sizeof(font_ctrl));
 	}
 	if (CurrentBoundTextureId != MenuFontTextureId)
 	{
@@ -394,7 +379,7 @@ void Hyper_BandCHIP::Renderer::OutputStringToMenu(std::string str, unsigned shor
 		glBindTexture(GL_TEXTURE_2D, MenuFontTextureId);
 	}
 	font_ctrl.FontColor = (color & 0x03);
-	glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(font_ctrl), &font_ctrl);
+	glUniform1i(FontColorUniformId, font_ctrl.FontColor);
 	size_t len = str.length();
 	for (size_t i = 0; i < len; ++i)
 	{
@@ -405,7 +390,7 @@ void Hyper_BandCHIP::Renderer::OutputStringToMenu(std::string str, unsigned shor
 		float left_x = (static_cast<float>(x + (i * 10)) / 320.0f) - 1.0f;
 		float right_x = (static_cast<float>(x + (i * 10) + 8) / 320.0f) - 1.0f;
 		float up_y = 1.0f - (static_cast<float>(y) / 160.0f);
-		float down_y = 1.0f - (static_cast<float>(y + 10) / 160.0f);
+		float down_y = 1.0 - (static_cast<float>(y + 10) / 160.0f);
 		unsigned char current_char = static_cast<unsigned char>(str[i]) - 32;
 		float tex_left_x = (static_cast<float>((current_char % 16) * 8) / 128.0f);
 		float tex_right_x = (static_cast<float>(((current_char % 16) * 8) + 8) / 128.0f);
@@ -436,16 +421,7 @@ void Hyper_BandCHIP::Renderer::SetPaletteIndex(Hyper_BandCHIP::RGBColorData data
 	if (index < 16)
 	{
 		disp_ctrl.Palette[index] = { static_cast<float>(data.r) / 255.0f, static_cast<float>(data.g) / 255.0f, static_cast<float>(data.b) / 255.0f, 1.0f };
-		if (CurrentProgramId == MainProgramId)
-		{
-			glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(disp_ctrl), &disp_ctrl);
-		}
-		else
-		{
-			glBindBuffer(GL_UNIFORM_BUFFER, DisplayControlUBOId);
-			glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(disp_ctrl), &disp_ctrl);
-			glBindBufferRange(GL_UNIFORM_BUFFER, 0, FontControlUBOId, 0, sizeof(font_ctrl));
-		}
+		glUniform4fv(PaletteUniformId, 16, reinterpret_cast<const float *>(disp_ctrl.Palette.data()));
 	}
 }
 
@@ -453,7 +429,7 @@ Hyper_BandCHIP::RGBColorData Hyper_BandCHIP::Renderer::GetPaletteIndex(unsigned 
 {
 	if (index < 16)
 	{
-		return { static_cast<unsigned char>(disp_ctrl.Palette[index].Color[0] * 255.0f), static_cast<unsigned char>(disp_ctrl.Palette[index].Color[1] * 255.0f), static_cast<unsigned char>(disp_ctrl.Palette[index].Color[2] * 255.0f) };
+		return { static_cast<unsigned char>(disp_ctrl.Palette[index].Color[0] * 255.0f), static_cast<unsigned char>(disp_ctrl.Palette[index].Color[1] * 255.0f), static_cast<unsigned char>(disp_ctrl.Palette[index].Color[2] * 255.0f)  };
 	}
 	else
 	{
@@ -466,13 +442,12 @@ void Hyper_BandCHIP::Renderer::Render()
 	if (CurrentFramebuffer != 0)
 	{
 		CurrentFramebuffer = 0;
-		glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
+		glBindFramebuffer(GL_FRAMEBUFFER, 0);
 	}
 	if (CurrentProgramId != MainProgramId)
 	{
 		glUseProgram(MainProgramId);
 		CurrentProgramId = MainProgramId;
-		glBindBufferRange(GL_UNIFORM_BUFFER, 0, DisplayControlUBOId, 0, sizeof(disp_ctrl));
 	}
 	switch (CurrentDisplayMode)
 	{

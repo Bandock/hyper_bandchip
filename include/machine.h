@@ -120,7 +120,7 @@ namespace Hyper_BandCHIP
 		unsigned short PC;
 		unsigned short I;
 		unsigned char DT;
-		unsigned char ST;
+		unsigned char ST[4];
 	};
 
 	class Machine

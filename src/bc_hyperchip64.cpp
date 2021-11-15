@@ -511,7 +511,7 @@ void Hyper_BandCHIP::InstructionData<Hyper_BandCHIP::MachineCore::BandCHIP_Hyper
 				}
 				unsigned char *sprite = &TargetMachine->memory[TargetMachine->I];
 				bool pixels_changed_to_unset = false;
-				for (unsigned char p = 0; p < 2; ++p)
+				for (unsigned char p = 0; p < 4; ++p)
 				{
 					if (TargetMachine->plane & (0x01 << p))
 					{
@@ -529,7 +529,7 @@ void Hyper_BandCHIP::InstructionData<Hyper_BandCHIP::MachineCore::BandCHIP_Hyper
 						{
 							unsigned char current_mask = 0x00;
 							unsigned char pixel_color_data = 0;
-							for (; current_plane < 2; ++current_plane)
+							for (; current_plane < 4; ++current_plane)
 							{
 								if ((0x01 << current_plane) & TargetMachine->plane)
 								{

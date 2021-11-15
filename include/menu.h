@@ -7,7 +7,9 @@
 #include <sstream>
 #include <iomanip>
 
-#ifdef RENDERER_OPENGLES3
+#if defined(RENDERER_OPENGLES2)
+#include "../include/renderer_opengles2.h"
+#elif defined(RENDERER_OPENGLES3)
 #include "../include/renderer_opengles3.h"
 #endif
 

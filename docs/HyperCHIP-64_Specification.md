@@ -8,10 +8,10 @@ cartridges; support which is dependent on the interpreter that implements it) fo
 upgraded to utilize two channels (Stereo).
 
 Technical Specifications:
-- Standard CPU Clock:  Maxed at 6 million cycles per second (Variable)
+- Standard CPU Clock:  Maxed at 12 million cycles per second (Variable)
 - Endianness:  Big (Same as the original CHIP-8)
 - RAM:  64KB (First 512 bytes still reserved)
-- 4 Color Support (Through bit planes; likely upgraded in the near future)
+- 16 Color Support (Through bit planes)
 - Stereo Audio with 4 Independent Voices
 
 Here are the supported instructions below:
@@ -56,7 +56,7 @@ Here are the supported instructions below:
 |DXYN|Draw Sprite at VX, VY (If N == 0, then draw a 16x16 sprite) (VF = 01 if pixels were unset, 00 if no pixels were unset)|CHIP-8/SuperCHIP V1.0|No|
 |EX9E|Skip the Following Instruction If Hex Key Pressed == VX|CHIP-8|No|
 |EXA1|Skip the Following Instruction If Hex Key Not Pressed == VX|CHIP-8|No|
-|F000 NNNN|Set I to NNNN|XO-CHIP|No, provided for compatibility with XO-CHIP|
+|F000 NNNN|Set I to NNNN|XO-CHIP|No|
 |FN01|Sets the current drawing bit plane (N = 0 for No Draw, N = 1 for Plane 1, N = 2 for Plane 2, N = 3 for Plane 1 and 2)|XO-CHIP|No|
 |F002|Load the audio buffer from memory at I.|XO-CHIP|Yes, upgraded to support multiple voices (up to 4 at the moment).  Loads the data into the selected voice's audio buffer.|
 |FX07|Store Delay Timer to VX|CHIP-8|No|
