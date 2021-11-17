@@ -430,6 +430,7 @@ Hyper_BandCHIP::Application::Application() : MainWindow(nullptr), MainRenderer(n
 			delete [] program_data;
 		}
 		SDL_Event event;
+		std::chrono::high_resolution_clock::time_point current_tp = std::chrono::high_resolution_clock::now();
 		while (SDL_PollEvent(&event))
 		{
 			switch (event.type)
@@ -1429,6 +1430,7 @@ Hyper_BandCHIP::Application::Application() : MainWindow(nullptr), MainRenderer(n
 																{
 																	CurrentOperationMode = OperationMode::Emulator;
 																	MainRenderer->SetDisplayMode(DisplayMode::Emulator);
+																	CurrentMachine->SetCurrentTime(current_tp);
 																	CurrentMachine->PauseProgram(false);
 																}
 															}
@@ -2060,6 +2062,7 @@ Hyper_BandCHIP::Application::Application() : MainWindow(nullptr), MainRenderer(n
 							{
 								if (scancode == SDL_SCANCODE_ESCAPE)
 								{
+									CurrentMachine->SetCurrentTime(current_tp);
 									CurrentMachine->PauseProgram(true);
 									CurrentOperationMode = OperationMode::Menu;
 									MainRenderer->SetDisplayMode(DisplayMode::Menu);
@@ -2100,7 +2103,6 @@ Hyper_BandCHIP::Application::Application() : MainWindow(nullptr), MainRenderer(n
 				}
 			}
 		}
-		std::chrono::high_resolution_clock::time_point current_tp = std::chrono::high_resolution_clock::now();
 		if (CurrentMachine != nullptr)
 		{
 			if (!CurrentMachine->IsPaused())
