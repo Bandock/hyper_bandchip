@@ -195,14 +195,10 @@ void Hyper_BandCHIP::Machine::SetCyclesPerSecond(unsigned int cycles_per_second)
 void Hyper_BandCHIP::Machine::SetDelayTimer(unsigned char delay_timer)
 {
 	this->delay_timer = delay_timer;
+	dt_accumulator = 0.0;
 	if (this->delay_timer > 0)
 	{
 		dt_tp = current_tp;
-		dt_accumulator = cycle_accumulator;
-	}
-	else
-	{
-		dt_accumulator = 0.0;
 	}
 }
 
@@ -227,10 +223,10 @@ void Hyper_BandCHIP::Machine::SetSoundTimer(unsigned char sound_timer)
 	if (voice < voice_count)
 	{
 		this->sound_timer[voice] = sound_timer;
+		st_accumulator[voice] = 0.0;
 		if (this->sound_timer[voice] > 0)
 		{
 			st_tp[voice] = current_tp;
-			st_accumulator[voice] = cycle_accumulator;
 			switch (CurrentMachineAudioModel)
 			{
 				case MachineAudioModel::Synthesizer:
@@ -269,7 +265,6 @@ void Hyper_BandCHIP::Machine::SetSoundTimer(unsigned char sound_timer)
 		}
 		else
 		{
-			st_accumulator[voice] = 0.0;
 			switch (CurrentMachineAudioModel)
 			{
 				case MachineAudioModel::Synthesizer:
