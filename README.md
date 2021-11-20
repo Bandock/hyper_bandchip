@@ -4,13 +4,13 @@ Next generation CHIP-8 emulator that is designed to take advantage of a new exte
 This includes the original CHIP-8, SuperCHIP V1.1, and XO-CHIP instruction sets.  You can also run different supported cores
 such as the original CHIP-8, SuperCHIP, XO-CHIP and HyperCHIP-64.
 
-As of right now, only the OpenGL ES 2.0 and OpenGL ES 3.0 renderers are built.  OpenGL and Direct3D renderers should be built
+As of right now, only the OpenGL 2.1, OpenGL ES 2.0 and OpenGL ES 3.0 renderers are built.  OpenGL 3.3 and Direct3D renderers should be built
 in the near future.
 
 ## Requirements for Compiling
 
 - [CMake](https://www.cmake.org/download/) (at least 3.10)
-- [GLEW](http://glew.sourceforge.net) (If you're compiling with OpenGL, OpenGL ES 2.0, or OpenGL ES 3.0 renderer support)
+- [GLEW](http://glew.sourceforge.net) (If you're compiling with OpenGL 2.1, OpenGL ES 2.0, or OpenGL ES 3.0 renderer support)
 - [SDL2](https://www.libsdl.org/download-2.0.php) (Latest stable development versions should work fine)
 - C++ Compiler with C++20 Support (mainly for Concepts and some other features)
 

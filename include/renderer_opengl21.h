@@ -1,5 +1,5 @@
-#ifndef _RENDERER_OPENGLES2_H_
-#define _RENDERER_OPENGLES2_H_
+#ifndef _RENDERER_OPENGL21_H_
+#define _RENDERER_OPENGL21_H_
 
 #include <SDL.h>
 #include <GL/glew.h>
@@ -9,7 +9,7 @@
 namespace Hyper_BandCHIP
 {
 	enum class DisplayMode { Emulator, Menu };
-	
+
 	struct Vertex
 	{
 		float pos[4];
@@ -67,7 +67,7 @@ namespace Hyper_BandCHIP
 			unsigned char indices[4];
 			DisplayControl disp_ctrl;
 			FontControl font_ctrl;
-			unsigned int *display;
+			unsigned char *display;
 			unsigned short display_width;
 			unsigned short display_height;
 			DisplayMode CurrentDisplayMode;

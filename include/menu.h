@@ -7,7 +7,9 @@
 #include <sstream>
 #include <iomanip>
 
-#if defined(RENDERER_OPENGLES2)
+#if defined(RENDERER_OPENGL21)
+#include "../include/renderer_opengl21.h"
+#elif defined(RENDERER_OPENGLES2)
 #include "../include/renderer_opengles2.h"
 #elif defined(RENDERER_OPENGLES3)
 #include "../include/renderer_opengles3.h"

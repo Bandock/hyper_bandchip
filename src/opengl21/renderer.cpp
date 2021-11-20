@@ -1,4 +1,4 @@
-#include "../../include/renderer_opengles2.h"
+#include "../../include/renderer_opengl21.h"
 #include <iostream>
 
 using std::cout;
@@ -6,7 +6,7 @@ using std::endl;
 
 Hyper_BandCHIP::Renderer::Renderer(SDL_Window *Window) : Window(Window), VertexShaderId(0), FragmentShaderId(0), MenuFragmentShaderId(0), MainProgramId(0), MenuProgramId(0), VAOId(0), VBOId(0), IBOId(0), PosAttribId(0), TexAttribId(0), PaletteUniformId(0), FontColorUniformId(0), DisplayTextureId(0), MenuFBOId(0), MenuTextureId(0), MenuFontTextureId(0), CurrentBoundTextureId(0), CurrentFramebuffer(0), CurrentProgramId(0), display(nullptr), display_width(0), display_height(0), CurrentDisplayMode(DisplayMode::Menu), fail(false)
 {
-	const char *VertexShaderCode = R"(#version 100
+	const char *VertexShaderCode = R"(#version 120
 
 attribute vec4 pos;
 attribute vec2 tex;
@@ -18,11 +18,7 @@ void main()
 	gl_Position = pos;
 	outTex = tex;
 })";
-	const char *FragmentShaderCode = R"(#version 100
-
-precision highp float;
-precision highp int;
-precision highp sampler2D;
+	const char *FragmentShaderCode = R"(#version 120
 
 uniform vec4 Palette[16];
 
@@ -34,11 +30,7 @@ void main()
 	vec4 color_data = texture2D(CurrentTexture, outTex);
 	gl_FragColor = Palette[int(color_data.r * 256.0f)];
 })";
-	const char *MenuFragmentShaderCode = R"(#version 100
-
-precision highp int;
-precision highp float;
-precision highp sampler2D;
+	const char *MenuFragmentShaderCode = R"(#version 120
 
 uniform int FontColor;
 
@@ -85,6 +77,12 @@ void main()
 		fail = true;
 		return;
 	}
+	if (!GLEW_ARB_framebuffer_object)
+	{
+		cout << "Framebuffer objects are unsupported on this platform." << endl;
+		fail = true;
+		return;
+	}
 	VertexShaderId = glCreateShader(GL_VERTEX_SHADER);
 	FragmentShaderId = glCreateShader(GL_FRAGMENT_SHADER);
 	MenuFragmentShaderId = glCreateShader(GL_FRAGMENT_SHADER);
@@ -96,7 +94,6 @@ void main()
 	glGetShaderiv(VertexShaderId, GL_COMPILE_STATUS, &compile_status);
 	if (compile_status == GL_FALSE)
 	{
-
 		cout << "Vertex Shader compilation failed." << endl;
 		glGetShaderiv(VertexShaderId, GL_INFO_LOG_LENGTH, &info_log_len);
 		char *info_log = new char[info_log_len];
@@ -195,13 +192,12 @@ void main()
 	glBindTexture(GL_TEXTURE_2D, MenuTextureId);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 640, 320, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
-	glBindFramebuffer(GL_FRAMEBUFFER, MenuFBOId);
-	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, MenuTextureId, 0);
-	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 640, 320, 0, GL_RED, GL_UNSIGNED_BYTE, nullptr);
+	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, MenuFBOId);
+	glFramebufferTexture2D(GL_DRAW_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, MenuTextureId, 0);
+	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
 	glBindTexture(GL_TEXTURE_2D, DisplayTextureId);
 	glUseProgram(MainProgramId);
-	CurrentProgramId = MainProgramId;
 	glUniform4fv(PaletteUniformId, 16, reinterpret_cast<const float *>(disp_ctrl.Palette.data()));
 	glEnable(GL_DEPTH_TEST);
 	glViewport(0, 0, 1280, 640);
@@ -214,7 +210,7 @@ Hyper_BandCHIP::Renderer::~Renderer()
 	glUseProgram(0);
 	if (CurrentFramebuffer != 0)
 	{
-		glBindFramebuffer(GL_FRAMEBUFFER, 0);
+		glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
 	}
 	glDeleteFramebuffers(1, &MenuFBOId);
 	glBindTexture(GL_TEXTURE_2D, 0);
@@ -269,10 +265,10 @@ void Hyper_BandCHIP::Renderer::SetupMenuFonts(const unsigned char *src)
 			CurrentBoundTextureId = MenuFontTextureId;
 			glBindTexture(GL_TEXTURE_2D, MenuFontTextureId);
 		}
-		unsigned int *font_data = new unsigned int[128 * 64];
+		unsigned char *font_data = new unsigned char[128 * 64];
 		unsigned int s_offset = (59 % 10) + ((59 / 10) * (10 * 16));
 		unsigned char s_bit_offset = 0;
-		memset(font_data, 0x00, 128 * 64 * sizeof(unsigned int));
+		memset(font_data, 0x00, 128 * 64);
 		for (unsigned int y = 0; y < 10 * 6; ++y)
 		{
 			unsigned char current_char = ' ' + (((59 - y) / 10) * 16);
@@ -293,7 +289,7 @@ void Hyper_BandCHIP::Renderer::SetupMenuFonts(const unsigned char *src)
 			}
 			s_offset = ((59 - y - 1) % 10) + (((59 - y - 1) / 10) * (10 * 16));
 		}
-		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 128, 64, 0, GL_RGBA, GL_UNSIGNED_BYTE, font_data);
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 128, 64, 0, GL_RED, GL_UNSIGNED_BYTE, font_data);
 		delete [] font_data;
 	}
 }
@@ -308,15 +304,15 @@ void Hyper_BandCHIP::Renderer::SetupDisplay(unsigned short width, unsigned short
 		}
 		display_width = width;
 		display_height = height;
-		display = new unsigned int[display_width * display_height];
+		display = new unsigned char[display_width * display_height];
 	}
-	memset(display, 0, display_width * display_height * sizeof(unsigned int));
+	memset(display, 0, display_width * display_height);
 	if (CurrentBoundTextureId != DisplayTextureId)
 	{
 		CurrentBoundTextureId = DisplayTextureId;
 		glBindTexture(GL_TEXTURE_2D, DisplayTextureId);
 	}
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, display_width, display_height, 0, GL_RGBA, GL_UNSIGNED_BYTE, display);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, display_width, display_height, 0, GL_RED, GL_UNSIGNED_BYTE, display);
 }
 
 void Hyper_BandCHIP::Renderer::WriteToDisplay(const unsigned char *src, unsigned short width, unsigned short height)
@@ -330,24 +326,21 @@ void Hyper_BandCHIP::Renderer::WriteToDisplay(const unsigned char *src, unsigned
 		}
 		for (unsigned short y = 0; y < height; ++y)
 		{
-			for (unsigned short x = 0; x < width; ++x)
-			{
-				display[((height - y - 1) * width) + x] = src[(y * width) + x];
-			}
+			memcpy(&display[((height - y - 1) * width)], &src[y * width], width);
 		}
-		glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, width, height, GL_RGBA, GL_UNSIGNED_BYTE, display);
+		glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, width, height, GL_RED, GL_UNSIGNED_BYTE, display);
 	}
 }
 
 void Hyper_BandCHIP::Renderer::ClearDisplay()
 {
-	memset(display, 0, display_width * display_height * sizeof(unsigned int));
+	memset(display, 0, display_width * display_height);
 	if (CurrentBoundTextureId != DisplayTextureId)
 	{
 		CurrentBoundTextureId = DisplayTextureId;
 		glBindTexture(GL_TEXTURE_2D, DisplayTextureId);
 	}
-	glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, display_width, display_height, GL_RGBA, GL_UNSIGNED_BYTE, display);
+	glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, display_width, display_height, GL_RED, GL_UNSIGNED_BYTE, display);
 }
 
 void Hyper_BandCHIP::Renderer::ClearMenu()
@@ -355,7 +348,7 @@ void Hyper_BandCHIP::Renderer::ClearMenu()
 	if (CurrentFramebuffer != MenuFBOId)
 	{
 		CurrentFramebuffer = MenuFBOId;
-		glBindFramebuffer(GL_FRAMEBUFFER, MenuFBOId);
+		glBindFramebuffer(GL_DRAW_FRAMEBUFFER, MenuFBOId);
 	}
 	glClear(GL_COLOR_BUFFER_BIT);
 }
@@ -364,8 +357,8 @@ void Hyper_BandCHIP::Renderer::OutputStringToMenu(std::string str, unsigned shor
 {
 	if (CurrentFramebuffer != MenuFBOId)
 	{
-		CurrentFramebuffer = MenuFBOId;
-		glBindFramebuffer(GL_FRAMEBUFFER, MenuFBOId);
+		CurrentFramebuffer != MenuFBOId;
+		glBindFramebuffer(GL_DRAW_FRAMEBUFFER, MenuFBOId);
 	}
 	glViewport(0, 0, 640, 320);
 	if (CurrentProgramId != MenuProgramId)
@@ -390,7 +383,7 @@ void Hyper_BandCHIP::Renderer::OutputStringToMenu(std::string str, unsigned shor
 		float left_x = (static_cast<float>(x + (i * 10)) / 320.0f) - 1.0f;
 		float right_x = (static_cast<float>(x + (i * 10) + 8) / 320.0f) - 1.0f;
 		float up_y = 1.0f - (static_cast<float>(y) / 160.0f);
-		float down_y = 1.0 - (static_cast<float>(y + 10) / 160.0f);
+		float down_y = 1.0f - (static_cast<float>(y + 10) / 160.0f);
 		unsigned char current_char = static_cast<unsigned char>(str[i]) - 32;
 		float tex_left_x = (static_cast<float>((current_char % 16) * 8) / 128.0f);
 		float tex_right_x = (static_cast<float>(((current_char % 16) * 8) + 8) / 128.0f);
@@ -442,7 +435,7 @@ void Hyper_BandCHIP::Renderer::Render()
 	if (CurrentFramebuffer != 0)
 	{
 		CurrentFramebuffer = 0;
-		glBindFramebuffer(GL_FRAMEBUFFER, 0);
+		glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
 	}
 	if (CurrentProgramId != MainProgramId)
 	{

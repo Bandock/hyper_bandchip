@@ -1,5 +1,7 @@
 #include "../include/hyper_bandchip.h"
-#if defined(RENDERER_OPENGLES2)
+#if defined(RENDERER_OPENGL21)
+#include "../include/renderer_opengl21.h"
+#elif defined(RENDERER_OPENGLES2)
 #include "../include/renderer_opengles2.h"
 #elif defined(RENDERER_OPENGLES3)
 #include "../include/renderer_opengles3.h"
@@ -24,16 +26,21 @@ Hyper_BandCHIP::Application::Application() : MainWindow(nullptr), MainRenderer(n
 	double refresh_time_accumulator = 0.0;
 	unsigned int frame_count = 0;
 	SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO);
-#if defined(RENDERER_OPENGLES2) || defined(RENDERER_OPENGLES3)
+#if defined(RENDERER_OPENGL21) || defined(RENDERER_OPENGLES2) || defined(RENDERER_OPENGLES3)
 	flags |= SDL_WINDOW_OPENGL;
-#if defined(RENDERER_OPENGLES2)
+#if defined(RENDERER_OPENGL21)
+	SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 2);
+	SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 1);
+#elif defined(RENDERER_OPENGLES2)
 	SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 2);
 	SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 0);
 #elif defined(RENDERER_OPENGLES3)
 	SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
 	SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 0);
 #endif
+#if defined(RENDERER_OPENGLES2) || defined(RENDERER_OPENGLES3)
 	SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_ES);
+#endif
 #endif
 	MainWindow = SDL_CreateWindow("Hyper BandCHIP Emulator", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 1280, 640, flags);
 	MainRenderer = new Renderer(MainWindow);
