@@ -580,17 +580,29 @@ void Hyper_BandCHIP::InstructionData<Hyper_BandCHIP::MachineCore::BandCHIP_Super
 					}
 					case 0x0A:
 					{
-						for (unsigned char i = 0x00; i < 0x10; ++i)
+						if (!TargetMachine->wait_for_key_release)
 						{
-							if (TargetMachine->key_status[i] == 1)
+							for (unsigned char i = 0x00; i < 0x10; ++i)
 							{
-								TargetMachine->V[x] = i;
+								if (TargetMachine->key_status[i] == 1)
+								{
+									TargetMachine->wait_for_key_release = true;
+									TargetMachine->key_pressed = i;
+									break;
+								}
+							}
+						}
+						else
+						{
+							if (TargetMachine->key_status[TargetMachine->key_pressed] == 0)
+							{
+								TargetMachine->wait_for_key_release = false;
+								TargetMachine->V[x] = TargetMachine->key_pressed;
 								TargetMachine->PC += 2;
 								if (TargetMachine->PC > 0xFFF)
 								{
 									TargetMachine->PC &= 0xFFF;
 								}
-								break;
 							}
 						}
 						break;

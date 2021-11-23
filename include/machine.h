@@ -184,6 +184,7 @@ namespace Hyper_BandCHIP
 			unsigned short display_width;
 			unsigned short display_height;
 			unsigned char key_status[0x10];
+			unsigned char key_pressed;
 			unsigned char plane;
 			unsigned char voice;
 			mt19937 rng_engine;
@@ -197,6 +198,7 @@ namespace Hyper_BandCHIP
 			std::array<double, 4> st_accumulator;
 			bool pause;
 			bool operational;
+			bool wait_for_key_release;
 			MachineError error_state;
 	};
 }
