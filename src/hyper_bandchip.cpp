@@ -13,6 +13,7 @@
 #include "../include/kchip8_fonts.h"
 #include <iostream>
 #include <fstream>
+#include <vector>
 
 using std::cout;
 using std::endl;
@@ -42,8 +43,8 @@ Hyper_BandCHIP::Application::Application() : MainWindow(nullptr), MainRenderer(n
 	SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_ES);
 #endif
 #endif
-	MainWindow = SDL_CreateWindow("Hyper BandCHIP Emulator", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 1280, 640, flags);
-	MainRenderer = new Renderer(MainWindow);
+	MainWindow = std::unique_ptr<SDL_Window, WindowDeleter>(SDL_CreateWindow("Hyper BandCHIP Emulator", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 1280, 640, flags));
+	MainRenderer = std::make_unique<Renderer>(*MainWindow);
 	if (MainRenderer->Fail())
 	{
 		return;
@@ -62,8 +63,8 @@ Hyper_BandCHIP::Application::Application() : MainWindow(nullptr), MainRenderer(n
 			ProgramFile.seekg(0, std::ios::end);
 			size_t program_size = ProgramFile.tellg();
 			ProgramFile.seekg(0, std::ios::beg);
-			unsigned char *program_data = new unsigned char[program_size];
-			ProgramFile.read(reinterpret_cast<char *>(program_data), program_size);
+			std::vector<unsigned char> program_data(program_size);
+			ProgramFile.read(reinterpret_cast<char *>(program_data.data()), program_size);
 			switch (CurrentMachineCore)
 			{
 				case MachineCore::BandCHIP_CHIP8:
@@ -72,8 +73,7 @@ Hyper_BandCHIP::Application::Application() : MainWindow(nullptr), MainRenderer(n
 					{
 						if (CurrentMachine->GetMachineCore() != CurrentMachineCore)
 						{
-							delete CurrentMachine;
-							CurrentMachine = new Machine(CurrentMachineCore, CPUSettingsMenu.CPUCycles.value);
+							CurrentMachine = std::make_unique<Machine>(CurrentMachineCore, CPUSettingsMenu.CPUCycles.value);
 						}
 						else
 						{
@@ -87,7 +87,7 @@ Hyper_BandCHIP::Application::Application() : MainWindow(nullptr), MainRenderer(n
 					}
 					else
 					{
-						CurrentMachine = new Machine(CurrentMachineCore, CPUSettingsMenu.CPUCycles.value);
+						CurrentMachine = std::make_unique<Machine>(CurrentMachineCore, CPUSettingsMenu.CPUCycles.value);
 					}
 					MainRenderer->SetupDisplay(64, 32);
 					const unsigned char *lores_fonts = nullptr;
@@ -116,7 +116,7 @@ Hyper_BandCHIP::Application::Application() : MainWindow(nullptr), MainRenderer(n
 					CurrentMachine->CopyDataToInterpreterMemory(lores_fonts, 0x000, lores_fonts_size);
 					CHIP8_BehaviorData CurrentBehaviorData = { BehaviorsMenu.CHIP48_Shift.toggle, BehaviorsMenu.CHIP48_LoadStore.toggle };
 					CurrentMachine->StoreBehaviorData(&CurrentBehaviorData);
-					if (CurrentMachine->LoadProgram(program_data, 0x200, program_size))
+					if (CurrentMachine->LoadProgram(program_data.data(), 0x200, program_size))
 					{
 						LoadProgramDisplay.LoadingProgram.hidden = true;
 						LoadProgramDisplay.LoadSuccessful.hidden = false;
@@ -140,8 +140,7 @@ Hyper_BandCHIP::Application::Application() : MainWindow(nullptr), MainRenderer(n
 					{
 						if (CurrentMachine->GetMachineCore() != CurrentMachineCore)
 						{
-							delete CurrentMachine;
-							CurrentMachine = new Machine(CurrentMachineCore, CPUSettingsMenu.CPUCycles.value, 0x1000, 128, 64);
+							CurrentMachine = std::make_unique<Machine>(CurrentMachineCore, CPUSettingsMenu.CPUCycles.value, 0x1000, 128, 64);
 						}
 						else
 						{
@@ -156,7 +155,7 @@ Hyper_BandCHIP::Application::Application() : MainWindow(nullptr), MainRenderer(n
 					}
 					else
 					{
-						CurrentMachine = new Machine(CurrentMachineCore, CPUSettingsMenu.CPUCycles.value, 0x1000, 128, 64);
+						CurrentMachine = std::make_unique<Machine>(CurrentMachineCore, CPUSettingsMenu.CPUCycles.value, 0x1000, 128, 64);
 					}
 					std::filesystem::current_path(local_dir);
 					MainRenderer->SetupDisplay(128, 64);
@@ -228,7 +227,7 @@ Hyper_BandCHIP::Application::Application() : MainWindow(nullptr), MainRenderer(n
 						}
 					}
 					CurrentMachine->StoreBehaviorData(&CurrentBehaviorData);
-					if (CurrentMachine->LoadProgram(program_data, 0x200, program_size))
+					if (CurrentMachine->LoadProgram(program_data.data(), 0x200, program_size))
 					{
 						LoadProgramDisplay.LoadingProgram.hidden = true;
 						LoadProgramDisplay.LoadSuccessful.hidden = false;
@@ -252,8 +251,7 @@ Hyper_BandCHIP::Application::Application() : MainWindow(nullptr), MainRenderer(n
 					{
 						if (CurrentMachine->GetMachineCore() != CurrentMachineCore)
 						{
-							delete CurrentMachine;
-							CurrentMachine = new Machine(CurrentMachineCore, CPUSettingsMenu.CPUCycles.value, 0x10000, 128, 64);
+							CurrentMachine = std::make_unique<Machine>(CurrentMachineCore, CPUSettingsMenu.CPUCycles.value, 0x10000, 128, 64);
 						}
 						else
 						{
@@ -269,7 +267,7 @@ Hyper_BandCHIP::Application::Application() : MainWindow(nullptr), MainRenderer(n
 					}
 					else
 					{
-						CurrentMachine = new Machine(CurrentMachineCore, CPUSettingsMenu.CPUCycles.value, 0x10000, 128, 64);
+						CurrentMachine = std::make_unique<Machine>(CurrentMachineCore, CPUSettingsMenu.CPUCycles.value, 0x10000, 128, 64);
 					}
 					std::filesystem::current_path(local_dir);
 					MainRenderer->SetupDisplay(128, 64);
@@ -323,7 +321,7 @@ Hyper_BandCHIP::Application::Application() : MainWindow(nullptr), MainRenderer(n
 					CurrentMachine->CopyDataToInterpreterMemory(hires_fonts, 0x050, hires_fonts_size);
 					XOCHIP_BehaviorData CurrentBehaviorData = { BehaviorsMenu.SuperCHIP_Shift.toggle, BehaviorsMenu.SuperCHIP_LoadStore.toggle, BehaviorsMenu.Octo_LoResSprite.toggle };
 					CurrentMachine->StoreBehaviorData(&CurrentBehaviorData);
-					if (CurrentMachine->LoadProgram(program_data, 0x200, program_size))
+					if (CurrentMachine->LoadProgram(program_data.data(), 0x200, program_size))
 					{
 						LoadProgramDisplay.LoadingProgram.hidden = true;
 						LoadProgramDisplay.LoadSuccessful.hidden = false;
@@ -347,8 +345,7 @@ Hyper_BandCHIP::Application::Application() : MainWindow(nullptr), MainRenderer(n
 					{
 						if (CurrentMachine->GetMachineCore() != CurrentMachineCore)
 						{
-							delete CurrentMachine;
-							CurrentMachine = new Machine(CurrentMachineCore, CPUSettingsMenu.CPUCycles.value, 0x10000, 128, 64);
+							CurrentMachine = std::make_unique<Machine>(CurrentMachineCore, CPUSettingsMenu.CPUCycles.value, 0x10000, 128, 64);
 						}
 						else
 						{
@@ -364,7 +361,7 @@ Hyper_BandCHIP::Application::Application() : MainWindow(nullptr), MainRenderer(n
 					}
 					else
 					{
-						CurrentMachine = new Machine(CurrentMachineCore, CPUSettingsMenu.CPUCycles.value, 0x10000, 128, 64);
+						CurrentMachine = std::make_unique<Machine>(CurrentMachineCore, CPUSettingsMenu.CPUCycles.value, 0x10000, 128, 64);
 					}
 					std::filesystem::current_path(local_dir);
 					MainRenderer->SetupDisplay(128, 64);
@@ -416,7 +413,7 @@ Hyper_BandCHIP::Application::Application() : MainWindow(nullptr), MainRenderer(n
 					}
 					CurrentMachine->CopyDataToInterpreterMemory(lores_fonts, 0x000, lores_fonts_size);
 					CurrentMachine->CopyDataToInterpreterMemory(hires_fonts, 0x050, hires_fonts_size);
-					if (CurrentMachine->LoadProgram(program_data, 0x200, program_size))
+					if (CurrentMachine->LoadProgram(program_data.data(), 0x200, program_size))
 					{
 						LoadProgramDisplay.LoadingProgram.hidden = true;
 						LoadProgramDisplay.LoadSuccessful.hidden = false;
@@ -434,7 +431,6 @@ Hyper_BandCHIP::Application::Application() : MainWindow(nullptr), MainRenderer(n
 				}
 			}
 			ShowMenu(MenuDisplay::LoadProgramDisplay);
-			delete [] program_data;
 		}
 		SDL_Event event;
 		std::chrono::high_resolution_clock::time_point current_tp = std::chrono::high_resolution_clock::now();
@@ -2187,13 +2183,13 @@ Hyper_BandCHIP::Application::Application() : MainWindow(nullptr), MainRenderer(n
 		if (refresh_accumulator >= 1.0 / 60.0)
 		{
 			refresh_accumulator = 0.0;
-			MainRenderer->Render();
+			MainRenderer->Render(*MainWindow);
 			++frame_count;
 			if (refresh_time_accumulator >= 1.0)
 			{
 				std::ostringstream window_title;
 				window_title << "Hyper BandCHIP Emulator (FPS: " << frame_count << ')';
-				SDL_SetWindowTitle(MainWindow, window_title.str().c_str());
+				SDL_SetWindowTitle(MainWindow.get(), window_title.str().c_str());
 				frame_count = 0;
 				refresh_time_accumulator -= 1.0;
 			}
@@ -2204,8 +2200,6 @@ Hyper_BandCHIP::Application::Application() : MainWindow(nullptr), MainRenderer(n
 
 Hyper_BandCHIP::Application::~Application()
 {
-	delete MainRenderer;
-	SDL_DestroyWindow(MainWindow);
 }
 
 int Hyper_BandCHIP::Application::GetReturnCode() const

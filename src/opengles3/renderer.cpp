@@ -4,7 +4,7 @@
 using std::cout;
 using std::endl;
 
-Hyper_BandCHIP::Renderer::Renderer(SDL_Window *Window) : Window(Window), VertexShaderId(0), FragmentShaderId(0), MenuFragmentShaderId(0), MainProgramId(0), MenuProgramId(0), VAOId(0), VBOId(0), IBOId(0), DisplayControlUBOId(0), FontControlUBOId(0), DisplayTextureId(0), MenuFBOId(0), MenuTextureId(0), MenuFontTextureId(0), CurrentBoundTextureId(0), CurrentFramebuffer(0), CurrentProgramId(0), display(nullptr), display_width(0), display_height(0), CurrentDisplayMode(DisplayMode::Menu), fail(false)
+Hyper_BandCHIP::Renderer::Renderer(SDL_Window &Window) : VertexShaderId(0), FragmentShaderId(0), MenuFragmentShaderId(0), MainProgramId(0), MenuProgramId(0), VAOId(0), VBOId(0), IBOId(0), DisplayControlUBOId(0), FontControlUBOId(0), DisplayTextureId(0), MenuFBOId(0), MenuTextureId(0), MenuFontTextureId(0), CurrentBoundTextureId(0), CurrentFramebuffer(0), CurrentProgramId(0), display_width(0), display_height(0), CurrentDisplayMode(DisplayMode::Menu), fail(false)
 {
 	const char *VertexShaderCode = R"(#version 300 es
 
@@ -89,7 +89,7 @@ void main()
 		ColorData{ 1.0f, 1.0f, 1.0f, 1.0f }
 	};
 	font_ctrl.FontColor = 1;
-	GLContext = SDL_GL_CreateContext(Window);
+	GLContext = SDL_GL_CreateContext(&Window);
 	GLenum err = glewInit();
 	if (err != GLEW_OK)
 	{
@@ -271,10 +271,6 @@ Hyper_BandCHIP::Renderer::~Renderer()
 		glDeleteShader(MenuFragmentShaderId);
 	}
 	SDL_GL_DeleteContext(GLContext);
-	if (display != nullptr)
-	{
-		delete [] display;
-	}
 }
 
 void Hyper_BandCHIP::Renderer::SetupMenuFonts(const unsigned char *src)
@@ -319,21 +315,17 @@ void Hyper_BandCHIP::Renderer::SetupDisplay(unsigned short width, unsigned short
 {
 	if (display_width != width && display_height != height)
 	{
-		if (display != nullptr)
-		{
-			delete [] display;
-		}
 		display_width = width;
 		display_height = height;
-		display = new unsigned char[display_width * display_height];
+		display.resize(display_width * display_height);
 	}
-	memset(display, 0, display_width * display_height);
+	memset(display.data(), 0, display_width * display_height);
 	if (CurrentBoundTextureId != DisplayTextureId)
 	{
 		CurrentBoundTextureId = DisplayTextureId;
 		glBindTexture(GL_TEXTURE_2D, DisplayTextureId);
 	}
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_R8UI, display_width, display_height, 0, GL_RED_INTEGER, GL_UNSIGNED_BYTE, display);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_R8UI, display_width, display_height, 0, GL_RED_INTEGER, GL_UNSIGNED_BYTE, display.data());
 }
 
 void Hyper_BandCHIP::Renderer::WriteToDisplay(const unsigned char *src, unsigned short width, unsigned short height)
@@ -347,21 +339,21 @@ void Hyper_BandCHIP::Renderer::WriteToDisplay(const unsigned char *src, unsigned
 		}
 		for (unsigned short y = 0; y < height; ++y)
 		{
-			memcpy(&display[((height - y - 1) * width)], &src[y * width], width);
+			memcpy(&display.data()[((height - y - 1) * width)], &src[y * width], width);
 		}
-		glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, width, height, GL_RED_INTEGER, GL_UNSIGNED_BYTE, display);
+		glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, width, height, GL_RED_INTEGER, GL_UNSIGNED_BYTE, display.data());
 	}
 }
 
 void Hyper_BandCHIP::Renderer::ClearDisplay()
 {
-	memset(display, 0, display_width * display_height);
+	memset(display.data(), 0, display_width * display_height);
 	if (CurrentBoundTextureId != DisplayTextureId)
 	{
 		CurrentBoundTextureId = DisplayTextureId;
 		glBindTexture(GL_TEXTURE_2D, DisplayTextureId);
 	}
-	glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, display_width, display_height, GL_RED_INTEGER, GL_UNSIGNED_BYTE, display);
+	glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, display_width, display_height, GL_RED_INTEGER, GL_UNSIGNED_BYTE, display.data());
 }
 
 void Hyper_BandCHIP::Renderer::ClearMenu()
@@ -461,7 +453,7 @@ Hyper_BandCHIP::RGBColorData Hyper_BandCHIP::Renderer::GetPaletteIndex(unsigned 
 	}
 }
 
-void Hyper_BandCHIP::Renderer::Render()
+void Hyper_BandCHIP::Renderer::Render(SDL_Window &Window)
 {
 	if (CurrentFramebuffer != 0)
 	{
@@ -497,7 +489,7 @@ void Hyper_BandCHIP::Renderer::Render()
 	}
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	glDrawElements(GL_TRIANGLE_STRIP, 4, GL_UNSIGNED_BYTE, reinterpret_cast<void *>(0));
-	SDL_GL_SwapWindow(Window);
+	SDL_GL_SwapWindow(&Window);
 }
 
 bool Hyper_BandCHIP::Renderer::Fail() const

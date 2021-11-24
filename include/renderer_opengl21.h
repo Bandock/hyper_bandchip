@@ -4,6 +4,7 @@
 #include <SDL.h>
 #include <GL/glew.h>
 #include <array>
+#include <vector>
 #include <string>
 
 namespace Hyper_BandCHIP
@@ -41,7 +42,7 @@ namespace Hyper_BandCHIP
 	class Renderer
 	{
 		public:
-			Renderer(SDL_Window *Window);
+			Renderer(SDL_Window &Window);
 			~Renderer();
 			void SetupMenuFonts(const unsigned char *src);
 			void SetupDisplay(unsigned short width, unsigned short height);
@@ -52,10 +53,9 @@ namespace Hyper_BandCHIP
 			void SetDisplayMode(DisplayMode mode);
 			void SetPaletteIndex(RGBColorData data, unsigned char index);
 			RGBColorData GetPaletteIndex(unsigned char index) const;
-			void Render();
+			void Render(SDL_Window &Window);
 			bool Fail() const;
 		private:
-			SDL_Window *Window;
 			SDL_GLContext GLContext;
 			GLuint VertexShaderId, FragmentShaderId, MenuFragmentShaderId,
 			       MainProgramId, MenuProgramId, VAOId, VBOId, IBOId,
@@ -67,7 +67,7 @@ namespace Hyper_BandCHIP
 			unsigned char indices[4];
 			DisplayControl disp_ctrl;
 			FontControl font_ctrl;
-			unsigned char *display;
+			std::vector<unsigned char> display;
 			unsigned short display_width;
 			unsigned short display_height;
 			DisplayMode CurrentDisplayMode;

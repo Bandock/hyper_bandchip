@@ -5,6 +5,7 @@
 #include <chrono>
 #include <filesystem>
 #include <SDL.h>
+#include <memory>
 #include "menu.h"
 #include "machine.h"
 
@@ -214,6 +215,14 @@ namespace Hyper_BandCHIP
 		};
 	};
 
+	struct WindowDeleter
+	{
+		void operator()(SDL_Window *Window)
+		{
+			SDL_DestroyWindow(Window);
+		}
+	};
+
 	class Application
 	{
 		public:
@@ -224,8 +233,8 @@ namespace Hyper_BandCHIP
 			void ConstructMenus();
 			void ShowMenu(MenuDisplay Menu);
 		private:
-			SDL_Window *MainWindow;
-			Renderer *MainRenderer;
+			std::unique_ptr<SDL_Window, WindowDeleter> MainWindow;
+			std::unique_ptr<Renderer> MainRenderer;
 			std::filesystem::path start_path;
 			std::map<MenuKey, SDL_Scancode> Menu_KeyMap;
 			std::map<CHIP8Key, SDL_Scancode> CHIP8_KeyMap;
@@ -247,7 +256,7 @@ namespace Hyper_BandCHIP
 			LoadConfigurationMenuData LoadConfigurationMenu;
 			SaveConfigurationMenuData SaveConfigurationMenu;
 			ErrorDisplayData ErrorDisplay;
-			Machine *CurrentMachine;
+			std::unique_ptr<Machine> CurrentMachine;
 			std::chrono::high_resolution_clock::time_point refresh_tp;
 			double refresh_accumulator;
 			bool loading_program;
