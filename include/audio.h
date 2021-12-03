@@ -142,7 +142,7 @@ namespace Hyper_BandCHIP
 				SampleAudio<channels, voices> *Audio = static_cast<SampleAudio<channels, voices> *>(userdata);
 				for (int i = 0; i < len / sizeof(short); ++i)
 				{
-					short value = 0;
+					int value = 0;
 					unsigned char current_channel = static_cast<unsigned char>(i % channels);
 					for (unsigned char v = 0; v < voices; ++v)
 					{
@@ -152,10 +152,10 @@ namespace Hyper_BandCHIP
 							{
 								if (Audio->voice_list[v].audio_buffer[Audio->voice_list[v].pos] & (0x80 >> (Audio->voice_list[v].b_offset)))
 								{
-									short tmp = value + static_cast<short>(32767.0 * Audio->voice_list[v].volume);
+									int tmp = value + static_cast<short>(static_cast<double>(INT16_MAX) * Audio->voice_list[v].volume);
 									if (tmp < value)
 									{
-										tmp = 32767;
+										tmp = INT16_MAX;
 									}
 									value = tmp;
 								}
@@ -163,9 +163,10 @@ namespace Hyper_BandCHIP
 							if (current_channel == channels - 1)
 							{
 								Audio->voice_list[v].time += 1.0 / static_cast<double>(Audio->audio_spec.freq);
-								while (Audio->voice_list[v].time >= 1.0 / Audio->voice_list[v].playback_rate)
+								double current_playback_rate = 1.0 / Audio->voice_list[v].playback_rate;
+								while (Audio->voice_list[v].time >= current_playback_rate)
 								{
-									Audio->voice_list[v].time -= 1.0 / Audio->voice_list[v].playback_rate;
+									Audio->voice_list[v].time -= current_playback_rate;
 									++Audio->voice_list[v].b_offset;
 									if (Audio->voice_list[v].b_offset > 7)
 									{
