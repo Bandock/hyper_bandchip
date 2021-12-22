@@ -2,7 +2,7 @@
 #define _RENDERER_OPENGLES3_H_
 
 #include <SDL.h>
-#include <GL/glew.h>
+#include <GLES3/gl3.h>
 #include <array>
 #include <vector>
 #include <string>
@@ -32,7 +32,7 @@ namespace Hyper_BandCHIP
 		unsigned int FontColor;
 	};
 
-	using glTexStorage2D_Func = void (GLAPIENTRY *)(GLenum, GLsizei, GLenum, GLsizei, GLsizei);
+	// using glTexStorage2D_Func = void (GLAPIENTRY *)(GLenum, GLsizei, GLenum, GLsizei, GLsizei);
 
 	struct RGBColorData
 	{
@@ -46,7 +46,7 @@ namespace Hyper_BandCHIP
 		public:
 			Renderer(SDL_Window &Window);
 			~Renderer();
-			glTexStorage2D_Func glTexStorage2D;
+			// glTexStorage2D_Func glTexStorage2D;
 			void SetupMenuFonts(const unsigned char *src);
 			void SetupDisplay(unsigned short width, unsigned short height);
 			void WriteToDisplay(const unsigned char *src, unsigned short width, unsigned short height);

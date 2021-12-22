@@ -4,7 +4,7 @@
 using std::cout;
 using std::endl;
 
-Hyper_BandCHIP::Renderer::Renderer(SDL_Window &Window) : VertexShaderId(0), FragmentShaderId(0), MenuFragmentShaderId(0), MainProgramId(0), MenuProgramId(0), VAOId(0), VBOId(0), IBOId(0), PosAttribId(0), TexAttribId(0), PaletteUniformId(0), FontColorUniformId(0), DisplayTextureId(0), MenuFBOId(0), MenuTextureId(0), MenuFontTextureId(0), CurrentBoundTextureId(0), CurrentFramebuffer(0), CurrentProgramId(0), display_width(0), display_height(0), CurrentDisplayMode(DisplayMode::Menu), fail(false)
+Hyper_BandCHIP::Renderer::Renderer(SDL_Window &Window) : VertexShaderId(0), FragmentShaderId(0), MenuFragmentShaderId(0), MainProgramId(0), MenuProgramId(0), VBOId(0), IBOId(0), PosAttribId(0), TexAttribId(0), PaletteUniformId(0), FontColorUniformId(0), DisplayTextureId(0), MenuFBOId(0), MenuTextureId(0), MenuFontTextureId(0), CurrentBoundTextureId(0), CurrentFramebuffer(0), CurrentProgramId(0), display_width(0), display_height(0), CurrentDisplayMode(DisplayMode::Menu), fail(false)
 {
 	const char *VertexShaderCode = R"(#version 100
 
@@ -78,13 +78,6 @@ void main()
 	};
 	font_ctrl.FontColor = 1;
 	GLContext = SDL_GL_CreateContext(&Window);
-	GLenum err = glewInit();
-	if (err != GLEW_OK)
-	{
-		cout << "GLEW Initialization failed." << endl;
-		fail = true;
-		return;
-	}
 	VertexShaderId = glCreateShader(GL_VERTEX_SHADER);
 	FragmentShaderId = glCreateShader(GL_FRAGMENT_SHADER);
 	MenuFragmentShaderId = glCreateShader(GL_FRAGMENT_SHADER);
@@ -167,8 +160,6 @@ void main()
 	TexAttribId = glGetAttribLocation(MainProgramId, "tex");
 	PaletteUniformId = glGetUniformLocation(MainProgramId, "Palette");
 	FontColorUniformId = glGetUniformLocation(MenuProgramId, "FontColor");
-	glGenVertexArrays(1, &VAOId);
-	glBindVertexArray(VAOId);
 	glGenBuffers(1, &VBOId);
 	glGenBuffers(1, &IBOId);
 	glBindBuffer(GL_ARRAY_BUFFER, VBOId);
@@ -227,8 +218,6 @@ Hyper_BandCHIP::Renderer::~Renderer()
 	glDeleteBuffers(1, &VBOId);
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 	glDeleteBuffers(1, &IBOId);
-	glBindVertexArray(0);
-	glDeleteVertexArrays(1, &VAOId);
 	glDetachShader(MenuProgramId, VertexShaderId);
 	glDetachShader(MenuProgramId, MenuFragmentShaderId);
 	if (MenuProgramId != 0)

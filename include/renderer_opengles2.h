@@ -2,7 +2,8 @@
 #define _RENDERER_OPENGLES2_H_
 
 #include <SDL.h>
-#include <GL/glew.h>
+#include <GLES2/gl2.h>
+#include <GLES2/gl2ext.h>
 #include <array>
 #include <vector>
 #include <string>
@@ -58,7 +59,7 @@ namespace Hyper_BandCHIP
 		private:
 			SDL_GLContext GLContext;
 			GLuint VertexShaderId, FragmentShaderId, MenuFragmentShaderId,
-			       MainProgramId, MenuProgramId, VAOId, VBOId, IBOId,
+			       MainProgramId, MenuProgramId, VBOId, IBOId,
 			       DisplayTextureId, MenuFBOId, MenuTextureId,
 			       MenuFontTextureId, CurrentBoundTextureId,
 			       CurrentFramebuffer, CurrentProgramId;
