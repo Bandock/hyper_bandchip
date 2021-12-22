@@ -179,9 +179,12 @@ void main()
 	glGenTextures(1, &DisplayTextureId);
 	glGenTextures(1, &MenuFontTextureId);
 	glActiveTexture(GL_TEXTURE0);
-	glBindTexture(GL_TEXTURE_2D, MenuFontTextureId);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	if (!GLEW_ARB_texture_storage)
+	{
+		glBindTexture(GL_TEXTURE_2D, MenuFontTextureId);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	}
 	glBindTexture(GL_TEXTURE_2D, DisplayTextureId);
 	CurrentBoundTextureId = DisplayTextureId;
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
@@ -192,7 +195,14 @@ void main()
 	glBindTexture(GL_TEXTURE_2D, MenuTextureId);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 640, 320, 0, GL_RED, GL_UNSIGNED_BYTE, nullptr);
+	if (!GLEW_ARB_texture_storage)
+	{
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 640, 320, 0, GL_RED, GL_UNSIGNED_BYTE, nullptr);
+	}
+	else
+	{
+		glTexStorage2D(GL_TEXTURE_2D, 1, GL_RGBA8, 640, 320);
+	}
 	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, MenuFBOId);
 	glFramebufferTexture2D(GL_DRAW_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, MenuTextureId, 0);
 	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
@@ -285,7 +295,15 @@ void Hyper_BandCHIP::Renderer::SetupMenuFonts(const unsigned char *src)
 			}
 			s_offset = ((59 - y - 1) % 10) + (((59 - y - 1) / 10) * (10 * 16));
 		}
-		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 128, 64, 0, GL_RED, GL_UNSIGNED_BYTE, font_data);
+		if (!GLEW_ARB_texture_storage)
+		{
+			glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 128, 64, 0, GL_RED, GL_UNSIGNED_BYTE, font_data);
+		}
+		else
+		{
+			glTexStorage2D(GL_TEXTURE_2D, 1, GL_RGBA8, 128, 64);
+			glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 128, 64, GL_RED, GL_UNSIGNED_BYTE, font_data);
+		}
 		delete [] font_data;
 	}
 }
