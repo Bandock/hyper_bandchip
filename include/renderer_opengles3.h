@@ -32,6 +32,8 @@ namespace Hyper_BandCHIP
 		unsigned int FontColor;
 	};
 
+	using glTexStorage2D_Func = void (*)(GLenum, GLsizei, GLenum, GLsizei, GLsizei);
+
 	struct RGBColorData
 	{
 		unsigned char r;
@@ -44,6 +46,7 @@ namespace Hyper_BandCHIP
 		public:
 			Renderer(SDL_Window &Window);
 			~Renderer();
+			glTexStorage2D_Func glTexStorage2D;
 			void SetupMenuFonts(const unsigned char *src);
 			void SetupDisplay(unsigned short width, unsigned short height);
 			void WriteToDisplay(const unsigned char *src, unsigned short width, unsigned short height);

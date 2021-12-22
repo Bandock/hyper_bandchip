@@ -4,7 +4,7 @@
 using std::cout;
 using std::endl;
 
-Hyper_BandCHIP::Renderer::Renderer(SDL_Window &Window) : VertexShaderId(0), FragmentShaderId(0), MenuFragmentShaderId(0), MainProgramId(0), MenuProgramId(0), VAOId(0), VBOId(0), IBOId(0), DisplayControlUBOId(0), FontControlUBOId(0), DisplayTextureId(0), MenuFBOId(0), MenuTextureId(0), MenuFontTextureId(0), CurrentBoundTextureId(0), CurrentFramebuffer(0), CurrentProgramId(0), display_width(0), display_height(0), CurrentDisplayMode(DisplayMode::Menu), fail(false)
+Hyper_BandCHIP::Renderer::Renderer(SDL_Window &Window) : glTexStorage2D(nullptr), VertexShaderId(0), FragmentShaderId(0), MenuFragmentShaderId(0), MainProgramId(0), MenuProgramId(0), VAOId(0), VBOId(0), IBOId(0), DisplayControlUBOId(0), FontControlUBOId(0), DisplayTextureId(0), MenuFBOId(0), MenuTextureId(0), MenuFontTextureId(0), CurrentBoundTextureId(0), CurrentFramebuffer(0), CurrentProgramId(0), display_width(0), display_height(0), CurrentDisplayMode(DisplayMode::Menu), fail(false)
 {
 	const char *VertexShaderCode = R"(#version 300 es
 
@@ -97,6 +97,7 @@ void main()
 		fail = true;
 		return;
 	}
+	this->glTexStorage2D = reinterpret_cast<glTexStorage2D_Func>(SDL_GL_GetProcAddress("glTexStorage2D"));
 	VertexShaderId = glCreateShader(GL_VERTEX_SHADER);
 	FragmentShaderId = glCreateShader(GL_FRAGMENT_SHADER);
 	MenuFragmentShaderId = glCreateShader(GL_FRAGMENT_SHADER);
@@ -209,7 +210,7 @@ void main()
 	glBindTexture(GL_TEXTURE_2D, MenuTextureId);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_R8UI, 640, 320, 0, GL_RED_INTEGER, GL_UNSIGNED_BYTE, nullptr);
+	this->glTexStorage2D(GL_TEXTURE_2D, 1, GL_R8UI, 640, 320);
 	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, MenuFBOId);
 	glFramebufferTexture2D(GL_DRAW_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, MenuTextureId, 0);
 	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
@@ -306,7 +307,15 @@ void Hyper_BandCHIP::Renderer::SetupMenuFonts(const unsigned char *src)
 			}
 			s_offset = ((59 - y - 1) % 10) + (((59 - y - 1) / 10) * (10 * 16));
 		}
-		glTexImage2D(GL_TEXTURE_2D, 0, GL_R8UI, 128, 64, 0, GL_RED_INTEGER, GL_UNSIGNED_BYTE, font_data);
+		if (this->glTexStorage2D == nullptr)
+		{
+			glTexImage2D(GL_TEXTURE_2D, 0, GL_R8UI, 128, 64, 0, GL_RED_INTEGER, GL_UNSIGNED_BYTE, font_data);
+		}
+		else
+		{
+			this->glTexStorage2D(GL_TEXTURE_2D, 1, GL_R8UI, 128, 64);
+			glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 128, 64, GL_RED_INTEGER, GL_UNSIGNED_BYTE, font_data);
+		}
 		delete [] font_data;
 	}
 }
