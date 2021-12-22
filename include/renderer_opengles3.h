@@ -32,7 +32,7 @@ namespace Hyper_BandCHIP
 		unsigned int FontColor;
 	};
 
-	using glTexStorage2D_Func = void (*)(GLenum, GLsizei, GLenum, GLsizei, GLsizei);
+	using glTexStorage2D_Func = void (GLAPIENTRY *)(GLenum, GLsizei, GLenum, GLsizei, GLsizei);
 
 	struct RGBColorData
 	{
