@@ -4,7 +4,7 @@
 using std::cout;
 using std::endl;
 
-Hyper_BandCHIP::Renderer::Renderer(SDL_Window &Window) : VertexShaderId(0), FragmentShaderId(0), MenuFragmentShaderId(0), MainProgramId(0), MenuProgramId(0), VAOId(0), VBOId(0), IBOId(0), DisplayControlUBOId(0), FontControlUBOId(0), DisplayTextureId(0), MenuFBOId(0), MenuTextureId(0), MenuFontTextureId(0), CurrentBoundTextureId(0), CurrentFramebuffer(0), CurrentProgramId(0), display_width(0), display_height(0), CurrentDisplayMode(DisplayMode::Menu), fail(false)
+Hyper_BandCHIP::Renderer::Renderer(SDL_Window *Window) : Window(Window), VertexShaderId(0), FragmentShaderId(0), MenuFragmentShaderId(0), MainProgramId(0), MenuProgramId(0), VAOId(0), VBOId(0), IBOId(0), DisplayControlUBOId(0), FontControlUBOId(0), DisplayTextureId(0), MenuFBOId(0), MenuTextureId(0), MenuFontTextureId(0), CurrentBoundTextureId(0), CurrentFramebuffer(0), CurrentProgramId(0), display_width(0), display_height(0), CurrentDisplayMode(DisplayMode::Menu), fail(false)
 {
 	const char *VertexShaderCode = R"(#version 300 es
 
@@ -89,7 +89,7 @@ void main()
 		ColorData{ 1.0f, 1.0f, 1.0f, 1.0f }
 	};
 	font_ctrl.FontColor = 1;
-	GLContext = SDL_GL_CreateContext(&Window);
+	GLContext = SDL_GL_CreateContext(this->Window);
 	VertexShaderId = glCreateShader(GL_VERTEX_SHADER);
 	FragmentShaderId = glCreateShader(GL_FRAGMENT_SHADER);
 	MenuFragmentShaderId = glCreateShader(GL_FRAGMENT_SHADER);
@@ -177,9 +177,9 @@ void main()
 	glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), &vertices, GL_DYNAMIC_DRAW);
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, IBOId);
 	glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), &indices, GL_STATIC_DRAW);
-	glBindBuffer(GL_UNIFORM_BUFFER, FontControlUBOId);
+	glUniformBlockBinding(MenuProgramId, 0, 1);
+	glBindBufferRange(GL_UNIFORM_BUFFER, 1, FontControlUBOId, 0, sizeof(font_ctrl));
 	glBufferData(GL_UNIFORM_BUFFER, sizeof(font_ctrl), &font_ctrl, GL_STATIC_DRAW);
-	glUniformBlockBinding(MainProgramId, 0, 0);
 	glBindBufferRange(GL_UNIFORM_BUFFER, 0, DisplayControlUBOId, 0, sizeof(disp_ctrl));
 	glBufferData(GL_UNIFORM_BUFFER, sizeof(disp_ctrl), &disp_ctrl, GL_STATIC_DRAW);
 	glVertexAttribPointer(0, 4, GL_FLOAT, GL_FALSE, sizeof(Vertex), reinterpret_cast<void *>(0));
@@ -234,7 +234,7 @@ Hyper_BandCHIP::Renderer::~Renderer()
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 	glDeleteBuffers(1, &IBOId);
 	glBindBufferRange(GL_UNIFORM_BUFFER, 0, 0, 0, 0);
-	glUniformBlockBinding(MainProgramId, 0, 0);
+	glBindBufferRange(GL_UNIFORM_BUFFER, 1, 0, 0, 0);
 	glDeleteBuffers(1, &DisplayControlUBOId);
 	glDeleteBuffers(1, &FontControlUBOId);
 	glBindVertexArray(0);
@@ -266,100 +266,6 @@ Hyper_BandCHIP::Renderer::~Renderer()
 	SDL_GL_DeleteContext(GLContext);
 }
 
-void Hyper_BandCHIP::Renderer::SetupMenuFonts(const unsigned char *src)
-{
-	if (src != nullptr)
-	{
-		if (CurrentBoundTextureId != MenuFontTextureId)
-		{
-			CurrentBoundTextureId = MenuFontTextureId;
-			glBindTexture(GL_TEXTURE_2D, MenuFontTextureId);
-		}
-		unsigned char *font_data = new unsigned char[128 * 64];
-		unsigned int s_offset = (59 % 10) + ((59 / 10) * (10 * 16));
-		unsigned char s_bit_offset = 0;
-		memset(font_data, 0x00, 128 * 64);
-		for (unsigned int y = 0; y < 10 * 6; ++y)
-		{
-			unsigned char current_char = ' ' + (((59 - y) / 10) * 16);
-			for (unsigned int x = 0; x < 8 * 16; ++x)
-			{
-				font_data[((y + 4) * (8 * 16)) + x] = ((src[s_offset] & (0x80 >> s_bit_offset)) >> (7 - s_bit_offset));
-				++s_bit_offset;
-				if (s_bit_offset > 7)
-				{
-					s_bit_offset = 0;
-					s_offset += 10;
-					++current_char;
-				}
-				if (current_char >= 0x7F)
-				{
-					break;
-				}
-			}
-			s_offset = ((59 - y - 1) % 10) + (((59 - y - 1) / 10) * (10 * 16));
-		}
-		glTexStorage2D(GL_TEXTURE_2D, 1, GL_R8UI, 128, 64);
-		glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 128, 64, GL_RED_INTEGER, GL_UNSIGNED_BYTE, font_data);
-		delete [] font_data;
-	}
-}
-
-void Hyper_BandCHIP::Renderer::SetupDisplay(unsigned short width, unsigned short height)
-{
-	if (display_width != width && display_height != height)
-	{
-		display_width = width;
-		display_height = height;
-		display.resize(display_width * display_height);
-	}
-	memset(display.data(), 0, display_width * display_height);
-	if (CurrentBoundTextureId != DisplayTextureId)
-	{
-		CurrentBoundTextureId = DisplayTextureId;
-		glBindTexture(GL_TEXTURE_2D, DisplayTextureId);
-	}
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_R8UI, display_width, display_height, 0, GL_RED_INTEGER, GL_UNSIGNED_BYTE, display.data());
-}
-
-void Hyper_BandCHIP::Renderer::WriteToDisplay(const unsigned char *src, unsigned short width, unsigned short height)
-{
-	if (src != nullptr && width <= this->display_width && height <= this->display_height)
-	{
-		if (CurrentBoundTextureId != DisplayTextureId)
-		{
-			CurrentBoundTextureId = DisplayTextureId;
-			glBindTexture(GL_TEXTURE_2D, DisplayTextureId);
-		}
-		for (unsigned short y = 0; y < height; ++y)
-		{
-			memcpy(&display.data()[((height - y - 1) * width)], &src[y * width], width);
-		}
-		glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, width, height, GL_RED_INTEGER, GL_UNSIGNED_BYTE, display.data());
-	}
-}
-
-void Hyper_BandCHIP::Renderer::ClearDisplay()
-{
-	memset(display.data(), 0, display_width * display_height);
-	if (CurrentBoundTextureId != DisplayTextureId)
-	{
-		CurrentBoundTextureId = DisplayTextureId;
-		glBindTexture(GL_TEXTURE_2D, DisplayTextureId);
-	}
-	glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, display_width, display_height, GL_RED_INTEGER, GL_UNSIGNED_BYTE, display.data());
-}
-
-void Hyper_BandCHIP::Renderer::ClearMenu()
-{
-	if (CurrentFramebuffer != MenuFBOId)
-	{
-		CurrentFramebuffer = MenuFBOId;
-		glBindFramebuffer(GL_DRAW_FRAMEBUFFER, MenuFBOId);
-	}
-	glClear(GL_COLOR_BUFFER_BIT);
-}
-
 void Hyper_BandCHIP::Renderer::OutputStringToMenu(std::string str, unsigned short x, unsigned short y, unsigned char color)
 {
 	if (CurrentFramebuffer != MenuFBOId)
@@ -372,7 +278,7 @@ void Hyper_BandCHIP::Renderer::OutputStringToMenu(std::string str, unsigned shor
 	{
 		glUseProgram(MenuProgramId);
 		CurrentProgramId = MenuProgramId;
-		glBindBufferRange(GL_UNIFORM_BUFFER, 0, FontControlUBOId, 0, sizeof(font_ctrl));
+		glBindBuffer(GL_UNIFORM_BUFFER, FontControlUBOId);
 	}
 	if (CurrentBoundTextureId != MenuFontTextureId)
 	{
@@ -410,83 +316,4 @@ void Hyper_BandCHIP::Renderer::OutputStringToMenu(std::string str, unsigned shor
 	vertices[3] = {{ 1.0f, -1.0f, 0.0f, 1.0f }, { 1.0f, 0.0f }};
 	glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(vertices), vertices);
 	glViewport(0, 0, 1280, 640);
-}
-
-void Hyper_BandCHIP::Renderer::SetDisplayMode(Hyper_BandCHIP::DisplayMode mode)
-{
-	CurrentDisplayMode = mode;
-}
-
-void Hyper_BandCHIP::Renderer::SetPaletteIndex(Hyper_BandCHIP::RGBColorData data, unsigned char index)
-{
-	if (index < 16)
-	{
-		disp_ctrl.Palette[index] = { static_cast<float>(data.r) / 255.0f, static_cast<float>(data.g) / 255.0f, static_cast<float>(data.b) / 255.0f, 1.0f };
-		if (CurrentProgramId == MainProgramId)
-		{
-			glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(disp_ctrl), &disp_ctrl);
-		}
-		else
-		{
-			glBindBuffer(GL_UNIFORM_BUFFER, DisplayControlUBOId);
-			glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(disp_ctrl), &disp_ctrl);
-			glBindBufferRange(GL_UNIFORM_BUFFER, 0, FontControlUBOId, 0, sizeof(font_ctrl));
-		}
-	}
-}
-
-Hyper_BandCHIP::RGBColorData Hyper_BandCHIP::Renderer::GetPaletteIndex(unsigned char index) const
-{
-	if (index < 16)
-	{
-		return { static_cast<unsigned char>(disp_ctrl.Palette[index].Color[0] * 255.0f), static_cast<unsigned char>(disp_ctrl.Palette[index].Color[1] * 255.0f), static_cast<unsigned char>(disp_ctrl.Palette[index].Color[2] * 255.0f) };
-	}
-	else
-	{
-		return { 0, 0, 0 };
-	}
-}
-
-void Hyper_BandCHIP::Renderer::Render(SDL_Window &Window)
-{
-	if (CurrentFramebuffer != 0)
-	{
-		CurrentFramebuffer = 0;
-		glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
-	}
-	if (CurrentProgramId != MainProgramId)
-	{
-		glUseProgram(MainProgramId);
-		CurrentProgramId = MainProgramId;
-		glBindBufferRange(GL_UNIFORM_BUFFER, 0, DisplayControlUBOId, 0, sizeof(disp_ctrl));
-	}
-	switch (CurrentDisplayMode)
-	{
-		case DisplayMode::Emulator:
-		{
-			if (CurrentBoundTextureId != DisplayTextureId)
-			{
-				CurrentBoundTextureId = DisplayTextureId;
-				glBindTexture(GL_TEXTURE_2D, DisplayTextureId);
-			}
-			break;
-		}
-		case DisplayMode::Menu:
-		{
-			if (CurrentBoundTextureId != MenuTextureId)
-			{
-				CurrentBoundTextureId = MenuTextureId;
-				glBindTexture(GL_TEXTURE_2D, MenuTextureId);
-			}
-			break;
-		}
-	}
-	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-	glDrawElements(GL_TRIANGLE_STRIP, 4, GL_UNSIGNED_BYTE, reinterpret_cast<void *>(0));
-	SDL_GL_SwapWindow(&Window);
-}
-
-bool Hyper_BandCHIP::Renderer::Fail() const
-{
-	return fail;
 }

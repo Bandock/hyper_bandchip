@@ -56,6 +56,69 @@ namespace Hyper_BandCHIP
 		HiRes // 128x64
 	};
 
+	struct RegisterData_8Bit
+	{
+		unsigned char v0, v1, v2, v3, v4, v5, v6, v7, v8, v9, va, vb, vc, vd, ve, vf;
+
+		unsigned char &operator[](int index)
+		{
+			switch (index)
+			{
+				case 0x0: { return v0; }
+				case 0x1: { return v1; }
+				case 0x2: { return v2; }
+				case 0x3: { return v3; }
+				case 0x4: { return v4; }
+				case 0x5: { return v5; }
+				case 0x6: { return v6; }
+				case 0x7: { return v7; }
+				case 0x8: { return v8; }
+				case 0x9: { return v9; }
+				case 0xA: { return va; }
+				case 0xB: { return vb; }
+				case 0xC: { return vc; }
+				case 0xD: { return vd; }
+				case 0xE: { return ve; }
+				case 0xF: { return vf; }
+			}
+			return v0;
+		}
+	};
+
+	struct SoundTimerData
+	{
+		unsigned char st_0, st_1, st_2, st_3;
+
+		unsigned char &operator[](int index)
+		{
+			switch (index)
+			{
+				case 0: { return st_0; }
+				case 1: { return st_1; }
+				case 2: { return st_2; }
+				case 3: { return st_3; }
+			}
+			return st_0;
+		}
+	};
+
+	struct SoundTimerAccumulatorData
+	{
+		double st_a0, st_a1, st_a2, st_a3;
+
+		double &operator[](int index)
+		{
+			switch (index)
+			{
+				case 0: { return st_a0; }
+				case 1: { return st_a1; }
+				case 2: { return st_a2; }
+				case 3: { return st_a3; }
+			}
+			return st_a0;
+		}
+	};
+
 	template <MachineCore T>
 	struct InstructionData
 	{
@@ -116,48 +179,362 @@ namespace Hyper_BandCHIP
 
 	struct MachineState
 	{
-		unsigned char V[0x10];
+		// unsigned char V[0x10];
+		RegisterData_8Bit V;
 		unsigned short PC;
 		unsigned short I;
 		unsigned char DT;
-		unsigned char ST[4];
+		// unsigned char ST[4];
+		SoundTimerData ST;
 	};
+
+	struct SyncState
+	{
+		uint32_t cycle_counter;
+		uint32_t cycles_per_frame;
+	};
+
+	class Renderer;
 
 	class Machine
 	{
 		public:
-			Machine(MachineCore Core = MachineCore::BandCHIP_CHIP8, unsigned int cycles_per_second = 600, unsigned int memory_size = 0x1000, unsigned short display_width = 64, unsigned short display_height = 32);
+			Machine(MachineCore Core = MachineCore::BandCHIP_CHIP8, unsigned int cycles_per_second = 600, unsigned int memory_size = 0x1000, unsigned short display_width = 64, unsigned short display_height = 32, Renderer *DisplayRenderer = nullptr);
 			~Machine();
+			
 			template <typename T>
 			void StoreBehaviorData(const T *source_behavior_data)
 			{
 				behavior_data = *source_behavior_data;
 			}
-			void SetResolutionMode(ResolutionMode Mode);
-			void InitializeRegisters();
-			void InitializeTimers();
-			void InitializeStack();
+			
+			inline void SetResolutionMode(ResolutionMode Mode)
+			{
+				switch (CurrentMachineCore)
+				{
+					case MachineCore::BandCHIP_SuperCHIP:
+					case MachineCore::BandCHIP_XOCHIP:
+					case MachineCore::BandCHIP_HyperCHIP64:
+					{
+						CurrentResolutionMode = Mode;
+						break;
+					}
+				}
+			}
+			
+			inline void InitializeRegisters()
+			{
+				memset(&V, 0, sizeof(V));
+				I = 0;
+			}
+			
+			inline void InitializeTimers()
+			{
+				delay_timer = 0;
+				dt_accumulator = 0.0;
+				sound_timer = { 0, 0, 0, 0 };
+				st_accumulator = { 0.0, 0.0, 0.0, 0.0 };
+			}
+			
+			inline void InitializeStack()
+			{
+				SP = 0;
+				memset(stack, 0, sizeof(stack));
+			}
+			
 			void InitializeMemory();
 			void InitializeVideo();
-			void InitializeAudio();
-			void InitializeKeyStatus();
-			void CopyDataToInterpreterMemory(const unsigned char *source, unsigned short address, unsigned int size);
-			void GetDisplay(unsigned char **display, unsigned short *display_width, unsigned short *display_height);
-			void SetCyclesPerSecond(unsigned int cycles_per_second);
-			void SetDelayTimer(unsigned char delay_timer);
+			
+			inline void InitializeAudio()
+			{
+				switch (CurrentMachineAudioModel)
+				{
+					case MachineAudioModel::Sampled_XOCHIP:
+					{
+						XOCHIP_Audio *audio = std::get_if<XOCHIP_Audio>(&audio_system);
+						audio->InitializeAudioBuffer();
+						audio->Reset();
+						audio->SetPlaybackRate(64);
+						break;
+					}
+					case MachineAudioModel::Sampled_HyperCHIP64:
+					{
+						HyperCHIP64_Audio *audio = std::get_if<HyperCHIP64_Audio>(&audio_system);
+						voice = 0;
+						for (unsigned char v = 0; v < 4; ++v)
+						{
+							audio->InitializeAudioBuffer(v);
+							audio->Reset(v);
+							audio->SetChannelOutput(0x03, v);
+							audio->SetPlaybackRate(64, v);
+							audio->SetVolume(255, v);
+						}
+						break;
+					}
+				}
+			}
+			
+			inline void InitializeKeyStatus()
+			{
+				memset(key_status, 0x00, 0x10);
+			}
+
+			inline void CopyDataToInterpreterMemory(const unsigned char *source, unsigned short address, unsigned int size)
+			{
+				if (source != nullptr)
+				{
+					if (size > 0 && size <= 0x200 && address < 0x200)
+					{
+						if (address + size - 1 < 0x200)
+						{
+							memcpy(&memory[address], source, size);
+						}
+					}
+				}
+			}
+			
+			inline void GetDisplay(unsigned char **display, unsigned short *display_width, unsigned short *display_height)
+			{
+				if (display != nullptr)
+				{
+					*display = this->display;
+				}
+				if (display_width != nullptr)
+				{
+					*display_width = this->display_width;
+				}
+				if (display_height != nullptr)
+				{
+					*display_height = this->display_height;
+				}
+			}
+
+			inline void SetSync(bool toggle)
+			{
+				sync = toggle;
+				if (sync)
+				{
+					RefreshSync = { 0, cycles_per_second / 60 };
+					DelayTimerSync = { 0, cycles_per_second / 60 };
+					for (size_t i = 0; i < 4; ++i)
+					{
+						SoundTimerSync[i] = { 0, cycles_per_second / 60 };
+					}
+				}
+			}
+
+			inline bool GetSync() const
+			{
+				return sync;
+			}
+			
+			inline void SetCyclesPerSecond(unsigned int cycles_per_second)
+			{
+				this->cycles_per_second = cycles_per_second;
+				this->cycle_rate = 1.0 / static_cast<double>(this->cycles_per_second);
+				if (sync)
+				{
+					RefreshSync = { 0, this->cycles_per_second / 60 };
+					DelayTimerSync = { 0, this->cycles_per_second / 60 };
+					for (size_t i = 0; i < 4; ++i)
+					{
+						SoundTimerSync[i] = { 0, this->cycles_per_second / 60 };
+					}
+				}
+			}
+			
+			inline void SetDelayTimer(unsigned char delay_timer)
+			{
+				this->delay_timer = delay_timer;
+				if (!sync)
+				{
+					dt_accumulator = 0.0;
+					if (this->delay_timer > 0)
+					{
+						dt_tp = current_tp;
+					}
+				}
+				else
+				{
+					DelayTimerSync.cycle_counter = 0;
+				}
+			}
+			
 			void SetSoundTimer(unsigned char sound_timer);
-			void SetKeyStatus(unsigned char key, bool pressed);
-			bool LoadProgram(const unsigned char *source, unsigned short start_address, unsigned int size);
+			
+			inline void SetKeyStatus(unsigned char key, bool pressed)
+			{
+				if (key <= 0xF)
+				{
+					key_status[key] = pressed;
+				}
+			}
+			
+			inline bool LoadProgram(const unsigned char *source, unsigned short start_address, unsigned int size)
+			{
+				if (source != nullptr)
+				{
+					if (size > 0 && size <= memory_size - 0x200)
+					{
+						this->start_address = start_address;
+						PC = this->start_address;
+						memcpy(&memory[this->start_address], source, size);
+						cycle_accumulator = 0.0;
+						if (error_state != MachineError::NoError)
+						{
+							error_state = MachineError::NoError;
+						}
+						if (!operational)
+						{
+							operational = true;
+						}
+						return true;
+					}
+				}
+				return false;
+			}
+			
 			void PauseProgram(bool pause = true);
-			bool IsPaused() const;
-			bool IsOperational() const;
-			MachineCore GetMachineCore() const;
-			MachineError GetErrorState() const;
-			MachineState GetMachineState() const;
-			void SetCurrentTime(const high_resolution_clock::time_point current_tp);
-			void ExecuteInstructions();
-			void RunDelayTimer();
+			
+			inline bool IsPaused() const
+			{
+				return pause;
+			}
+			
+			inline bool IsOperational() const
+			{
+				return operational;
+			}
+
+			inline MachineCore GetMachineCore() const
+			{
+				return CurrentMachineCore;
+			}
+			
+			inline MachineError GetErrorState() const
+			{
+				return error_state;
+			}
+
+			inline MachineState GetMachineState() const
+			{
+				MachineState State;
+				memcpy(&State.V, &V, 0x10);
+				State.PC = PC;
+				State.I = I;
+				State.DT = delay_timer;
+				memcpy(&State.ST, &sound_timer, 4);
+				return State;
+			}
+			
+			inline void SetCurrentTime(const high_resolution_clock::time_point current_tp)
+			{
+				this->current_tp = current_tp;
+			}
+			
+			inline void ExecuteInstructions()
+			{
+				duration<double> delta_time = current_tp - cycle_tp;
+				if (delta_time.count() > 0.25)
+				{
+					delta_time = duration<double>(0.25);
+				}
+				cycle_accumulator += delta_time.count();
+				cycle_tp = current_tp;
+				while (cycle_accumulator >= cycle_rate && !pause)
+				{
+					cycle_accumulator -= cycle_rate;
+					if (sync)
+					{
+						SyncToCycle();
+					}
+					switch (CurrentMachineCore)
+					{
+						case MachineCore::BandCHIP_CHIP8:
+						{
+							InstructionData<MachineCore::BandCHIP_CHIP8> Instruction;
+							Instruction.opcode = (memory[PC] >> 4);
+							Instruction.operand = ((memory[PC] & 0x0F) << 8) | (memory[((PC + 1) & 0xFFF)]);
+							Instruction(this);
+							break;
+						}
+						case MachineCore::BandCHIP_SuperCHIP:
+						{
+							InstructionData<MachineCore::BandCHIP_SuperCHIP> Instruction;
+							Instruction.opcode = (memory[PC] >> 4);
+							Instruction.operand = ((memory[PC] & 0x0F) << 8) | (memory[((PC + 1) & 0xFFF)]);
+							Instruction(this);
+							break;
+						}
+						case MachineCore::BandCHIP_XOCHIP:
+						{
+							InstructionData<MachineCore::BandCHIP_XOCHIP> Instruction;
+							Instruction.opcode = (memory[PC] >> 4);
+							Instruction.operand = ((memory[PC] & 0x0F) << 8) | (memory[static_cast<unsigned short>(PC + 1)]);
+							Instruction(this);
+							break;
+						}
+						case MachineCore::BandCHIP_HyperCHIP64:
+						{
+							InstructionData<MachineCore::BandCHIP_HyperCHIP64> Instruction;
+							Instruction.opcode = (memory[PC] >> 4);
+							Instruction.operand = ((memory[PC] & 0x0F) << 8) | (memory[static_cast<unsigned short>(PC + 1)]);
+							Instruction(this);
+							break;
+						}
+					}
+				}
+			}
+			
+			inline void RunDelayTimer()
+			{
+				if (delay_timer > 0)
+				{
+					if (!sync)
+					{
+						duration<double> delta_time = current_tp - dt_tp;
+						if (delta_time.count() > 0.25)
+						{
+							delta_time = duration<double>(0.25);
+						}
+						dt_accumulator += delta_time.count();
+						dt_tp = current_tp;
+						constexpr double dt_rate = (1.0 / 60.0);
+						if (dt_accumulator >= dt_rate)
+						{
+							unsigned char tick_count = static_cast<unsigned char>(dt_accumulator / dt_rate);
+							if (delay_timer >= tick_count)
+							{
+								delay_timer -= tick_count;
+							}
+							else
+							{
+								delay_timer = 0;
+							}
+							if (delay_timer == 0)
+							{
+								dt_accumulator = 0.0;
+							}
+							else
+							{
+								dt_accumulator -= (static_cast<double>(tick_count) / 60.0);
+							}
+						}
+					}
+					else
+					{
+						++DelayTimerSync.cycle_counter;
+						if (DelayTimerSync.cycle_counter == DelayTimerSync.cycles_per_frame)
+						{
+							DelayTimerSync.cycle_counter = 0;
+							--delay_timer;
+						}
+					}
+				}
+			}
+			
 			void RunSoundTimer();
+			void SyncToCycle();
 			friend struct InstructionData<MachineCore::BandCHIP_CHIP8>;
 			friend struct InstructionData<MachineCore::BandCHIP_SuperCHIP>;
 			friend struct InstructionData<MachineCore::BandCHIP_XOCHIP>;
@@ -169,10 +546,15 @@ namespace Hyper_BandCHIP
 			std::filebuf rpl_user_flags_file;
 			std::variant<CHIP8_BehaviorData, SuperCHIP_BehaviorData, XOCHIP_BehaviorData> behavior_data;
 			std::variant<Audio, XOCHIP_Audio, HyperCHIP64_Audio> audio_system;
+			Renderer *DisplayRenderer;
+			bool sync;
 			unsigned int cycles_per_second;
+			double cycle_rate;
 			unsigned char delay_timer;
-			std::array<unsigned char, 4> sound_timer;
-			unsigned char V[16];
+			// std::array<unsigned char, 4> sound_timer;
+			SoundTimerData sound_timer;
+			// unsigned char V[16];
+			RegisterData_8Bit V;
 			unsigned short start_address;
 			unsigned short PC;
 			unsigned short I;
@@ -194,8 +576,11 @@ namespace Hyper_BandCHIP
 			double cycle_accumulator;
 			high_resolution_clock::time_point dt_tp;
 			double dt_accumulator;
-			std::array<high_resolution_clock::time_point, 4> st_tp;
-			std::array<double, 4> st_accumulator;
+			high_resolution_clock::time_point st_tp[4];
+			SoundTimerAccumulatorData st_accumulator;
+			SyncState RefreshSync;
+			SyncState DelayTimerSync;
+			SyncState SoundTimerSync[4];
 			bool pause;
 			bool operational;
 			bool wait_for_key_release;

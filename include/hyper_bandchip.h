@@ -104,6 +104,7 @@ namespace Hyper_BandCHIP
 		StatusTextItem ChangeStatus = { "Change Status", 200, 40, "Unchanged", false };
 		AdjustableValueItem CPUCycles = { "CPU Cycles", 200, 60, 60, 12000000, ValueBaseType::Dec, 600, 0, false };
 		AdjustableValueItem AdjustmentModifier { "Adjustment Modifier", 200, 74, 60, 600000, ValueBaseType::Dec, 60, 0, false };
+		ToggleItem Sync { "Sync", 200, 88, true, false };
 		const ButtonItem CommitChanges = { "Commit Changes", 200, 176, static_cast<unsigned int>(CPUSettingsMenuEvent::CommitChanges), false };
 		const ButtonItem ReturnToConfiguration = { "Return to Configuration", 200, 190, static_cast<unsigned int>(CPUSettingsMenuEvent::ReturnToConfiguration), false };
 		unsigned int CurrentSelectableItemId = 0;
@@ -228,7 +229,12 @@ namespace Hyper_BandCHIP
 		public:
 			Application();
 			~Application();
-			int GetReturnCode() const;
+			
+			inline int GetReturnCode() const
+			{
+				return retcode;
+			}
+			
 			void InitializeKeyMaps();
 			void ConstructMenus();
 			void ShowMenu(MenuDisplay Menu);

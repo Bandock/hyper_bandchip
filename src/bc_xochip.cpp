@@ -508,61 +508,73 @@ void Hyper_BandCHIP::InstructionData<Hyper_BandCHIP::MachineCore::BandCHIP_XOCHI
 				for (unsigned int py = 0; py < height; ++py)
 				{
 					unsigned char b_offset = 0;
+					unsigned int y_offset = py * (width / 8);
 					for (unsigned int px = 0; px < width; ++px)
 					{
-						unsigned int y_offset = py * (width / 8);
 						unsigned char current_plane = 0;
+						unsigned int display_addr = (((y + py) * scale_factor % 64) * 128) + ((x + px) * scale_factor % 128);
+						unsigned char *display = &TargetMachine->display[display_addr];
+						unsigned char pixel = 0;
 						for (unsigned char p = 0; p < plane_count; ++p)
 						{
-							unsigned char current_mask = 0x00;
-							unsigned char pixel_color_data = 0;
 							for (; current_plane < 2; ++current_plane)
 							{
 								if ((0x01 << current_plane) & TargetMachine->plane)
 								{
-									current_mask |= (0x01 << current_plane);
+									pixel |= (((sprite[((width / 8) * height * p) + y_offset + (px / 8)] & (0x80 >> b_offset)) >> (7 - (px % 8))) << current_plane);
 									++current_plane;
 									break;
 								}
 							}
-							unsigned char pixel = ((sprite[((width / 8) * height * p) + (y_offset + (px / 8))] & (0x80 >> b_offset)) >> (7 - (px % 8)));
-							unsigned int display_addr = (((y + py) * scale_factor % 64) * 128) + ((x + px) * scale_factor % 128);
-							switch (TargetMachine->CurrentResolutionMode)
+						}
+						switch (TargetMachine->CurrentResolutionMode)
+						{
+							case ResolutionMode::LoRes:
 							{
-								case ResolutionMode::LoRes:
+								for (unsigned char dy = 0; dy < 2; ++dy)
 								{
-									for (unsigned char dy = 0; dy < 2; ++dy)
+									for (unsigned char dx = 0; dx < 2; ++dx)
 									{
-										for (unsigned char dx = 0; dx < 2; ++dx)
+										unsigned char *upscaled_display = &display[(dy * 128) + dx];
+										unsigned char tmp = *upscaled_display;
+										if (pixel)
 										{
-											unsigned char tmp = TargetMachine->display[display_addr + (dy * 128) + dx];
-											if (pixel)
+											*upscaled_display ^= pixel;
+										}
+										if (*upscaled_display != tmp && !pixels_changed_to_unset)
+										{
+											for (unsigned char cp = 0; cp < 4; ++cp)
 											{
-												pixel_color_data |= current_mask;
-											}
-											TargetMachine->display[display_addr + (dy * 128) + dx] ^= pixel_color_data;
-											if (TargetMachine->display[display_addr + (dy * 128) + dx] != tmp && !(TargetMachine->display[display_addr + (dy * 128) + dx] & current_mask) && !pixels_changed_to_unset)
-											{
-												pixels_changed_to_unset = true;
+												if ((0x01 << cp) & TargetMachine->plane)
+												{
+													pixels_changed_to_unset = !(*upscaled_display & (0x01 << cp));
+													break;
+												}
 											}
 										}
 									}
-									break;
 								}
-								case ResolutionMode::HiRes:
+								break;
+							}
+							case ResolutionMode::HiRes:
+							{
+								unsigned char tmp = *display;
+								if (pixel)
 								{
-									unsigned char tmp = TargetMachine->display[display_addr];
-									if (pixel)
-									{
-										pixel_color_data |= current_mask;
-									}
-									TargetMachine->display[display_addr] ^= pixel_color_data;
-									if (TargetMachine->display[display_addr] != tmp && !(TargetMachine->display[display_addr] & current_mask) && !pixels_changed_to_unset)
-									{
-										pixels_changed_to_unset = true;
-									}
-									break;
+									*display ^= pixel;
 								}
+								if (*display != tmp && !pixels_changed_to_unset)
+								{
+									for (unsigned char cp = 0; cp < 4; ++cp)
+									{
+										if ((0x01 << cp) & TargetMachine->plane)
+										{
+											pixels_changed_to_unset = !(*display & (0x01 << cp));
+											break;
+										}
+									}
+								}
+								break;
 							}
 						}
 						++b_offset;
@@ -941,7 +953,7 @@ void Hyper_BandCHIP::InstructionData<Hyper_BandCHIP::MachineCore::BandCHIP_XOCHI
 					{
 						unsigned char flag_count = (x > 15) ? 15 : x;
 						TargetMachine->rpl_user_flags_file.pubseekoff(0, std::ios::beg);
-						TargetMachine->rpl_user_flags_file.sputn(reinterpret_cast<const char *>(TargetMachine->V), flag_count + 1);
+						TargetMachine->rpl_user_flags_file.sputn(reinterpret_cast<const char *>(&TargetMachine->V), flag_count + 1);
 						TargetMachine->PC += 2;
 						break;
 					}
@@ -949,7 +961,7 @@ void Hyper_BandCHIP::InstructionData<Hyper_BandCHIP::MachineCore::BandCHIP_XOCHI
 					{
 						unsigned char flag_count = (x > 15) ? 15 : x;
 						TargetMachine->rpl_user_flags_file.pubseekoff(0, std::ios::beg);
-						TargetMachine->rpl_user_flags_file.sgetn(reinterpret_cast<char *>(TargetMachine->V), flag_count + 1);
+						TargetMachine->rpl_user_flags_file.sgetn(reinterpret_cast<char *>(&TargetMachine->V), flag_count + 1);
 						TargetMachine->PC += 2;
 						break;
 					}

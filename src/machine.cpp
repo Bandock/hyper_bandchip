@@ -3,8 +3,15 @@
 #include <iostream>
 #include <fstream>
 #include <bit>
+#if defined(RENDERER_OPENGL21)
+#include "../include/renderer_opengl21.h"
+#elif defined(RENDERER_OPENGLES2)
+#include "../include/renderer_opengles2.h"
+#elif defined(RENDERER_OPENGLES3)
+#include "../include/renderer_opengles3.h"
+#endif
 
-Hyper_BandCHIP::Machine::Machine(MachineCore Core, unsigned int cycles_per_second, unsigned int memory_size, unsigned short display_width, unsigned short display_height) : CurrentMachineCore(Core), CurrentResolutionMode(ResolutionMode::LoRes), cycles_per_second(cycles_per_second), delay_timer(0), sound_timer{ 0, 0, 0, 0 }, PC(0), I(0), SP(0), memory(nullptr), display(nullptr), key_pressed(0), plane(0x01), voice(0), rng_engine(system_clock::now().time_since_epoch().count()), rng_distrib(0, 255), cycle_accumulator(0.0), dt_accumulator(0.0), st_accumulator{ 0.0, 0.0, 0.0, 0.0 } , pause(true), operational(true), wait_for_key_release(false), error_state(MachineError::NoError)
+Hyper_BandCHIP::Machine::Machine(MachineCore Core, unsigned int cycles_per_second, unsigned int memory_size, unsigned short display_width, unsigned short display_height, Renderer *DisplayRenderer) : CurrentMachineCore(Core), CurrentResolutionMode(ResolutionMode::LoRes), DisplayRenderer(DisplayRenderer), sync(false), cycles_per_second(cycles_per_second), delay_timer(0), sound_timer{ 0, 0, 0, 0 }, PC(0), I(0), SP(0), memory(nullptr), display(nullptr), key_pressed(0), plane(0x01), voice(0), rng_engine(system_clock::now().time_since_epoch().count()), rng_distrib(0, 255), cycle_accumulator(0.0), dt_accumulator(0.0), st_accumulator{ 0.0, 0.0, 0.0, 0.0 } , pause(true), operational(true), wait_for_key_release(false), error_state(MachineError::NoError)
 {
 	switch (CurrentMachineCore)
 	{
@@ -54,7 +61,7 @@ Hyper_BandCHIP::Machine::Machine(MachineCore Core, unsigned int cycles_per_secon
 			break;
 		}
 	}
-	memset(V, 0, sizeof(V));
+	memset(&V, 0, sizeof(V));
 	memset(stack, 0, sizeof(stack));
 	this->memory_size = (memory_size < 4096) ? 4096 : memory_size;
 	memory = new unsigned char[this->memory_size];
@@ -64,6 +71,7 @@ Hyper_BandCHIP::Machine::Machine(MachineCore Core, unsigned int cycles_per_secon
 	display = new unsigned char[this->display_width * this->display_height];
 	memset(display, 0x00, this->display_width * this->display_height);
 	memset(key_status, 0x00, 0x10);
+	cycle_rate = 1.0 / static_cast<double>(cycles_per_second);
 }
 
 Hyper_BandCHIP::Machine::~Machine()
@@ -78,40 +86,6 @@ Hyper_BandCHIP::Machine::~Machine()
 	}
 }
 
-void Hyper_BandCHIP::Machine::SetResolutionMode(Hyper_BandCHIP::ResolutionMode Mode)
-{
-	switch (CurrentMachineCore)
-	{
-		case MachineCore::BandCHIP_SuperCHIP:
-		case MachineCore::BandCHIP_XOCHIP:
-		case MachineCore::BandCHIP_HyperCHIP64:
-		{
-			CurrentResolutionMode = Mode;
-			break;
-		}
-	}
-}
-
-void Hyper_BandCHIP::Machine::InitializeRegisters()
-{
-	memset(V, 0, sizeof(V));
-	I = 0;
-}
-
-void Hyper_BandCHIP::Machine::InitializeTimers()
-{
-	delay_timer = 0;
-	dt_accumulator = 0.0;
-	sound_timer = { 0, 0, 0, 0 };
-	st_accumulator = { 0.0, 0.0, 0.0, 0.0 };
-}
-
-void Hyper_BandCHIP::Machine::InitializeStack()
-{
-	SP = 0;
-	memset(stack, 0, sizeof(stack));
-}
-
 void Hyper_BandCHIP::Machine::InitializeMemory()
 {
 	memset(memory, 0x00, memory_size);
@@ -122,84 +96,6 @@ void Hyper_BandCHIP::Machine::InitializeVideo()
 
 	memset(display, 0x00, display_width * display_height);
 	plane = 0x01;
-}
-
-void Hyper_BandCHIP::Machine::InitializeAudio()
-{
-	switch (CurrentMachineAudioModel)
-	{
-		case MachineAudioModel::Sampled_XOCHIP:
-		{
-			XOCHIP_Audio *audio = std::get_if<XOCHIP_Audio>(&audio_system);
-			audio->InitializeAudioBuffer();
-			audio->Reset();
-			audio->SetPlaybackRate(64);
-			break;
-		}
-		case MachineAudioModel::Sampled_HyperCHIP64:
-		{
-			HyperCHIP64_Audio *audio = std::get_if<HyperCHIP64_Audio>(&audio_system);
-			voice = 0;
-			for (unsigned char v = 0; v < 4; ++v)
-			{
-				audio->InitializeAudioBuffer(v);
-				audio->Reset(v);
-				audio->SetChannelOutput(0x03, v);
-				audio->SetPlaybackRate(64, v);
-				break;
-			}
-		}
-	}
-}
-
-void Hyper_BandCHIP::Machine::InitializeKeyStatus()
-{
-	memset(key_status, 0x00, 0x10);
-}
-
-void Hyper_BandCHIP::Machine::CopyDataToInterpreterMemory(const unsigned char *source, unsigned short address, unsigned int size)
-{
-	if (source != nullptr)
-	{
-		if (size > 0 && size <= 0x200 && address < 0x200)
-		{
-			if (address + size - 1 < 0x200)
-			{
-				memcpy(&memory[address], source, size);
-			}
-		}
-	}
-}
-
-void Hyper_BandCHIP::Machine::GetDisplay(unsigned char **display, unsigned short *display_width, unsigned short *display_height)
-{
-	if (display != nullptr)
-	{
-		*display = this->display;
-	}
-	if (display_width != nullptr)
-	{
-		*display_width = this->display_width;
-	}
-	if (display_height != nullptr)
-	{
-		*display_height = this->display_height;
-	}
-}
-
-void Hyper_BandCHIP::Machine::SetCyclesPerSecond(unsigned int cycles_per_second)
-{
-	this->cycles_per_second = cycles_per_second;
-}
-
-void Hyper_BandCHIP::Machine::SetDelayTimer(unsigned char delay_timer)
-{
-	this->delay_timer = delay_timer;
-	dt_accumulator = 0.0;
-	if (this->delay_timer > 0)
-	{
-		dt_tp = current_tp;
-	}
 }
 
 void Hyper_BandCHIP::Machine::SetSoundTimer(unsigned char sound_timer)
@@ -223,10 +119,20 @@ void Hyper_BandCHIP::Machine::SetSoundTimer(unsigned char sound_timer)
 	if (voice < voice_count)
 	{
 		this->sound_timer[voice] = sound_timer;
-		st_accumulator[voice] = 0.0;
+		if (!sync)
+		{
+			st_accumulator[voice] = 0.0;
+		}
+		else
+		{
+			SoundTimerSync[voice].cycle_counter = 0;
+		}
 		if (this->sound_timer[voice] > 0)
 		{
-			st_tp[voice] = current_tp;
+			if (!sync)
+			{
+				st_tp[voice] = current_tp;
+			}
 			switch (CurrentMachineAudioModel)
 			{
 				case MachineAudioModel::Synthesizer:
@@ -307,6 +213,7 @@ void Hyper_BandCHIP::Machine::SetSoundTimer(unsigned char sound_timer)
 	}
 }
 
+/*
 void Hyper_BandCHIP::Machine::SetKeyStatus(unsigned char key, bool pressed)
 {
 	if (key <= 0xF)
@@ -314,7 +221,9 @@ void Hyper_BandCHIP::Machine::SetKeyStatus(unsigned char key, bool pressed)
 		key_status[key] = pressed;
 	}
 }
+*/
 
+/*
 bool Hyper_BandCHIP::Machine::LoadProgram(const unsigned char *source, unsigned short start_address, unsigned int size)
 {
 	if (source != nullptr)
@@ -338,6 +247,7 @@ bool Hyper_BandCHIP::Machine::LoadProgram(const unsigned char *source, unsigned 
 	}
 	return false;
 }
+*/
 
 void Hyper_BandCHIP::Machine::PauseProgram(bool pause)
 {
@@ -346,7 +256,7 @@ void Hyper_BandCHIP::Machine::PauseProgram(bool pause)
 		if (this->pause)
 		{
 			cycle_tp = current_tp;
-			if (delay_timer > 0)
+			if (delay_timer > 0 && !sync)
 			{
 				dt_tp = current_tp;
 			}
@@ -370,7 +280,10 @@ void Hyper_BandCHIP::Machine::PauseProgram(bool pause)
 			{
 				if (sound_timer[v] > 0)
 				{
-					st_tp[v] = current_tp;
+					if (!sync)
+					{
+						st_tp[v] = current_tp;
+					}
 					switch (CurrentMachineAudioModel)
 					{
 						case MachineAudioModel::Synthesizer:
@@ -412,7 +325,7 @@ void Hyper_BandCHIP::Machine::PauseProgram(bool pause)
 				delta_time = duration<double>(0.25);
 			}
 			cycle_accumulator += delta_time.count();
-			if (delay_timer > 0)
+			if (delay_timer > 0 && !sync)
 			{
 				delta_time = current_tp - dt_tp;
 				if (delta_time.count() > 0.25)
@@ -441,12 +354,15 @@ void Hyper_BandCHIP::Machine::PauseProgram(bool pause)
 			{
 				if (sound_timer[v] > 0)
 				{
-					delta_time = current_tp - st_tp[v];
-					if (delta_time.count() > 0.25)
+					if (!sync)
 					{
-						delta_time = duration<double>(0.25);
+						delta_time = current_tp - st_tp[v];
+						if (delta_time.count() > 0.25)
+						{
+							delta_time = duration<double>(0.25);
+						}
+						st_accumulator[v] += delta_time.count();
 					}
-					st_accumulator[v] += delta_time.count();
 					switch (CurrentMachineAudioModel)
 					{
 						case MachineAudioModel::Synthesizer:
@@ -490,129 +406,6 @@ void Hyper_BandCHIP::Machine::PauseProgram(bool pause)
 	this->pause = pause;
 }
 
-bool Hyper_BandCHIP::Machine::IsPaused() const
-{
-	return pause;
-}
-
-bool Hyper_BandCHIP::Machine::IsOperational() const
-{
-	return operational;
-}
-
-Hyper_BandCHIP::MachineCore Hyper_BandCHIP::Machine::GetMachineCore() const
-{
-	return CurrentMachineCore;
-}
-
-Hyper_BandCHIP::MachineError Hyper_BandCHIP::Machine::GetErrorState() const
-{
-	return error_state;
-}
-
-Hyper_BandCHIP::MachineState Hyper_BandCHIP::Machine::GetMachineState() const
-{
-	MachineState State;
-	memcpy (State.V, V, 0x10);
-	State.PC = PC;
-	State.I = I;
-	State.DT = delay_timer;
-	for (unsigned char i = 0; i < 4; ++i)
-	{
-		State.ST[i] = sound_timer[i];
-	}
-	return State;
-}
-
-void Hyper_BandCHIP::Machine::SetCurrentTime(const high_resolution_clock::time_point current_tp)
-{
-	this->current_tp = current_tp;
-}
-
-void Hyper_BandCHIP::Machine::ExecuteInstructions()
-{
-	duration<double> delta_time = current_tp - cycle_tp;
-	if (delta_time.count() > 0.25)
-	{
-		delta_time = duration<double>(0.25);
-	}
-	cycle_accumulator += delta_time.count();
-	cycle_tp = current_tp;
-	while (cycle_accumulator >= 1.0 / static_cast<double>(cycles_per_second) && !pause)
-	{
-		cycle_accumulator -= 1.0 / static_cast<double>(cycles_per_second);
-		switch (CurrentMachineCore)
-		{
-			case MachineCore::BandCHIP_CHIP8:
-			{
-				InstructionData<MachineCore::BandCHIP_CHIP8> Instruction;
-				Instruction.opcode = (memory[PC] >> 4);
-				Instruction.operand = ((memory[PC] & 0x0F) << 8) | (memory[((PC + 1) & 0xFFF)]);
-				Instruction(this);
-				break;
-			}
-			case MachineCore::BandCHIP_SuperCHIP:
-			{
-				InstructionData<MachineCore::BandCHIP_SuperCHIP> Instruction;
-				Instruction.opcode = (memory[PC] >> 4);
-				Instruction.operand = ((memory[PC] & 0x0F) << 8) | (memory[((PC + 1) & 0xFFF)]);
-				Instruction(this);
-				break;
-			}
-			case MachineCore::BandCHIP_XOCHIP:
-			{
-				InstructionData<MachineCore::BandCHIP_XOCHIP> Instruction;
-				Instruction.opcode = (memory[PC] >> 4);
-				Instruction.operand = ((memory[PC] & 0x0F) << 8) | (memory[static_cast<unsigned short>(PC + 1)]);
-				Instruction(this);
-				break;
-			}
-			case MachineCore::BandCHIP_HyperCHIP64:
-			{
-				InstructionData<MachineCore::BandCHIP_HyperCHIP64> Instruction;
-				Instruction.opcode = (memory[PC] >> 4);
-				Instruction.operand = ((memory[PC] & 0x0F) << 8) | (memory[static_cast<unsigned short>(PC + 1)]);
-				Instruction(this);
-				break;
-			}
-		}
-	}
-}
-
-void Hyper_BandCHIP::Machine::RunDelayTimer()
-{
-	if (delay_timer > 0)
-	{
-		duration<double> delta_time = current_tp - dt_tp;
-		if (delta_time.count() > 0.25)
-		{
-			delta_time = duration<double>(0.25);
-		}
-		dt_accumulator += delta_time.count();
-		dt_tp = current_tp;
-		if (dt_accumulator >= 1.0 / 60.0)
-		{
-			unsigned char tick_count = static_cast<unsigned char>(dt_accumulator / (1.0 / 60.0));
-			if (delay_timer >= tick_count)
-			{
-				delay_timer -= tick_count;
-			}
-			else
-			{
-				delay_timer = 0;
-			}
-			if (delay_timer == 0)
-			{
-				dt_accumulator = 0.0;
-			}
-			else
-			{
-				dt_accumulator -= (static_cast<double>(tick_count) / 60.0);
-			}
-		}
-	}
-}
-
 void Hyper_BandCHIP::Machine::RunSoundTimer()
 {
 	unsigned char voice_count = 0;
@@ -635,56 +428,108 @@ void Hyper_BandCHIP::Machine::RunSoundTimer()
 	{
 		if (sound_timer[v] > 0)
 		{
-			duration<double> delta_time = current_tp - st_tp[v];
-			if (delta_time.count() > 0.25)
+			if (!sync)
 			{
-				delta_time = duration<double>(0.25);
-			}
-			st_accumulator[v] += delta_time.count();
-			st_tp[v] = current_tp;
-			if (st_accumulator[v] >= 1.0 / 60.0)
-			{
-				unsigned char tick_count = static_cast<unsigned char>(st_accumulator[v] / (1.0 / 60.0));
-				if (sound_timer[v] >= tick_count)
+				duration<double> delta_time = current_tp - st_tp[v];
+				if (delta_time.count() > 0.25)
 				{
-					sound_timer[v] -= tick_count;
+					delta_time = duration<double>(0.25);
 				}
-				else
+				st_accumulator[v] += delta_time.count();
+				st_tp[v] = current_tp;
+				constexpr double st_rate = 1.0 / 60.0;
+				if (st_accumulator[v] >= st_rate)
 				{
-					sound_timer[v] = 0;
-				}
-				if (sound_timer[v] == 0)
-				{
-					st_accumulator[v] = 0.0;
-					switch (CurrentMachineAudioModel)
+					unsigned char tick_count = static_cast<unsigned char>(st_accumulator[v] / st_rate);
+					if (sound_timer[v] >= tick_count)
 					{
-						case MachineAudioModel::Synthesizer:
+						sound_timer[v] -= tick_count;
+					}
+					else
+					{
+						sound_timer[v] = 0;
+					}
+					if (sound_timer[v] == 0)
+					{
+						st_accumulator[v] = 0.0;
+						switch (CurrentMachineAudioModel)
 						{
-							Audio *audio = std::get_if<Audio>(&audio_system);
-							audio->SetEnvelopeGeneratorState(EnvelopeGeneratorState::Release);
-							break;
+							case MachineAudioModel::Synthesizer:
+							{
+								Audio *audio = std::get_if<Audio>(&audio_system);
+								audio->SetEnvelopeGeneratorState(EnvelopeGeneratorState::Release);
+								break;
+							}
+							case MachineAudioModel::Sampled_XOCHIP:
+							{
+								XOCHIP_Audio *audio = std::get_if<XOCHIP_Audio>(&audio_system);
+								audio->PauseAudio(true);
+								audio->Reset();
+								break;
+							}
+							case MachineAudioModel::Sampled_HyperCHIP64:
+							{
+								HyperCHIP64_Audio *audio = std::get_if<HyperCHIP64_Audio>(&audio_system);
+								audio->PauseAudio(true, v);
+								audio->Reset(v);
+								break;
+							}
 						}
-						case MachineAudioModel::Sampled_XOCHIP:
+					}
+					else
+					{
+						st_accumulator[v] -= (static_cast<double>(tick_count) / 60.0);
+					}
+				}
+			}
+			else
+			{
+				++SoundTimerSync[v].cycle_counter;
+				if (SoundTimerSync[v].cycle_counter == SoundTimerSync[v].cycles_per_frame)
+				{
+					SoundTimerSync[v].cycle_counter = 0;
+					--sound_timer[v];
+					if (sound_timer[v] == 0)
+					{
+						switch (CurrentMachineAudioModel)
 						{
-							XOCHIP_Audio *audio = std::get_if<XOCHIP_Audio>(&audio_system);
-							audio->PauseAudio(true);
-							audio->Reset();
-							break;
-						}
-						case MachineAudioModel::Sampled_HyperCHIP64:
-						{
-							HyperCHIP64_Audio *audio = std::get_if<HyperCHIP64_Audio>(&audio_system);
-							audio->PauseAudio(true, v);
-							audio->Reset(v);
-							break;
+							case MachineAudioModel::Synthesizer:
+							{
+								Audio *audio = std::get_if<Audio>(&audio_system);
+								audio->SetEnvelopeGeneratorState(EnvelopeGeneratorState::Release);
+								break;
+							}
+							case MachineAudioModel::Sampled_XOCHIP:
+							{
+								XOCHIP_Audio *audio = std::get_if<XOCHIP_Audio>(&audio_system);
+								audio->PauseAudio(true);
+								audio->Reset();
+								break;
+							}
+							case MachineAudioModel::Sampled_HyperCHIP64:
+							{
+								HyperCHIP64_Audio *audio = std::get_if<HyperCHIP64_Audio>(&audio_system);
+								audio->PauseAudio(true, v);
+								audio->Reset(v);
+								break;
+							}
 						}
 					}
 				}
-				else
-				{
-					st_accumulator[v] -= (static_cast<double>(tick_count) / 60.0);
-				}
 			}
 		}
+	}
+}
+
+void Hyper_BandCHIP::Machine::SyncToCycle()
+{
+	RunDelayTimer();
+	RunSoundTimer();
+	++RefreshSync.cycle_counter;
+	if (RefreshSync.cycle_counter == RefreshSync.cycles_per_frame)
+	{
+		RefreshSync.cycle_counter = 0;
+		DisplayRenderer->WriteToDisplay(display, display_width, display_height);
+		DisplayRenderer->Render();
 	}
 }

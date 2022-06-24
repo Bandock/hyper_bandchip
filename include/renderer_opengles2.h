@@ -43,7 +43,7 @@ namespace Hyper_BandCHIP
 	class Renderer
 	{
 		public:
-			Renderer(SDL_Window &Window);
+			Renderer(SDL_Window *Window);
 			~Renderer();
 			void SetupMenuFonts(const unsigned char *src);
 			void SetupDisplay(unsigned short width, unsigned short height);
@@ -54,9 +54,10 @@ namespace Hyper_BandCHIP
 			void SetDisplayMode(DisplayMode mode);
 			void SetPaletteIndex(RGBColorData data, unsigned char index);
 			RGBColorData GetPaletteIndex(unsigned char index) const;
-			void Render(SDL_Window &Window);
+			void Render();
 			bool Fail() const;
 		private:
+			SDL_Window *Window;
 			SDL_GLContext GLContext;
 			GLuint VertexShaderId, FragmentShaderId, MenuFragmentShaderId,
 			       MainProgramId, MenuProgramId, VBOId, IBOId,
