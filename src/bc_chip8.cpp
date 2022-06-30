@@ -1,4 +1,11 @@
 #include "../include/machine.h"
+#if defined(RENDERER_OPENGL21)
+#include "../include/renderer_opengl21.h"
+#elif defined(RENDERER_OPENGLES2)
+#include "../include/renderer_opengles2.h"
+#elif defined(RENDERER_OPENGLES3)
+#include "../include/renderer_opengles3.h"
+#endif
 
 void Hyper_BandCHIP::InstructionData<Hyper_BandCHIP::MachineCore::BandCHIP_CHIP8>::operator()(Machine *TargetMachine)
 {
@@ -307,6 +314,11 @@ void Hyper_BandCHIP::InstructionData<Hyper_BandCHIP::MachineCore::BandCHIP_CHIP8
 			}
 			case 0xD:
 			{
+				const CHIP8_BehaviorData *Behavior = std::get_if<CHIP8_BehaviorData>(&TargetMachine->behavior_data);
+				if (Behavior->VIP_Display_Interrupt && !TargetMachine->display_interrupt && TargetMachine->sync)
+				{
+					break;
+				}
 				unsigned char x = TargetMachine->V[((operand & 0xF00) >> 8)];
 				unsigned char y = TargetMachine->V[((operand & 0x0F0) >> 4)];
 				unsigned char bytes = (operand & 0x00F);
@@ -334,6 +346,12 @@ void Hyper_BandCHIP::InstructionData<Hyper_BandCHIP::MachineCore::BandCHIP_CHIP8
 				else
 				{
 					TargetMachine->V[0xF] = 0x00;
+				}
+				if (Behavior->VIP_Display_Interrupt && TargetMachine->display_interrupt && TargetMachine->sync)
+				{
+					TargetMachine->display_interrupt = false;
+					TargetMachine->DisplayRenderer->WriteToDisplay(TargetMachine->display, TargetMachine->display_width, TargetMachine->display_height);
+					TargetMachine->DisplayRenderer->Render();
 				}
 				TargetMachine->PC += 2;
 				if (TargetMachine->PC > 0xFFF)

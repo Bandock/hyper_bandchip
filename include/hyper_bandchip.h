@@ -1,11 +1,13 @@
 #ifndef _HYPER_BANDCHIP_H_
 #define _HYPER_BANDCHIP_H_
 
+#include <vector>
 #include <map>
 #include <chrono>
 #include <filesystem>
 #include <SDL.h>
 #include <memory>
+#include "fonts.h"
 #include "menu.h"
 #include "machine.h"
 
@@ -49,7 +51,7 @@ namespace Hyper_BandCHIP
 
 	struct MainMenuData
 	{
-		const TextItem Title = { "Hyper BandCHIP V0.11", 220, 20, false };
+		const TextItem Title = { "Hyper BandCHIP V0.12", 220, 20, false };
 		const TextItem Author = { "By Joshua Moss", 250, 34, false };
 		StatusTextItem CurrentProgram = { "Current Program", 160, 60, "None", false };
 		StatusTextItem CurrentMachineStatus = { "Current Machine Status", 120, 74, "Non-Operational", false };
@@ -115,6 +117,7 @@ namespace Hyper_BandCHIP
 		const TextItem Title = { "Behaviors", 270, 20, false };
 		ToggleItem CHIP48_Shift = { "CHIP-48 Shift", 200, 60, false, false };
 		ToggleItem CHIP48_LoadStore = { "CHIP-48 Load/Store", 200, 74, false, false };
+		ToggleItem VIP_Display_Interrupt = { "VIP Display Interrupt", 200, 88, false, false };
 		MultiChoiceItem SuperCHIP_Version = { "SuperCHIP Version", 140, 60, 0xFFFFFFFF, 0, { "Fixed SuperCHIP V1.1", "SuperCHIP V1.0", "Original SuperCHIP V1.1" }, false };
 		ToggleItem SuperCHIP_Shift = { "SuperCHIP Shift", 200,60, false, false };
 		ToggleItem SuperCHIP_LoadStore = { "SuperCHIP Load/Store", 200, 74, false, false };
@@ -239,6 +242,8 @@ namespace Hyper_BandCHIP
 			void ConstructMenus();
 			void ShowMenu(MenuDisplay Menu);
 		private:
+			void LoadFontStyles();
+
 			std::unique_ptr<SDL_Window, WindowDeleter> MainWindow;
 			std::unique_ptr<Renderer> MainRenderer;
 			std::filesystem::path start_path;
@@ -248,6 +253,8 @@ namespace Hyper_BandCHIP
 			OperationMode CurrentOperationMode;
 			MachineCore CurrentMachineCore;
 			MenuDisplay CurrentMenu;
+			std::vector<Fonts::FontStyle<4, 5>> LoResFontStyleList;
+			std::vector<Fonts::FontStyle<8, 10>> HiResFontStyleList;
 			LoResFontStyle CurrentLoResFontStyle;
 			HiResFontStyle CurrentHiResFontStyle;
 			MainMenuData MainMenu;

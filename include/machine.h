@@ -131,6 +131,7 @@ namespace Hyper_BandCHIP
 	{
 		bool CHIP48_Shift;
 		bool CHIP48_LoadStore;
+		bool VIP_Display_Interrupt;
 	};
 
 	struct SuperCHIP_BehaviorData
@@ -548,6 +549,7 @@ namespace Hyper_BandCHIP
 			std::variant<Audio, XOCHIP_Audio, HyperCHIP64_Audio> audio_system;
 			Renderer *DisplayRenderer;
 			bool sync;
+			bool display_interrupt;
 			unsigned int cycles_per_second;
 			double cycle_rate;
 			unsigned char delay_timer;

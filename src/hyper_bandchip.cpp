@@ -49,6 +49,7 @@ Hyper_BandCHIP::Application::Application() : MainWindow(nullptr), MainRenderer(n
 	{
 		return;
 	}
+	LoadFontStyles();
 	InitializeKeyMaps();
 	ConstructMenus();
 	MainRenderer->SetupMenuFonts(reinterpret_cast<const unsigned char *>(Fonts::Menu::Fonts));
@@ -94,29 +95,38 @@ Hyper_BandCHIP::Application::Application() : MainWindow(nullptr), MainRenderer(n
 					MainRenderer->SetupDisplay(64, 32);
 					const unsigned char *lores_fonts = nullptr;
 					size_t lores_fonts_size = 0;
-					switch (CurrentLoResFontStyle)
+					if (LoResFontStyleList.size() == 0)
 					{
-						case LoResFontStyle::VIP:
+						switch (CurrentLoResFontStyle)
 						{
-							lores_fonts = reinterpret_cast<const unsigned char *>(Fonts::VIP::LoResFonts);
-							lores_fonts_size = sizeof(Fonts::VIP::LoResFonts);
-							break;
-						}
-						case LoResFontStyle::SuperCHIP:
-						{
-							lores_fonts = reinterpret_cast<const unsigned char *>(Fonts::SuperCHIP::LoResFonts);
-							lores_fonts_size = sizeof(Fonts::SuperCHIP::LoResFonts);
-							break;
-						}
-						case LoResFontStyle::KCHIP8:
-						{
-							lores_fonts = reinterpret_cast<const unsigned char *>(Fonts::KCHIP8::LoResFonts);
-							lores_fonts_size = sizeof(Fonts::KCHIP8::LoResFonts);
-							break;
+							case LoResFontStyle::VIP:
+							{
+								lores_fonts = reinterpret_cast<const unsigned char *>(Fonts::VIP::LoResFonts);
+								lores_fonts_size = sizeof(Fonts::VIP::LoResFonts);
+								break;
+							}
+							case LoResFontStyle::SuperCHIP:
+							{
+								lores_fonts = reinterpret_cast<const unsigned char *>(Fonts::SuperCHIP::LoResFonts);
+								lores_fonts_size = sizeof(Fonts::SuperCHIP::LoResFonts);
+								break;
+							}
+							case LoResFontStyle::KCHIP8:
+							{
+								lores_fonts = reinterpret_cast<const unsigned char *>(Fonts::KCHIP8::LoResFonts);
+								lores_fonts_size = sizeof(Fonts::KCHIP8::LoResFonts);
+								break;
+							}
 						}
 					}
+					else
+					{
+						Fonts::FontStyle<4, 5> &CurrentLoResFontStyle = LoResFontStyleList[FontSettingsMenu.LoResFontStyle.current_option];
+						lores_fonts = CurrentLoResFontStyle.GetFontStyleData();
+						lores_fonts_size = CurrentLoResFontStyle.GetFontStyleDataSize();
+					}
 					CurrentMachine->CopyDataToInterpreterMemory(lores_fonts, 0x000, lores_fonts_size);
-					CHIP8_BehaviorData CurrentBehaviorData = { BehaviorsMenu.CHIP48_Shift.toggle, BehaviorsMenu.CHIP48_LoadStore.toggle };
+					CHIP8_BehaviorData CurrentBehaviorData = { BehaviorsMenu.CHIP48_Shift.toggle, BehaviorsMenu.CHIP48_LoadStore.toggle, BehaviorsMenu.VIP_Display_Interrupt.toggle };
 					CurrentMachine->StoreBehaviorData(&CurrentBehaviorData);
 					CurrentMachine->SetSync(CPUSettingsMenu.Sync.toggle);
 					if (CurrentMachine->LoadProgram(program_data.data(), 0x200, program_size))
@@ -166,47 +176,65 @@ Hyper_BandCHIP::Application::Application() : MainWindow(nullptr), MainRenderer(n
 					const unsigned char *hires_fonts = nullptr;
 					size_t lores_fonts_size = 0;
 					size_t hires_fonts_size = 0;
-					switch (CurrentLoResFontStyle)
+					if (LoResFontStyleList.size() == 0)
 					{
-						case LoResFontStyle::VIP:
+						switch (CurrentLoResFontStyle)
 						{
-							lores_fonts = reinterpret_cast<const unsigned char *>(Fonts::VIP::LoResFonts);
-							lores_fonts_size = sizeof(Fonts::VIP::LoResFonts);
-							break;
-						}
-						case LoResFontStyle::SuperCHIP:
-						{
-							lores_fonts = reinterpret_cast<const unsigned char *>(Fonts::SuperCHIP::LoResFonts);
-							lores_fonts_size = sizeof(Fonts::SuperCHIP::LoResFonts);
-							break;
-						}
-						case LoResFontStyle::KCHIP8:
-						{
-							lores_fonts = reinterpret_cast<const unsigned char *>(Fonts::KCHIP8::LoResFonts);
-							lores_fonts_size = sizeof(Fonts::KCHIP8::LoResFonts);
-							break;
+							case LoResFontStyle::VIP:
+							{
+								lores_fonts = reinterpret_cast<const unsigned char *>(Fonts::VIP::LoResFonts);
+								lores_fonts_size = sizeof(Fonts::VIP::LoResFonts);
+								break;
+							}
+							case LoResFontStyle::SuperCHIP:
+							{
+								lores_fonts = reinterpret_cast<const unsigned char *>(Fonts::SuperCHIP::LoResFonts);
+								lores_fonts_size = sizeof(Fonts::SuperCHIP::LoResFonts);
+								break;
+							}
+							case LoResFontStyle::KCHIP8:
+							{
+								lores_fonts = reinterpret_cast<const unsigned char *>(Fonts::KCHIP8::LoResFonts);
+								lores_fonts_size = sizeof(Fonts::KCHIP8::LoResFonts);
+								break;
+							}
 						}
 					}
-					switch (CurrentHiResFontStyle)
+					else
 					{
-						case HiResFontStyle::SuperCHIP:
+						Fonts::FontStyle<4, 5> &CurrentLoResFontStyle = LoResFontStyleList[FontSettingsMenu.LoResFontStyle.current_option];
+						lores_fonts = CurrentLoResFontStyle.GetFontStyleData();
+						lores_fonts_size = CurrentLoResFontStyle.GetFontStyleDataSize();
+					}
+					if (HiResFontStyleList.size() == 0)
+					{
+						switch (CurrentHiResFontStyle)
 						{
-							hires_fonts = reinterpret_cast<const unsigned char *>(Fonts::SuperCHIP::HiResFonts);
-							hires_fonts_size = sizeof(Fonts::SuperCHIP::HiResFonts);
-							break;
+							case HiResFontStyle::SuperCHIP:
+							{
+								hires_fonts = reinterpret_cast<const unsigned char *>(Fonts::SuperCHIP::HiResFonts);
+								hires_fonts_size = sizeof(Fonts::SuperCHIP::HiResFonts);
+								break;
+							}
+							case HiResFontStyle::Octo:
+							{
+								hires_fonts = reinterpret_cast<const unsigned char *>(Fonts::Octo::HiResFonts);
+								hires_fonts_size = sizeof(Fonts::Octo::HiResFonts);
+								break;
+							}
+							case HiResFontStyle::KCHIP8:
+							{
+								hires_fonts = reinterpret_cast<const unsigned char *>(Fonts::KCHIP8::HiResFonts);
+								hires_fonts_size = sizeof(Fonts::KCHIP8::HiResFonts);
+								break;
+							}
 						}
-						case HiResFontStyle::Octo:
-						{
-							hires_fonts = reinterpret_cast<const unsigned char *>(Fonts::Octo::HiResFonts);
-							hires_fonts_size = sizeof(Fonts::Octo::HiResFonts);
-							break;
-						}
-						case HiResFontStyle::KCHIP8:
-						{
-							hires_fonts = reinterpret_cast<const unsigned char *>(Fonts::KCHIP8::HiResFonts);
-							hires_fonts_size = sizeof(Fonts::KCHIP8::HiResFonts);
-							break;
-						}
+					}
+					else
+					{
+						Fonts::FontStyle<8, 10> &CurrentHiResFontStyle = HiResFontStyleList[FontSettingsMenu.HiResFontStyle.current_option];
+						hires_fonts = CurrentHiResFontStyle.GetFontStyleData();
+						hires_fonts_size = CurrentHiResFontStyle.GetFontStyleDataSize();
 					}
 					CurrentMachine->CopyDataToInterpreterMemory(lores_fonts, 0x000, lores_fonts_size);
 					CurrentMachine->CopyDataToInterpreterMemory(hires_fonts, 0x050, hires_fonts_size);
@@ -279,47 +307,65 @@ Hyper_BandCHIP::Application::Application() : MainWindow(nullptr), MainRenderer(n
 					const unsigned char *hires_fonts = nullptr;
 					size_t lores_fonts_size = 0;
 					size_t hires_fonts_size = 0;
-					switch (CurrentLoResFontStyle)
+					if (LoResFontStyleList.size() == 0)
 					{
-						case LoResFontStyle::VIP:
+						switch (CurrentLoResFontStyle)
 						{
-							lores_fonts = reinterpret_cast<const unsigned char *>(Fonts::VIP::LoResFonts);
-							lores_fonts_size = sizeof(Fonts::VIP::LoResFonts);
-							break;
-						}
-						case LoResFontStyle::SuperCHIP:
-						{
-							lores_fonts = reinterpret_cast<const unsigned char *>(Fonts::SuperCHIP::LoResFonts);
-							lores_fonts_size = sizeof(Fonts::SuperCHIP::LoResFonts);
-							break;
-						}
-						case LoResFontStyle::KCHIP8:
-						{
-							lores_fonts = reinterpret_cast<const unsigned char *>(Fonts::KCHIP8::LoResFonts);
-							lores_fonts_size = sizeof(Fonts::KCHIP8::LoResFonts);
-							break;
+							case LoResFontStyle::VIP:
+							{
+								lores_fonts = reinterpret_cast<const unsigned char *>(Fonts::VIP::LoResFonts);
+								lores_fonts_size = sizeof(Fonts::VIP::LoResFonts);
+								break;
+							}
+							case LoResFontStyle::SuperCHIP:
+							{
+								lores_fonts = reinterpret_cast<const unsigned char *>(Fonts::SuperCHIP::LoResFonts);
+								lores_fonts_size = sizeof(Fonts::SuperCHIP::LoResFonts);
+								break;
+							}
+							case LoResFontStyle::KCHIP8:
+							{
+								lores_fonts = reinterpret_cast<const unsigned char *>(Fonts::KCHIP8::LoResFonts);
+								lores_fonts_size = sizeof(Fonts::KCHIP8::LoResFonts);
+								break;
+							}
 						}
 					}
-					switch (CurrentHiResFontStyle)
+					else
 					{
-						case HiResFontStyle::SuperCHIP:
+						Fonts::FontStyle<4, 5> &CurrentLoResFontStyle = LoResFontStyleList[FontSettingsMenu.LoResFontStyle.current_option];
+						lores_fonts = CurrentLoResFontStyle.GetFontStyleData();
+						lores_fonts_size = CurrentLoResFontStyle.GetFontStyleDataSize();
+					}
+					if (HiResFontStyleList.size() == 0)
+					{
+						switch (CurrentHiResFontStyle)
 						{
-							hires_fonts = reinterpret_cast<const unsigned char *>(Fonts::SuperCHIP::HiResFonts);
-							hires_fonts_size = sizeof(Fonts::SuperCHIP::HiResFonts);
-							break;
+							case HiResFontStyle::SuperCHIP:
+							{
+								hires_fonts = reinterpret_cast<const unsigned char *>(Fonts::SuperCHIP::HiResFonts);
+								hires_fonts_size = sizeof(Fonts::SuperCHIP::HiResFonts);
+								break;
+							}
+							case HiResFontStyle::Octo:
+							{
+								hires_fonts = reinterpret_cast<const unsigned char *>(Fonts::Octo::HiResFonts);
+								hires_fonts_size = sizeof(Fonts::Octo::HiResFonts);
+								break;
+							}
+							case HiResFontStyle::KCHIP8:
+							{
+								hires_fonts = reinterpret_cast<const unsigned char *>(Fonts::KCHIP8::HiResFonts);
+								hires_fonts_size = sizeof(Fonts::KCHIP8::HiResFonts);
+								break;
+							}
 						}
-						case HiResFontStyle::Octo:
-						{
-							hires_fonts = reinterpret_cast<const unsigned char *>(Fonts::Octo::HiResFonts);
-							hires_fonts_size = sizeof(Fonts::Octo::HiResFonts);
-							break;
-						}
-						case HiResFontStyle::KCHIP8:
-						{
-							hires_fonts = reinterpret_cast<const unsigned char *>(Fonts::KCHIP8::HiResFonts);
-							hires_fonts_size = sizeof(Fonts::KCHIP8::HiResFonts);
-							break;
-						}
+					}
+					else
+					{
+						Fonts::FontStyle<8, 10> &CurrentHiResFontStyle = HiResFontStyleList[FontSettingsMenu.HiResFontStyle.current_option];
+						hires_fonts = CurrentHiResFontStyle.GetFontStyleData();
+						hires_fonts_size = CurrentHiResFontStyle.GetFontStyleDataSize();
 					}
 					CurrentMachine->CopyDataToInterpreterMemory(lores_fonts, 0x000, lores_fonts_size);
 					CurrentMachine->CopyDataToInterpreterMemory(hires_fonts, 0x050, hires_fonts_size);
@@ -374,47 +420,65 @@ Hyper_BandCHIP::Application::Application() : MainWindow(nullptr), MainRenderer(n
 					const unsigned char *hires_fonts = nullptr;
 					size_t lores_fonts_size = 0;
 					size_t hires_fonts_size = 0;
-					switch (CurrentLoResFontStyle)
+					if (LoResFontStyleList.size() == 0)
 					{
-						case LoResFontStyle::VIP:
+						switch (CurrentLoResFontStyle)
 						{
-							lores_fonts = reinterpret_cast<const unsigned char *>(Fonts::VIP::LoResFonts);
-							lores_fonts_size = sizeof(Fonts::VIP::LoResFonts);
-							break;
-						}
-						case LoResFontStyle::SuperCHIP:
-						{
-							lores_fonts = reinterpret_cast<const unsigned char *>(Fonts::SuperCHIP::LoResFonts);
-							lores_fonts_size = sizeof(Fonts::SuperCHIP::LoResFonts);
-							break;
-						}
-						case LoResFontStyle::KCHIP8:
-						{
-							lores_fonts = reinterpret_cast<const unsigned char *>(Fonts::KCHIP8::LoResFonts);
-							lores_fonts_size = sizeof(Fonts::KCHIP8::LoResFonts);
-							break;
+							case LoResFontStyle::VIP:
+							{
+								lores_fonts = reinterpret_cast<const unsigned char *>(Fonts::VIP::LoResFonts);
+								lores_fonts_size = sizeof(Fonts::VIP::LoResFonts);
+								break;
+							}
+							case LoResFontStyle::SuperCHIP:
+							{
+								lores_fonts = reinterpret_cast<const unsigned char *>(Fonts::SuperCHIP::LoResFonts);
+								lores_fonts_size = sizeof(Fonts::SuperCHIP::LoResFonts);
+								break;
+							}
+							case LoResFontStyle::KCHIP8:
+							{
+								lores_fonts = reinterpret_cast<const unsigned char *>(Fonts::KCHIP8::LoResFonts);
+								lores_fonts_size = sizeof(Fonts::KCHIP8::LoResFonts);
+								break;
+							}
 						}
 					}
-					switch (CurrentHiResFontStyle)
+					else
 					{
-						case HiResFontStyle::SuperCHIP:
+						Fonts::FontStyle<4, 5> &CurrentLoResFontStyle = LoResFontStyleList[FontSettingsMenu.LoResFontStyle.current_option];
+						lores_fonts = CurrentLoResFontStyle.GetFontStyleData();
+						lores_fonts_size = CurrentLoResFontStyle.GetFontStyleDataSize();
+					}
+					if (HiResFontStyleList.size() == 0)
+					{
+						switch (CurrentHiResFontStyle)
 						{
-							hires_fonts = reinterpret_cast<const unsigned char *>(Fonts::SuperCHIP::HiResFonts);
-							hires_fonts_size = sizeof(Fonts::SuperCHIP::HiResFonts);
-							break;
+							case HiResFontStyle::SuperCHIP:
+							{
+								hires_fonts = reinterpret_cast<const unsigned char *>(Fonts::SuperCHIP::HiResFonts);
+								hires_fonts_size = sizeof(Fonts::SuperCHIP::HiResFonts);
+								break;
+							}
+							case HiResFontStyle::Octo:
+							{
+								hires_fonts = reinterpret_cast<const unsigned char *>(Fonts::Octo::HiResFonts);
+								hires_fonts_size = sizeof(Fonts::Octo::HiResFonts);
+								break;
+							}
+							case HiResFontStyle::KCHIP8:
+							{
+								hires_fonts = reinterpret_cast<const unsigned char *>(Fonts::KCHIP8::HiResFonts);
+								hires_fonts_size = sizeof(Fonts::KCHIP8::HiResFonts);
+								break;
+							}
 						}
-						case HiResFontStyle::Octo:
-						{
-							hires_fonts = reinterpret_cast<const unsigned char *>(Fonts::Octo::HiResFonts);
-							hires_fonts_size = sizeof(Fonts::Octo::HiResFonts);
-							break;
-						}
-						case HiResFontStyle::KCHIP8:
-						{
-							hires_fonts = reinterpret_cast<const unsigned char *>(Fonts::KCHIP8::HiResFonts);
-							hires_fonts_size = sizeof(Fonts::KCHIP8::HiResFonts);
-							break;
-						}
+					}
+					else
+					{
+						Fonts::FontStyle<8, 10> &CurrentHiResFontStyle = HiResFontStyleList[FontSettingsMenu.HiResFontStyle.current_option];
+						hires_fonts = CurrentHiResFontStyle.GetFontStyleData();
+						hires_fonts_size = CurrentHiResFontStyle.GetFontStyleDataSize();
 					}
 					CurrentMachine->CopyDataToInterpreterMemory(lores_fonts, 0x000, lores_fonts_size);
 					CurrentMachine->CopyDataToInterpreterMemory(hires_fonts, 0x050, hires_fonts_size);
@@ -562,7 +626,7 @@ Hyper_BandCHIP::Application::Application() : MainWindow(nullptr), MainRenderer(n
 													{
 														case MachineCore::BandCHIP_CHIP8:
 														{
-															BehaviorsMenu.CurrentSelectableItemId = (BehaviorsMenu.CurrentSelectableItemId == 0) ? 2 : BehaviorsMenu.CurrentSelectableItemId - 1;
+															BehaviorsMenu.CurrentSelectableItemId = (BehaviorsMenu.CurrentSelectableItemId == 0) ? 3 : BehaviorsMenu.CurrentSelectableItemId - 1;
 															break;
 														}
 														case MachineCore::BandCHIP_SuperCHIP:
@@ -703,7 +767,7 @@ Hyper_BandCHIP::Application::Application() : MainWindow(nullptr), MainRenderer(n
 													{
 														case MachineCore::BandCHIP_CHIP8:
 														{
-															BehaviorsMenu.CurrentSelectableItemId = (BehaviorsMenu.CurrentSelectableItemId == 2) ? 0 : BehaviorsMenu.CurrentSelectableItemId + 1;
+															BehaviorsMenu.CurrentSelectableItemId = (BehaviorsMenu.CurrentSelectableItemId == 3) ? 0 : BehaviorsMenu.CurrentSelectableItemId + 1;
 															break;
 														}
 														case MachineCore::BandCHIP_SuperCHIP:
@@ -821,6 +885,7 @@ Hyper_BandCHIP::Application::Application() : MainWindow(nullptr), MainRenderer(n
 																	ConfigurationMenu.Core.current_option = 0;
 																	BehaviorsMenu.CHIP48_Shift.toggle = false;
 																	BehaviorsMenu.CHIP48_LoadStore.toggle = false;
+																	BehaviorsMenu.VIP_Display_Interrupt.toggle = false;
 																	break;
 																}
 																case MachineCore::BandCHIP_XOCHIP:
@@ -900,6 +965,11 @@ Hyper_BandCHIP::Application::Application() : MainWindow(nullptr), MainRenderer(n
 																case 1:
 																{
 																	BehaviorsMenu.CHIP48_LoadStore.toggle = (BehaviorsMenu.CHIP48_LoadStore.toggle) ? false : true;
+																	break;
+																}
+																case 2:
+																{
+																	BehaviorsMenu.VIP_Display_Interrupt.toggle = (BehaviorsMenu.VIP_Display_Interrupt.toggle) ? false : true;
 																	break;
 																}
 															}
@@ -1014,52 +1084,66 @@ Hyper_BandCHIP::Application::Application() : MainWindow(nullptr), MainRenderer(n
 													{
 														case FontSettingsMenuEvent::ChangeLoResFont:
 														{
-															switch (CurrentLoResFontStyle)
+															if (LoResFontStyleList.size() == 0)
 															{
-																case LoResFontStyle::VIP:
+																switch (CurrentLoResFontStyle)
 																{
-																	CurrentLoResFontStyle = LoResFontStyle::KCHIP8;
-																	FontSettingsMenu.LoResFontStyle.current_option = 2;
-																	break;
+																	case LoResFontStyle::VIP:
+																	{
+																		CurrentLoResFontStyle = LoResFontStyle::KCHIP8;
+																		FontSettingsMenu.LoResFontStyle.current_option = 2;
+																		break;
+																	}
+																	case LoResFontStyle::SuperCHIP:
+																	{
+																		CurrentLoResFontStyle = LoResFontStyle::VIP;
+																		FontSettingsMenu.LoResFontStyle.current_option = 0;
+																		break;
+																	}
+																	case LoResFontStyle::KCHIP8:
+																	{
+																		CurrentLoResFontStyle = LoResFontStyle::SuperCHIP;
+																		FontSettingsMenu.LoResFontStyle.current_option = 1;
+																		break;
+																	}
 																}
-																case LoResFontStyle::SuperCHIP:
-																{
-																	CurrentLoResFontStyle = LoResFontStyle::VIP;
-																	FontSettingsMenu.LoResFontStyle.current_option = 0;
-																	break;
-																}
-																case LoResFontStyle::KCHIP8:
-																{
-																	CurrentLoResFontStyle = LoResFontStyle::SuperCHIP;
-																	FontSettingsMenu.LoResFontStyle.current_option = 1;
-																	break;
-																}
+															}
+															else
+															{
+																FontSettingsMenu.LoResFontStyle.current_option = (FontSettingsMenu.LoResFontStyle.current_option == 0) ? LoResFontStyleList.size() - 1 : FontSettingsMenu.LoResFontStyle.current_option - 1;
 															}
 															ShowMenu(CurrentMenu);
 															break;
 														}
 														case FontSettingsMenuEvent::ChangeHiResFont:
 														{
-															switch (CurrentHiResFontStyle)
+															if (HiResFontStyleList.size() == 0)
 															{
-																case HiResFontStyle::SuperCHIP:
+																switch (CurrentHiResFontStyle)
 																{
-																	CurrentHiResFontStyle = HiResFontStyle::KCHIP8;
-																	FontSettingsMenu.HiResFontStyle.current_option = 2;
-																	break;
+																	case HiResFontStyle::SuperCHIP:
+																	{
+																		CurrentHiResFontStyle = HiResFontStyle::KCHIP8;
+																		FontSettingsMenu.HiResFontStyle.current_option = 2;
+																		break;
+																	}
+																	case HiResFontStyle::Octo:
+																	{
+																		CurrentHiResFontStyle = HiResFontStyle::SuperCHIP;
+																		FontSettingsMenu.HiResFontStyle.current_option = 0;
+																		break;
+																	}
+																	case HiResFontStyle::KCHIP8:
+																	{
+																		CurrentHiResFontStyle = HiResFontStyle::Octo;
+																		FontSettingsMenu.HiResFontStyle.current_option = 1;
+																		break;
+																	}
 																}
-																case HiResFontStyle::Octo:
-																{
-																	CurrentHiResFontStyle = HiResFontStyle::SuperCHIP;
-																	FontSettingsMenu.HiResFontStyle.current_option = 0;
-																	break;
-																}
-																case HiResFontStyle::KCHIP8:
-																{
-																	CurrentHiResFontStyle = HiResFontStyle::Octo;
-																	FontSettingsMenu.HiResFontStyle.current_option = 1;
-																	break;
-																}
+															}
+															else
+															{
+																FontSettingsMenu.HiResFontStyle.current_option = (FontSettingsMenu.HiResFontStyle.current_option == 0) ? HiResFontStyleList.size() - 1 : FontSettingsMenu.HiResFontStyle.current_option - 1;
 															}
 															ShowMenu(CurrentMenu);
 															break;
@@ -1170,6 +1254,7 @@ Hyper_BandCHIP::Application::Application() : MainWindow(nullptr), MainRenderer(n
 																	ConfigurationMenu.Core.current_option = 0;
 																	BehaviorsMenu.CHIP48_Shift.toggle = false;
 																	BehaviorsMenu.CHIP48_LoadStore.toggle = false;
+																	BehaviorsMenu.VIP_Display_Interrupt.toggle = false;
 																	break;
 																}
 															}
@@ -1233,6 +1318,11 @@ Hyper_BandCHIP::Application::Application() : MainWindow(nullptr), MainRenderer(n
 																case 1:
 																{
 																	BehaviorsMenu.CHIP48_LoadStore.toggle = (BehaviorsMenu.CHIP48_LoadStore.toggle) ? false : true;
+																	break;
+																}
+																case 2:
+																{
+																	BehaviorsMenu.VIP_Display_Interrupt.toggle = (BehaviorsMenu.VIP_Display_Interrupt.toggle) ? false : true;
 																	break;
 																}
 															}
@@ -1347,52 +1437,66 @@ Hyper_BandCHIP::Application::Application() : MainWindow(nullptr), MainRenderer(n
 													{
 														case FontSettingsMenuEvent::ChangeLoResFont:
 														{
-															switch (CurrentLoResFontStyle)
+															if (LoResFontStyleList.size() == 0)
 															{
-																case LoResFontStyle::VIP:
+																switch (CurrentLoResFontStyle)
 																{
-																	CurrentLoResFontStyle = LoResFontStyle::SuperCHIP;
-																	FontSettingsMenu.LoResFontStyle.current_option = 1;
-																	break;
+																	case LoResFontStyle::VIP:
+																	{
+																		CurrentLoResFontStyle = LoResFontStyle::SuperCHIP;
+																		FontSettingsMenu.LoResFontStyle.current_option = 1;
+																		break;
+																	}
+																	case LoResFontStyle::SuperCHIP:
+																	{
+																		CurrentLoResFontStyle = LoResFontStyle::KCHIP8;
+																		FontSettingsMenu.LoResFontStyle.current_option = 2;
+																		break;
+																	}
+																	case LoResFontStyle::KCHIP8:
+																	{
+																		CurrentLoResFontStyle = LoResFontStyle::VIP;
+																		FontSettingsMenu.LoResFontStyle.current_option = 0;
+																		break;
+																	}
 																}
-																case LoResFontStyle::SuperCHIP:
-																{
-																	CurrentLoResFontStyle = LoResFontStyle::KCHIP8;
-																	FontSettingsMenu.LoResFontStyle.current_option = 2;
-																	break;
-																}
-																case LoResFontStyle::KCHIP8:
-																{
-																	CurrentLoResFontStyle = LoResFontStyle::VIP;
-																	FontSettingsMenu.LoResFontStyle.current_option = 0;
-																	break;
-																}
+															}
+															else
+															{
+																FontSettingsMenu.LoResFontStyle.current_option = (FontSettingsMenu.LoResFontStyle.current_option == LoResFontStyleList.size() - 1) ? 0 : FontSettingsMenu.LoResFontStyle.current_option + 1;
 															}
 															ShowMenu(CurrentMenu);
 															break;
 														}
 														case FontSettingsMenuEvent::ChangeHiResFont:
 														{
-															switch (CurrentHiResFontStyle)
+															if (HiResFontStyleList.size() == 0)
 															{
-																case HiResFontStyle::SuperCHIP:
+																switch (CurrentHiResFontStyle)
 																{
-																	CurrentHiResFontStyle = HiResFontStyle::Octo;
-																	FontSettingsMenu.HiResFontStyle.current_option = 1;
-																	break;
+																	case HiResFontStyle::SuperCHIP:
+																	{
+																		CurrentHiResFontStyle = HiResFontStyle::Octo;
+																		FontSettingsMenu.HiResFontStyle.current_option = 1;
+																		break;
+																	}
+																	case HiResFontStyle::Octo:
+																	{
+																		CurrentHiResFontStyle = HiResFontStyle::KCHIP8;
+																		FontSettingsMenu.HiResFontStyle.current_option = 2;
+																		break;
+																	}
+																	case HiResFontStyle::KCHIP8:
+																	{
+																		CurrentHiResFontStyle = HiResFontStyle::SuperCHIP;
+																		FontSettingsMenu.HiResFontStyle.current_option = 0;
+																		break;
+																	}
 																}
-																case HiResFontStyle::Octo:
-																{
-																	CurrentHiResFontStyle = HiResFontStyle::KCHIP8;
-																	FontSettingsMenu.HiResFontStyle.current_option = 2;
-																	break;
-																}
-																case HiResFontStyle::KCHIP8:
-																{
-																	CurrentHiResFontStyle = HiResFontStyle::SuperCHIP;
-																	FontSettingsMenu.HiResFontStyle.current_option = 0;
-																	break;
-																}
+															}
+															else
+															{
+																FontSettingsMenu.HiResFontStyle.current_option = (FontSettingsMenu.HiResFontStyle.current_option == HiResFontStyleList.size() - 1) ? 0 : FontSettingsMenu.HiResFontStyle.current_option + 1;
 															}
 															ShowMenu(CurrentMenu);
 															break;
@@ -1620,6 +1724,7 @@ Hyper_BandCHIP::Application::Application() : MainWindow(nullptr), MainRenderer(n
 																	ConfigurationMenu.Core.current_option = 0;
 																	BehaviorsMenu.CHIP48_Shift.toggle = false;
 																	BehaviorsMenu.CHIP48_LoadStore.toggle = false;
+																	BehaviorsMenu.VIP_Display_Interrupt.toggle = false;
 																	break;
 																}
 															}
@@ -1747,6 +1852,11 @@ Hyper_BandCHIP::Application::Application() : MainWindow(nullptr), MainRenderer(n
 																}
 																case 2:
 																{
+																	BehaviorsMenu.VIP_Display_Interrupt.toggle = (BehaviorsMenu.VIP_Display_Interrupt.toggle) ? false : true;
+																	break;
+																}
+																case 3:
+																{
 																	CurrentMenu = MenuDisplay::Configuration;
 																	break;
 																}
@@ -1868,52 +1978,66 @@ Hyper_BandCHIP::Application::Application() : MainWindow(nullptr), MainRenderer(n
 													{
 														case FontSettingsMenuEvent::ChangeLoResFont:
 														{
-															switch (CurrentLoResFontStyle)
+															if (LoResFontStyleList.size() == 0)
 															{
-																case LoResFontStyle::VIP:
+																switch (CurrentLoResFontStyle)
 																{
-																	CurrentLoResFontStyle = LoResFontStyle::SuperCHIP;
-																	FontSettingsMenu.LoResFontStyle.current_option = 1;
-																	break;
+																	case LoResFontStyle::VIP:
+																	{
+																		CurrentLoResFontStyle = LoResFontStyle::SuperCHIP;
+																		FontSettingsMenu.LoResFontStyle.current_option = 1;
+																		break;
+																	}
+																	case LoResFontStyle::SuperCHIP:
+																	{
+																		CurrentLoResFontStyle = LoResFontStyle::KCHIP8;
+																		FontSettingsMenu.LoResFontStyle.current_option = 2;
+																		break;
+																	}
+																	case LoResFontStyle::KCHIP8:
+																	{
+																		CurrentLoResFontStyle = LoResFontStyle::VIP;
+																		FontSettingsMenu.LoResFontStyle.current_option = 0;
+																		break;
+																	}
 																}
-																case LoResFontStyle::SuperCHIP:
-																{
-																	CurrentLoResFontStyle = LoResFontStyle::KCHIP8;
-																	FontSettingsMenu.LoResFontStyle.current_option = 2;
-																	break;
-																}
-																case LoResFontStyle::KCHIP8:
-																{
-																	CurrentLoResFontStyle = LoResFontStyle::VIP;
-																	FontSettingsMenu.LoResFontStyle.current_option = 0;
-																	break;
-																}
+															}
+															else
+															{
+																FontSettingsMenu.LoResFontStyle.current_option = (FontSettingsMenu.LoResFontStyle.current_option == LoResFontStyleList.size() - 1) ? 0 : FontSettingsMenu.LoResFontStyle.current_option + 1;
 															}
 															ShowMenu(CurrentMenu);
 															break;
 														}
 														case FontSettingsMenuEvent::ChangeHiResFont:
 														{
-															switch (CurrentHiResFontStyle)
+															if (HiResFontStyleList.size() == 0)
 															{
-																case HiResFontStyle::SuperCHIP:
+																switch (CurrentHiResFontStyle)
 																{
-																	CurrentHiResFontStyle = HiResFontStyle::Octo;
-																	FontSettingsMenu.HiResFontStyle.current_option = 1;
-																	break;
+																	case HiResFontStyle::SuperCHIP:
+																	{
+																		CurrentHiResFontStyle = HiResFontStyle::Octo;
+																		FontSettingsMenu.HiResFontStyle.current_option = 1;
+																		break;
+																	}
+																	case HiResFontStyle::Octo:
+																	{
+																		CurrentHiResFontStyle = HiResFontStyle::KCHIP8;
+																		FontSettingsMenu.HiResFontStyle.current_option = 2;
+																		break;
+																	}
+																	case HiResFontStyle::KCHIP8:
+																	{
+																		CurrentHiResFontStyle = HiResFontStyle::SuperCHIP;
+																		FontSettingsMenu.HiResFontStyle.current_option = 0;
+																		break;
+																	}
 																}
-																case HiResFontStyle::Octo:
-																{
-																	CurrentHiResFontStyle = HiResFontStyle::KCHIP8;
-																	FontSettingsMenu.HiResFontStyle.current_option = 2;
-																	break;
-																}
-																case HiResFontStyle::KCHIP8:
-																{
-																	CurrentHiResFontStyle = HiResFontStyle::SuperCHIP;
-																	FontSettingsMenu.HiResFontStyle.current_option = 0;
-																	break;
-																}
+															}
+															else
+															{
+																FontSettingsMenu.HiResFontStyle.current_option = (FontSettingsMenu.HiResFontStyle.current_option == HiResFontStyleList.size() - 1) ? 0 : FontSettingsMenu.HiResFontStyle.current_option + 1;
 															}
 															ShowMenu(CurrentMenu);
 															break;
@@ -2466,7 +2590,8 @@ void Hyper_BandCHIP::Application::ShowMenu(Hyper_BandCHIP::MenuDisplay Menu)
 				{
 					DisplayItem(*MainRenderer, BehaviorsMenu.CHIP48_Shift, (BehaviorsMenu.CurrentSelectableItemId == 0) ? 2 : 1);
 					DisplayItem(*MainRenderer, BehaviorsMenu.CHIP48_LoadStore, (BehaviorsMenu.CurrentSelectableItemId == 1) ? 2 : 1);
-					DisplayItem(*MainRenderer, BehaviorsMenu.ReturnToConfiguration, (BehaviorsMenu.CurrentSelectableItemId == 2) ? 2 : 1);
+					DisplayItem(*MainRenderer, BehaviorsMenu.VIP_Display_Interrupt, (BehaviorsMenu.CurrentSelectableItemId == 2) ? 2 : 1);
+					DisplayItem(*MainRenderer, BehaviorsMenu.ReturnToConfiguration, (BehaviorsMenu.CurrentSelectableItemId == 3) ? 2 : 1);
 					break;
 				}
 				case MachineCore::BandCHIP_SuperCHIP:
@@ -2548,6 +2673,58 @@ void Hyper_BandCHIP::Application::ShowMenu(Hyper_BandCHIP::MenuDisplay Menu)
 				DisplayItem(*MainRenderer, ErrorDisplay.SoundTimerValue[i], 1);
 			}
 			break;
+		}
+	}
+}
+
+void Hyper_BandCHIP::Application::LoadFontStyles()
+{
+	std::filesystem::path lores_dir("fonts/lores");
+	std::filesystem::path hires_dir("fonts/hires");
+	for (auto i : std::filesystem::directory_iterator(lores_dir))
+	{
+		std::filesystem::path c_path = i.path();
+		if (std::filesystem::is_regular_file(c_path))
+		{
+			if (c_path.extension() == ".mbft")
+			{
+				Fonts::FontStyle<4, 5> CurrentLoResFontStyle(c_path.string());
+				if (CurrentLoResFontStyle.IsLoaded())
+				{
+					LoResFontStyleList.push_back(CurrentLoResFontStyle);
+				}
+			}
+		}
+	}
+	if (LoResFontStyleList.size() > 0)
+	{
+		FontSettingsMenu.LoResFontStyle.Options = {};
+		for (auto i : LoResFontStyleList)
+		{
+			FontSettingsMenu.LoResFontStyle.Options.push_back(i.GetName());
+		}
+	}
+	for (auto i : std::filesystem::directory_iterator(hires_dir))
+	{
+		std::filesystem::path c_path = i.path();
+		if (std::filesystem::is_regular_file(c_path))
+		{
+			if (c_path.extension() == ".mbft")
+			{
+				Fonts::FontStyle<8, 10> CurrentHiResFontStyle(c_path.string());
+				if (CurrentHiResFontStyle.IsLoaded())
+				{
+					HiResFontStyleList.push_back(CurrentHiResFontStyle);
+				}
+			}
+		}
+	}
+	if (HiResFontStyleList.size() > 0)
+	{
+		FontSettingsMenu.HiResFontStyle.Options = {};
+		for (auto i : HiResFontStyleList)
+		{
+			FontSettingsMenu.HiResFontStyle.Options.push_back(i.GetName());
 		}
 	}
 }
