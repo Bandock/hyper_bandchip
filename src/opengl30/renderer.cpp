@@ -1,4 +1,4 @@
-#include "renderer_opengles3.h"
+#include "renderer_opengl30.h"
 #include <iostream>
 
 using std::cout;
@@ -6,7 +6,8 @@ using std::endl;
 
 Hyper_BandCHIP::Renderer::Renderer(SDL_Window *Window) : Window(Window), VertexShaderId(0), FragmentShaderId(0), MenuFragmentShaderId(0), MainProgramId(0), MenuProgramId(0), VAOId(0), VBOId(0), IBOId(0), DisplayControlUBOId(0), FontControlUBOId(0), DisplayTextureId(0), MenuFBOId(0), MenuTextureId(0), MenuFontTextureId(0), CurrentBoundTextureId(0), CurrentFramebuffer(0), CurrentProgramId(0), display_width(0), display_height(0), CurrentDisplayMode(DisplayMode::Menu), fail(false)
 {
-	const char *VertexShaderCode = R"(#version 300 es
+	const char *VertexShaderCode = R"(#version 130
+#extension GL_ARB_explicit_attrib_location : require
 
 layout(location = 0) in vec4 pos;
 layout(location = 1) in vec2 tex;
@@ -18,11 +19,9 @@ void main()
 	gl_Position = pos;
 	outTex = tex;
 })";
-	const char *FragmentShaderCode = R"(#version 300 es
-
-precision highp float;
-precision highp int;
-precision highp usampler2D;
+	const char *FragmentShaderCode = R"(#version 130
+#extension GL_ARB_explicit_attrib_location : require
+#extension GL_ARB_uniform_buffer_object : require
 
 layout(std140) uniform DisplayControl
 {
@@ -41,10 +40,8 @@ void main()
 	outColor = Palette[color_data.x];
 })";
 	const char *MenuFragmentShaderCode = R"(#version 300 es
-
-precision highp int;
-precision highp float;
-precision highp usampler2D;
+#extension GL_ARB_explicit_attrib_location : require
+#extension GL_ARB_uniform_buffer_object : require
 
 layout(std140) uniform FontControl
 {
@@ -59,12 +56,12 @@ layout(location = 0) out uint outColorIndex;
 void main()
 {
 	ivec2 texDim = textureSize(CurrentTexture, 0);
-	uvec4 color_data = texelFetch(CurrentTexture, ivec2(int(outTex.x * float(texDim.x)), int((outTex.y) * float(texDim.y))), 0);
+	uvec4 color_data = texelFetch(CurrentTexture, ivec2(int(outTex.x * float(texDim.y)), int((outTex.y) * float(texDim.y))), 0);
 	outColorIndex = (color_data.x == uint(1)) ? FontColor : uint(0);
 })";
 	vertices[0] = {{ -1.0f, 1.0f, 0.0f, 1.0f }, { 0.0f, 1.0f }};
 	vertices[1] = {{ 1.0f, 1.0f, 0.0f, 1.0f }, { 1.0f, 1.0f }};
-	vertices[2] = {{ -1.0f, -1.0f, 0.0f, 1.0f }, { 0.0f, 0.0f }};
+	vertices[2] = {{ -1.0f, -1.0f, 0.0f, 1.0f }, { 1.0f, 0.0f }};
 	vertices[3] = {{ 1.0f, -1.0f, 0.0f, 1.0f }, { 1.0f, 0.0f }};
 	indices[0] = 0;
 	indices[1] = 2;
@@ -92,7 +89,20 @@ void main()
 	GLContext = SDL_GL_CreateContext(this->Window);
 	if (GLContext == nullptr)
 	{
-		cout << "Unable to create OpenGL ES 3.0 context.\n";
+		cout << "Unable to create OpenGL 3.0 context.\n";
+		fail = true;
+		return;
+	}
+	GLenum err = glewInit();
+	if (err != GLEW_OK)
+	{
+		cout << "GLEW Initialization failed." << endl;
+		fail = true;
+		return;
+	}
+	if (!GLEW_ARB_texture_storage)
+	{
+		cout << "Texture storage functionality is unsupported on this platform." << endl;
 		fail = true;
 		return;
 	}
@@ -102,7 +112,7 @@ void main()
 	glShaderSource(VertexShaderId, 1, &VertexShaderCode, nullptr);
 	glShaderSource(FragmentShaderId, 1, &FragmentShaderCode, nullptr);
 	glShaderSource(MenuFragmentShaderId, 1, &MenuFragmentShaderCode, nullptr);
-	GLint compile_status = 0, info_log_len = 0;
+	GLint compile_status = 0, info_log_len = 0 ;
 	glCompileShader(VertexShaderId);
 	glGetShaderiv(VertexShaderId, GL_COMPILE_STATUS, &compile_status);
 	if (compile_status == GL_FALSE)
@@ -194,8 +204,6 @@ void main()
 	glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), reinterpret_cast<void *>(sizeof(float) * 4));
 	glEnableVertexAttribArray(0);
 	glEnableVertexAttribArray(1);
-	glGenTextures(1, &DisplayTextureId);
-	glGenTextures(1, &MenuFontTextureId);
 	glActiveTexture(GL_TEXTURE0);
 	glBindTexture(GL_TEXTURE_2D, MenuFontTextureId);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
@@ -219,7 +227,7 @@ void main()
 	CurrentProgramId = MainProgramId;
 	glEnable(GL_DEPTH_TEST);
 	glViewport(0, 0, 1280, 640);
-	glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+	glClearColor(0.0f, 0.0f,  0.0f, 1.0f);
 	SDL_GL_SetSwapInterval(0);
 }
 
@@ -251,12 +259,6 @@ Hyper_BandCHIP::Renderer::~Renderer()
 		glDeleteVertexArrays(1, &VAOId);
 		glDetachShader(MenuProgramId, VertexShaderId);
 		glDetachShader(MenuProgramId, MenuFragmentShaderId);
-		if (MenuProgramId != 0)
-		{
-			glDeleteProgram(MenuProgramId);
-		}
-		glDetachShader(MainProgramId, VertexShaderId);
-		glDetachShader(MainProgramId, FragmentShaderId);
 		if (MainProgramId != 0)
 		{
 			glDeleteProgram(MainProgramId);

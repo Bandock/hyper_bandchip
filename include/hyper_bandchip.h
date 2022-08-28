@@ -10,6 +10,7 @@
 #include "fonts.h"
 #include "menu.h"
 #include "machine.h"
+#include "cbf.h"
 
 namespace Hyper_BandCHIP
 {
@@ -25,9 +26,10 @@ namespace Hyper_BandCHIP
 	};
 
 	enum class OperationMode { Menu = 0, Emulator = 1 };
+	enum class ProgramType { Raw, CHIP8BinaryProgram };
 	enum class MenuDisplay {
-		Main, LoadProgram, Configuration, LoadProgramDisplay, CPUSettings, Behaviors, PaletteSettings, FontSettings, KeyboardRemapping,
-		LoadConfiguration, SaveConfiguration, ErrorDisplay
+		Main, LoadProgram, LoadCHIP8BinaryProgram, Configuration, LoadProgramDisplay, LoadCHIP8BinaryProgramDisplay, CPUSettings, Behaviors, PaletteSettings,
+		FontSettings, KeyboardRemapping, LoadConfiguration, SaveConfiguration, ErrorDisplay
 	};
 
 	enum class LoResFontStyle { VIP, SuperCHIP, KCHIP8 };
@@ -35,12 +37,14 @@ namespace Hyper_BandCHIP
 
 	enum class DirEntryType { Directory, File };
 
-	enum class MainMenuEvent { RunProgram, LoadProgram, Configuration, Exit };
+	enum class MainMenuEvent { RunProgram, LoadProgram, LoadCHIP8BinaryProgram, Configuration, Exit };
 	enum class LoadProgramMenuEvent { ChangeDirectory, Load };
+	enum class LoadCHIP8BinaryProgramMenuEvent { ChangeDirectory, Load };
 	enum class ConfigurationMenuEvent {
 		ChangeCore, CPUSettings, Behaviors, PaletteSettings, FontSettings, KeyboardRemapping, LoadConfiguration, ReturnToMainMenu
 	};
 	enum class LoadProgramDisplayMenuEvent { Ok };
+	enum class LoadCHIP8BinaryProgramDisplayMenuEvent { Ok };
 	enum class CPUSettingsMenuEvent { CommitChanges, ReturnToConfiguration };
 	enum class BehaviorMenuEvent { ReturnToConfiguration };
 	enum class PaletteSettingsMenuEvent { CommitChanges, ReturnToConfiguration };
@@ -51,14 +55,15 @@ namespace Hyper_BandCHIP
 
 	struct MainMenuData
 	{
-		const TextItem Title = { "Hyper BandCHIP V0.12", 220, 20, false };
+		const TextItem Title = { "Hyper BandCHIP V0.13", 220, 20, false };
 		const TextItem Author = { "By Joshua Moss", 250, 34, false };
 		StatusTextItem CurrentProgram = { "Current Program", 160, 60, "None", false };
 		StatusTextItem CurrentMachineStatus = { "Current Machine Status", 120, 74, "Non-Operational", false };
 		const ButtonItem RunProgram = { "Run Program", 200, 120, static_cast<unsigned int>(MainMenuEvent::RunProgram), false };
 		const ButtonItem LoadProgram = { "Load Program", 200, 134, static_cast<unsigned int>(MainMenuEvent::LoadProgram), false };
-		const ButtonItem Configuration = { "Configuration", 200, 148, static_cast<unsigned int>(MainMenuEvent::Configuration), false };
-		const ButtonItem Exit = { "Exit Hyper BandCHIP", 200, 162, static_cast<unsigned int>(MainMenuEvent::Exit), false };
+		const ButtonItem LoadCHIP8BinaryProgram = { "Load CHIP-8 Binary Program", 200, 148, static_cast<unsigned int>(MainMenuEvent::LoadCHIP8BinaryProgram), false };
+		const ButtonItem Configuration = { "Configuration", 200, 162, static_cast<unsigned int>(MainMenuEvent::Configuration), false };
+		const ButtonItem Exit = { "Exit Hyper BandCHIP", 200, 176, static_cast<unsigned int>(MainMenuEvent::Exit), false };
 		unsigned int CurrentSelectableItemId = 0;
 	};
 
@@ -71,6 +76,15 @@ namespace Hyper_BandCHIP
 	struct LoadProgramMenuData
 	{
 		const TextItem Title = { "Load Program", 250, 20, false };
+		DirectoryEntryData MenuEntry[16];
+		unsigned int CurrentSelectableItemId = 0;
+		unsigned int CurrentDirectoryCount = 1;
+		unsigned int StartEntry = 0;
+	};
+
+	struct LoadCHIP8BinaryProgramMenuData
+	{
+		const TextItem Title = { "Load CHIP-8 Binary Program", 190, 20, false };
 		DirectoryEntryData MenuEntry[16];
 		unsigned int CurrentSelectableItemId = 0;
 		unsigned int CurrentDirectoryCount = 1;
@@ -100,6 +114,16 @@ namespace Hyper_BandCHIP
 		ButtonItem Ok = { "Ok", 300, 180, static_cast<unsigned int>(LoadProgramDisplayMenuEvent::Ok), true };
 	};
 
+	struct LoadCHIP8BinaryProgramDisplayData
+	{
+		TextItem LoadingCHIP8BinaryProgram = { "Loading CHIP-8 Binary Program...", 170, 140, true };
+		StatusTextItem ProgramName { "Program Name", 20, 10, "", true };
+		StatusTextItem ProgramAuthor { "Program Author", 20, 24, "", true };
+		StatusTextItem Version { "Format Version", 20, 38, "0", true };
+		TextItem NotAValidCHIP8BinaryProgram = { "Not a valid CHIP-8 Binary Program.", 170, 140, true };
+		ButtonItem Ok = { "Ok", 300, 180, static_cast<unsigned int>(LoadCHIP8BinaryProgramDisplayMenuEvent::Ok), true };
+	};
+
 	struct CPUSettingsMenuData
 	{
 		const TextItem Title = { "CPU Settings", 266, 20, false };
@@ -118,7 +142,9 @@ namespace Hyper_BandCHIP
 		ToggleItem CHIP48_Shift = { "CHIP-48 Shift", 200, 60, false, false };
 		ToggleItem CHIP48_LoadStore = { "CHIP-48 Load/Store", 200, 74, false, false };
 		ToggleItem VIP_Display_Interrupt = { "VIP Display Interrupt", 200, 88, false, false };
-		MultiChoiceItem SuperCHIP_Version = { "SuperCHIP Version", 140, 60, 0xFFFFFFFF, 0, { "Fixed SuperCHIP V1.1", "SuperCHIP V1.0", "Original SuperCHIP V1.1" }, false };
+		ToggleItem VIP_Clipping = { "VIP Clipping", 200, 102, false, false };
+		ToggleItem VIP_VF_Reset = { "VIP VF Reset", 200, 116, false, false };
+		MultiChoiceItem SuperCHIP_Version = { "SuperCHIP Version", 140, 60, 0xFFFFFFFF, 0, { "Fixed SuperCHIP V1.1", "Original SuperCHIP V1.0", "SuperCHIP V1.0", "Original SuperCHIP V1.1" }, false };
 		ToggleItem SuperCHIP_Shift = { "SuperCHIP Shift", 200,60, false, false };
 		ToggleItem SuperCHIP_LoadStore = { "SuperCHIP Load/Store", 200, 74, false, false };
 		ToggleItem Octo_LoResSprite = { "Octo LoRes Sprite Mode", 200, 88, true, false };
@@ -243,6 +269,8 @@ namespace Hyper_BandCHIP
 			void ShowMenu(MenuDisplay Menu);
 		private:
 			void LoadFontStyles();
+			void ChangeDirectory(DirectoryEntryData &DirItem);
+			bool StartCHIP8BinaryProgram();
 
 			std::unique_ptr<SDL_Window, WindowDeleter> MainWindow;
 			std::unique_ptr<Renderer> MainRenderer;
@@ -251,6 +279,7 @@ namespace Hyper_BandCHIP
 			std::map<CHIP8Key, SDL_Scancode> CHIP8_KeyMap;
 			std::map<char, SDL_Scancode> Input_KeyMap;
 			OperationMode CurrentOperationMode;
+			ProgramType CurrentProgramType;
 			MachineCore CurrentMachineCore;
 			MenuDisplay CurrentMenu;
 			std::vector<Fonts::FontStyle<4, 5>> LoResFontStyleList;
@@ -259,8 +288,10 @@ namespace Hyper_BandCHIP
 			HiResFontStyle CurrentHiResFontStyle;
 			MainMenuData MainMenu;
 			LoadProgramMenuData LoadProgramMenu;
+			LoadCHIP8BinaryProgramMenuData LoadCHIP8BinaryProgramMenu;
 			ConfigurationMenuData ConfigurationMenu;
 			LoadProgramDisplayData LoadProgramDisplay;
+			LoadCHIP8BinaryProgramDisplayData LoadCHIP8BinaryProgramDisplay;
 			CPUSettingsMenuData CPUSettingsMenu;
 			BehaviorsMenuData BehaviorsMenu;
 			PaletteSettingsMenuData PaletteSettingsMenu;
@@ -270,9 +301,12 @@ namespace Hyper_BandCHIP
 			SaveConfigurationMenuData SaveConfigurationMenu;
 			ErrorDisplayData ErrorDisplay;
 			std::unique_ptr<Machine> CurrentMachine;
+			std::unique_ptr<CBF::Program> CurrentProgram;
 			std::chrono::high_resolution_clock::time_point refresh_tp;
 			double refresh_accumulator;
 			bool loading_program;
+			bool loading_chip8_binary_program;
+			bool chip8_binary_program_started;
 			int retcode;
 	};
 }

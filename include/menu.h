@@ -9,6 +9,8 @@
 
 #if defined(RENDERER_OPENGL21)
 #include "../include/renderer_opengl21.h"
+#elif defined(RENDERER_OPENGL30)
+#include "../include/renderer_opengl30.h"
 #elif defined(RENDERER_OPENGLES2)
 #include "../include/renderer_opengles2.h"
 #elif defined(RENDERER_OPENGLES3)

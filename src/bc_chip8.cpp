@@ -1,10 +1,12 @@
-#include "../include/machine.h"
+#include "machine.h"
 #if defined(RENDERER_OPENGL21)
-#include "../include/renderer_opengl21.h"
+#include "renderer_opengl21.h"
+#elif defined(RENDERER_OPENGL30)
+#include "renderer_opengl30.h"
 #elif defined(RENDERER_OPENGLES2)
-#include "../include/renderer_opengles2.h"
+#include "renderer_opengles2.h"
 #elif defined(RENDERER_OPENGLES3)
-#include "../include/renderer_opengles3.h"
+#include "renderer_opengles3.h"
 #endif
 
 void Hyper_BandCHIP::InstructionData<Hyper_BandCHIP::MachineCore::BandCHIP_CHIP8>::operator()(Machine *TargetMachine)
@@ -155,6 +157,7 @@ void Hyper_BandCHIP::InstructionData<Hyper_BandCHIP::MachineCore::BandCHIP_CHIP8
 				unsigned char y = ((operand & 0x0F0) >> 4);
 				unsigned char z = (operand & 0x00F);
 				bool valid = true;
+				const CHIP8_BehaviorData *Behavior = std::get_if<CHIP8_BehaviorData>(&TargetMachine->behavior_data);
 				switch (z)
 				{
 					case 0x0:
@@ -165,16 +168,28 @@ void Hyper_BandCHIP::InstructionData<Hyper_BandCHIP::MachineCore::BandCHIP_CHIP8
 					case 0x1:
 					{
 						TargetMachine->V[x] |= TargetMachine->V[y];
+						if (Behavior->VIP_VF_Reset)
+						{
+							TargetMachine->V[0xF] = 0x00;
+						}
 						break;
 					}
 					case 0x2:
 					{
 						TargetMachine->V[x] &= TargetMachine->V[y];
+						if (Behavior->VIP_VF_Reset)
+						{
+							TargetMachine->V[0xF] = 0x00;
+						}
 						break;
 					}
 					case 0x3:
 					{
 						TargetMachine->V[x] ^= TargetMachine->V[y];
+						if (Behavior->VIP_VF_Reset)
+						{
+							TargetMachine->V[0xF] = 0x00;
+						}
 						break;
 					}
 					case 0x4:
@@ -209,7 +224,6 @@ void Hyper_BandCHIP::InstructionData<Hyper_BandCHIP::MachineCore::BandCHIP_CHIP8
 					}
 					case 0x6:
 					{
-						const CHIP8_BehaviorData *Behavior = std::get_if<CHIP8_BehaviorData>(&TargetMachine->behavior_data);
 						unsigned char tmp = ((Behavior->CHIP48_Shift ? TargetMachine->V[x] : TargetMachine->V[y]) & 0x01);
 						TargetMachine->V[x] = ((Behavior->CHIP48_Shift ? TargetMachine->V[x] : TargetMachine->V[y]) >> 1);
 						TargetMachine->V[0xF] = tmp;
@@ -319,16 +333,24 @@ void Hyper_BandCHIP::InstructionData<Hyper_BandCHIP::MachineCore::BandCHIP_CHIP8
 				{
 					break;
 				}
-				unsigned char x = TargetMachine->V[((operand & 0xF00) >> 8)];
-				unsigned char y = TargetMachine->V[((operand & 0x0F0) >> 4)];
+				unsigned char x = (TargetMachine->V[((operand & 0xF00) >> 8)] & 0x3F);
+				unsigned char y = (TargetMachine->V[((operand & 0x0F0) >> 4)] & 0x1F);
 				unsigned char bytes = (operand & 0x00F);
 				unsigned char *sprite = &TargetMachine->memory[TargetMachine->I];
 				bool pixels_changed_to_unset = false;
 				for (unsigned int py = 0; py < bytes; ++py)
 				{
+					if (Behavior->VIP_Clipping && y + py >= 32)
+					{
+						break;
+					}
 					unsigned char b_offset = 0;
 					for (unsigned int px = 0; px < 8; ++px)
 					{
+						if (Behavior->VIP_Clipping && x + px >= 64)
+						{
+							break;
+						}
 						unsigned char pixel = ((sprite[py] & (0x80 >> b_offset++)) >> (7 - px));
 						unsigned int display_addr = (((y + py) % 32) * 64) + ((x + px) % 64);
 						unsigned char tmp = TargetMachine->display[display_addr];
@@ -488,7 +510,7 @@ void Hyper_BandCHIP::InstructionData<Hyper_BandCHIP::MachineCore::BandCHIP_CHIP8
 					}
 					case 0x29:
 					{
-						switch (TargetMachine->V[x])
+						switch (TargetMachine->V[x] & 0xF)
 						{
 							case 0x0:
 							{

@@ -1,4 +1,4 @@
-#include "../../include/renderer_opengl21.h"
+#include "renderer_opengl21.h"
 #include <iostream>
 
 using std::cout;
@@ -70,6 +70,12 @@ void main()
 	};
 	font_ctrl.FontColor = 1;
 	GLContext = SDL_GL_CreateContext(Window);
+	if (GLContext != nullptr)
+	{
+		cout << "Unable to create OpenGL 2.1 context.\n";
+		fail = true;
+		return;
+	}
 	GLenum err = glewInit();
 	if (err != GLEW_OK)
 	{
@@ -143,6 +149,7 @@ void main()
 		glGetProgramInfoLog(MainProgramId, info_log_len, nullptr, info_log);
 		cout << info_log << endl;
 		delete [] info_log;
+		fail = true;
 		return;
 	}
 	MenuProgramId = glCreateProgram();
@@ -158,6 +165,7 @@ void main()
 		glGetProgramInfoLog(MenuProgramId, info_log_len, nullptr, info_log);
 		cout << info_log << endl;
 		delete [] info_log;
+		fail = true;
 		return;
 	}
 	PosAttribId = glGetAttribLocation(MainProgramId, "pos");
@@ -217,49 +225,52 @@ void main()
 
 Hyper_BandCHIP::Renderer::~Renderer()
 {
-	glUseProgram(0);
-	if (CurrentFramebuffer != 0)
+	if (GLContext != nullptr)
 	{
-		glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
+		glUseProgram(0);
+		if (CurrentFramebuffer != 0)
+		{
+			glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
+		}
+		glDeleteFramebuffers(1, &MenuFBOId);
+		glBindTexture(GL_TEXTURE_2D, 0);
+		glDeleteTextures(1, &MenuTextureId);
+		glDeleteTextures(1, &MenuFontTextureId);
+		glDeleteTextures(1, &DisplayTextureId);
+		glDisableVertexAttribArray(0);
+		glDisableVertexAttribArray(1);
+		glBindBuffer(GL_ARRAY_BUFFER, 0);
+		glDeleteBuffers(1, &VBOId);
+		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+		glDeleteBuffers(1, &IBOId);
+		glBindVertexArray(0);
+		glDeleteVertexArrays(1, &VAOId);
+		glDetachShader(MenuProgramId, VertexShaderId);
+		glDetachShader(MenuProgramId, MenuFragmentShaderId);
+		if (MenuProgramId != 0)
+		{
+			glDeleteProgram(MenuProgramId);
+		}
+		glDetachShader(MainProgramId, VertexShaderId);
+		glDetachShader(MainProgramId, FragmentShaderId);
+		if (MainProgramId != 0)
+		{
+			glDeleteProgram(MainProgramId);
+		}
+		if (VertexShaderId != 0)
+		{
+			glDeleteShader(VertexShaderId);
+		}
+		if (FragmentShaderId != 0)
+		{
+			glDeleteShader(FragmentShaderId);
+		}
+		if (MenuFragmentShaderId != 0)
+		{
+			glDeleteShader(MenuFragmentShaderId);
+		}
+		SDL_GL_DeleteContext(GLContext);
 	}
-	glDeleteFramebuffers(1, &MenuFBOId);
-	glBindTexture(GL_TEXTURE_2D, 0);
-	glDeleteTextures(1, &MenuTextureId);
-	glDeleteTextures(1, &MenuFontTextureId);
-	glDeleteTextures(1, &DisplayTextureId);
-	glDisableVertexAttribArray(0);
-	glDisableVertexAttribArray(1);
-	glBindBuffer(GL_ARRAY_BUFFER, 0);
-	glDeleteBuffers(1, &VBOId);
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
-	glDeleteBuffers(1, &IBOId);
-	glBindVertexArray(0);
-	glDeleteVertexArrays(1, &VAOId);
-	glDetachShader(MenuProgramId, VertexShaderId);
-	glDetachShader(MenuProgramId, MenuFragmentShaderId);
-	if (MenuProgramId != 0)
-	{
-		glDeleteProgram(MenuProgramId);
-	}
-	glDetachShader(MainProgramId, VertexShaderId);
-	glDetachShader(MainProgramId, FragmentShaderId);
-	if (MainProgramId != 0)
-	{
-		glDeleteProgram(MainProgramId);
-	}
-	if (VertexShaderId != 0)
-	{
-		glDeleteShader(VertexShaderId);
-	}
-	if (FragmentShaderId != 0)
-	{
-		glDeleteShader(FragmentShaderId);
-	}
-	if (MenuFragmentShaderId != 0)
-	{
-		glDeleteShader(MenuFragmentShaderId);
-	}
-	SDL_GL_DeleteContext(GLContext);
 }
 
 void Hyper_BandCHIP::Renderer::SetupMenuFonts(const unsigned char *src)

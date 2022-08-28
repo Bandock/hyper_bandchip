@@ -1,4 +1,4 @@
-#include "../include/audio.h"
+#include "audio.h"
 #include <cstring>
 
 Hyper_BandCHIP::Audio::Audio() : attack_time(0.005), decay_time(0.005), sustain_level(1.0), release_time(0.200), current_state_time(0.0), start_level(0.0), current_level(0.0), frequency(220.0), current_period(0.0), egs_accumulator(0.0), EGS(EnvelopeGeneratorState::Off), processing(true)

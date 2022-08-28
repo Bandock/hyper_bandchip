@@ -1,4 +1,4 @@
-#include "../include/machine.h"
+#include "machine.h"
 #include <cstring>
 
 void Hyper_BandCHIP::InstructionData<Hyper_BandCHIP::MachineCore::BandCHIP_HyperCHIP64>::operator()(Machine *TargetMachine)
@@ -498,8 +498,8 @@ void Hyper_BandCHIP::InstructionData<Hyper_BandCHIP::MachineCore::BandCHIP_Hyper
 			}
 			case 0xD:
 			{
-				unsigned char x = TargetMachine->V[((operand & 0xF00) >> 8)];
-				unsigned char y = TargetMachine->V[((operand & 0x0F0) >> 4)];
+				unsigned char x = (TargetMachine->V[((operand & 0xF00) >> 8)] & 0x7F);
+				unsigned char y = (TargetMachine->V[((operand & 0x0F0) >> 4)] & 0x3F);
 				unsigned char width = 8;
 				unsigned char height = (operand & 0x00F);
 				unsigned char scale_factor = (TargetMachine->CurrentResolutionMode == ResolutionMode::HiRes) ? 1 : 2;
@@ -755,7 +755,7 @@ void Hyper_BandCHIP::InstructionData<Hyper_BandCHIP::MachineCore::BandCHIP_Hyper
 					}
 					case 0x29:
 					{
-						switch (TargetMachine->V[x])
+						switch (TargetMachine->V[x] & 0xF)
 						{
 							case 0x0:
 							{
@@ -843,7 +843,7 @@ void Hyper_BandCHIP::InstructionData<Hyper_BandCHIP::MachineCore::BandCHIP_Hyper
 					}
 					case 0x30:
 					{
-						switch (TargetMachine->V[x])
+						switch (TargetMachine->V[x] & 0xF)
 						{
 							case 0x0:
 							{

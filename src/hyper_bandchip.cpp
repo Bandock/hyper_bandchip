@@ -1,33 +1,36 @@
-#include "../include/hyper_bandchip.h"
+#include "hyper_bandchip.h"
 #if defined(RENDERER_OPENGL21)
-#include "../include/renderer_opengl21.h"
+#include "renderer_opengl21.h"
+#elif defined(RENDERER_OPENGL30)
+#include "renderer_opengl30.h"
 #elif defined(RENDERER_OPENGLES2)
-#include "../include/renderer_opengles2.h"
+#include "renderer_opengles2.h"
 #elif defined(RENDERER_OPENGLES3)
-#include "../include/renderer_opengles3.h"
+#include "renderer_opengles3.h"
 #endif
-#include "../include/menu_fonts.h"
-#include "../include/vip_fonts.h"
-#include "../include/schip_fonts.h"
-#include "../include/octo_fonts.h"
-#include "../include/kchip8_fonts.h"
+#include "menu_fonts.h"
+#include "vip_fonts.h"
+#include "schip_fonts.h"
+#include "octo_fonts.h"
+#include "kchip8_fonts.h"
 #include <iostream>
 #include <fstream>
 #include <vector>
+#include <bit>
 
 using std::cout;
 using std::endl;
 
 using std::ifstream;
 
-Hyper_BandCHIP::Application::Application() : MainWindow(nullptr), MainRenderer(nullptr), start_path(std::filesystem::current_path()), CurrentOperationMode(OperationMode::Menu), CurrentMachineCore(MachineCore::BandCHIP_CHIP8), CurrentMenu(MenuDisplay::Main), CurrentLoResFontStyle(LoResFontStyle::VIP), CurrentHiResFontStyle(HiResFontStyle::SuperCHIP), CurrentMachine(nullptr), refresh_accumulator(0.0), loading_program(false), retcode(0)
+Hyper_BandCHIP::Application::Application() : MainWindow(nullptr), MainRenderer(nullptr), start_path(std::filesystem::current_path()), CurrentOperationMode(OperationMode::Menu), CurrentProgramType(ProgramType::Raw), CurrentMachineCore(MachineCore::BandCHIP_CHIP8), CurrentMenu(MenuDisplay::Main), CurrentLoResFontStyle(LoResFontStyle::VIP), CurrentHiResFontStyle(HiResFontStyle::SuperCHIP), CurrentMachine(nullptr), CurrentProgram(nullptr), refresh_accumulator(0.0), loading_program(false), loading_chip8_binary_program(false), chip8_binary_program_started(false), retcode(0)
 {
 	bool exit = false;
 	unsigned int flags = 0x00000000;
 	double refresh_time_accumulator = 0.0;
 	unsigned int frame_count = 0;
 	SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO);
-#if defined(RENDERER_OPENGL21) || defined(RENDERER_OPENGLES2) || defined(RENDERER_OPENGLES3)
+#if defined(RENDERER_OPENGL21) || defined(RENDERER_OPENGL30) || defined(RENDERER_OPENGLES2) || defined(RENDERER_OPENGLES3)
 	flags |= SDL_WINDOW_OPENGL;
 #if defined(RENDERER_OPENGL21)
 	SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 2);
@@ -35,7 +38,7 @@ Hyper_BandCHIP::Application::Application() : MainWindow(nullptr), MainRenderer(n
 #elif defined(RENDERER_OPENGLES2)
 	SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 2);
 	SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 0);
-#elif defined(RENDERER_OPENGLES3)
+#elif defined(RENDERER_OPENGL30) || defined(RENDERER_OPENGLES3)
 	SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
 	SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 0);
 #endif
@@ -62,6 +65,10 @@ Hyper_BandCHIP::Application::Application() : MainWindow(nullptr), MainRenderer(n
 		{
 			idle = false;
 			loading_program = false;
+			if (CurrentProgramType != ProgramType::Raw)
+			{
+				CurrentProgramType = ProgramType::Raw;
+			}
 			ifstream ProgramFile(LoadProgramMenu.MenuEntry[LoadProgramMenu.CurrentSelectableItemId].Entry.Text, std::ios::binary);
 			ProgramFile.seekg(0, std::ios::end);
 			size_t program_size = ProgramFile.tellg();
@@ -77,6 +84,9 @@ Hyper_BandCHIP::Application::Application() : MainWindow(nullptr), MainRenderer(n
 						if (CurrentMachine->GetMachineCore() != CurrentMachineCore)
 						{
 							CurrentMachine = std::make_unique<Machine>(CurrentMachineCore, CPUSettingsMenu.CPUCycles.value, 0x1000, 64, 32, MainRenderer.get());
+							std::ostringstream window_title;
+							window_title << "Hyper BandCHIP Emulator (CPF: " << CurrentMachine->GetCyclesPerFrame() << ')';
+							SDL_SetWindowTitle(MainWindow.get(), window_title.str().c_str());
 						}
 						else
 						{
@@ -91,6 +101,9 @@ Hyper_BandCHIP::Application::Application() : MainWindow(nullptr), MainRenderer(n
 					else
 					{
 						CurrentMachine = std::make_unique<Machine>(CurrentMachineCore, CPUSettingsMenu.CPUCycles.value, 0x1000, 64, 32, MainRenderer.get());
+						std::ostringstream window_title;
+						window_title << "Hyper BandCHIP Emulator (CPF: " << CurrentMachine->GetCyclesPerFrame() << ')';
+						SDL_SetWindowTitle(MainWindow.get(), window_title.str().c_str());
 					}
 					MainRenderer->SetupDisplay(64, 32);
 					const unsigned char *lores_fonts = nullptr;
@@ -126,7 +139,7 @@ Hyper_BandCHIP::Application::Application() : MainWindow(nullptr), MainRenderer(n
 						lores_fonts_size = CurrentLoResFontStyle.GetFontStyleDataSize();
 					}
 					CurrentMachine->CopyDataToInterpreterMemory(lores_fonts, 0x000, lores_fonts_size);
-					CHIP8_BehaviorData CurrentBehaviorData = { BehaviorsMenu.CHIP48_Shift.toggle, BehaviorsMenu.CHIP48_LoadStore.toggle, BehaviorsMenu.VIP_Display_Interrupt.toggle };
+					CHIP8_BehaviorData CurrentBehaviorData = { BehaviorsMenu.CHIP48_Shift.toggle, BehaviorsMenu.CHIP48_LoadStore.toggle, BehaviorsMenu.VIP_Display_Interrupt.toggle, BehaviorsMenu.VIP_Clipping.toggle, BehaviorsMenu.VIP_VF_Reset.toggle };
 					CurrentMachine->StoreBehaviorData(&CurrentBehaviorData);
 					CurrentMachine->SetSync(CPUSettingsMenu.Sync.toggle);
 					if (CurrentMachine->LoadProgram(program_data.data(), 0x200, program_size))
@@ -154,6 +167,9 @@ Hyper_BandCHIP::Application::Application() : MainWindow(nullptr), MainRenderer(n
 						if (CurrentMachine->GetMachineCore() != CurrentMachineCore)
 						{
 							CurrentMachine = std::make_unique<Machine>(CurrentMachineCore, CPUSettingsMenu.CPUCycles.value, 0x1000, 128, 64, MainRenderer.get());
+							std::ostringstream window_title;
+							window_title << "Hyper BandCHIP (CPF: " << CurrentMachine->GetCyclesPerFrame() << ')';
+							SDL_SetWindowTitle(MainWindow.get(), window_title.str().c_str());
 						}
 						else
 						{
@@ -169,6 +185,9 @@ Hyper_BandCHIP::Application::Application() : MainWindow(nullptr), MainRenderer(n
 					else
 					{
 						CurrentMachine = std::make_unique<Machine>(CurrentMachineCore, CPUSettingsMenu.CPUCycles.value, 0x1000, 128, 64, MainRenderer.get());
+						std::ostringstream window_title;
+						window_title << "Hyper BandCHIP (CPF: " << CurrentMachine->GetCyclesPerFrame() << ')';
+						SDL_SetWindowTitle(MainWindow.get(), window_title.str().c_str());
 					}
 					std::filesystem::current_path(local_dir);
 					MainRenderer->SetupDisplay(128, 64);
@@ -248,10 +267,15 @@ Hyper_BandCHIP::Application::Application() : MainWindow(nullptr), MainRenderer(n
 						}
 						case 1:
 						{
-							CurrentBehaviorData.Version = SuperCHIPVersion::SuperCHIP10;
+							CurrentBehaviorData.Version = SuperCHIPVersion::Original_SuperCHIP10;
 							break;
 						}
 						case 2:
+						{
+							CurrentBehaviorData.Version = SuperCHIPVersion::SuperCHIP10;
+							break;
+						}
+						case 3:
 						{
 							CurrentBehaviorData.Version = SuperCHIPVersion::SuperCHIP11;
 							break;
@@ -284,6 +308,9 @@ Hyper_BandCHIP::Application::Application() : MainWindow(nullptr), MainRenderer(n
 						if (CurrentMachine->GetMachineCore() != CurrentMachineCore)
 						{
 							CurrentMachine = std::make_unique<Machine>(CurrentMachineCore, CPUSettingsMenu.CPUCycles.value, 0x10000, 128, 64, MainRenderer.get());
+							std::ostringstream window_title;
+							window_title << "Hyper BandCHIP Emulator (CPF: " << CurrentMachine->GetCyclesPerFrame() << ')';
+							SDL_SetWindowTitle(MainWindow.get(), window_title.str().c_str());
 						}
 						else
 						{
@@ -300,6 +327,9 @@ Hyper_BandCHIP::Application::Application() : MainWindow(nullptr), MainRenderer(n
 					else
 					{
 						CurrentMachine = std::make_unique<Machine>(CurrentMachineCore, CPUSettingsMenu.CPUCycles.value, 0x10000, 128, 64, MainRenderer.get());
+						std::ostringstream window_title;
+						window_title << "Hyper BandCHIP Emulator (CPF: " << CurrentMachine->GetCyclesPerFrame() << ')';
+						SDL_SetWindowTitle(MainWindow.get(), window_title.str().c_str());
 					}
 					std::filesystem::current_path(local_dir);
 					MainRenderer->SetupDisplay(128, 64);
@@ -397,6 +427,9 @@ Hyper_BandCHIP::Application::Application() : MainWindow(nullptr), MainRenderer(n
 						if (CurrentMachine->GetMachineCore() != CurrentMachineCore)
 						{
 							CurrentMachine = std::make_unique<Machine>(CurrentMachineCore, CPUSettingsMenu.CPUCycles.value, 0x10000, 128, 64, MainRenderer.get());
+							std::ostringstream window_title;
+							window_title << "Hyper BandCHIP Emulator (CPF: " << CurrentMachine->GetCyclesPerFrame() << ')';
+							SDL_SetWindowTitle(MainWindow.get(), window_title.str().c_str());
 						}
 						else
 						{
@@ -413,6 +446,9 @@ Hyper_BandCHIP::Application::Application() : MainWindow(nullptr), MainRenderer(n
 					else
 					{
 						CurrentMachine = std::make_unique<Machine>(CurrentMachineCore, CPUSettingsMenu.CPUCycles.value, 0x10000, 128, 64, MainRenderer.get());
+						std::ostringstream window_title;
+						window_title << "Hyper BandCHIP Emulator (CPF: " << CurrentMachine->GetCyclesPerFrame() << ')';
+						SDL_SetWindowTitle(MainWindow.get(), window_title.str().c_str());
 					}
 					std::filesystem::current_path(local_dir);
 					MainRenderer->SetupDisplay(128, 64);
@@ -500,7 +536,62 @@ Hyper_BandCHIP::Application::Application() : MainWindow(nullptr), MainRenderer(n
 					break;
 				}
 			}
-			ShowMenu(MenuDisplay::LoadProgramDisplay);
+			ShowMenu(CurrentMenu);
+		}
+		else if (loading_chip8_binary_program)
+		{
+			idle = false;
+			loading_chip8_binary_program = false;
+			chip8_binary_program_started = false;
+			if (CurrentProgramType != ProgramType::CHIP8BinaryProgram)
+			{
+				CurrentProgramType = ProgramType::CHIP8BinaryProgram;
+			}
+			ifstream CHIP8BinaryProgramFile(LoadCHIP8BinaryProgramMenu.MenuEntry[LoadCHIP8BinaryProgramMenu.CurrentSelectableItemId].Entry.Text, std::ios::binary | std::ios::ate);
+			size_t file_size = CHIP8BinaryProgramFile.tellg();
+			CHIP8BinaryProgramFile.seekg(0, std::ios::beg);
+			std::vector<unsigned char> chip8_binary_program_data(file_size);
+			CHIP8BinaryProgramFile.read(reinterpret_cast<char *>(chip8_binary_program_data.data()), file_size);
+			CurrentProgram = std::make_unique<CBF::Program>(std::move(chip8_binary_program_data));
+			if (CurrentProgram->IsValid())
+			{
+				LoadCHIP8BinaryProgramDisplay.LoadingCHIP8BinaryProgram.hidden = true;
+				LoadCHIP8BinaryProgramDisplay.ProgramName.Status = CurrentProgram->GetProgramName();
+				LoadCHIP8BinaryProgramDisplay.ProgramName.hidden = false;
+				std::vector<std::string> program_authors = CurrentProgram->GetProgramAuthors();
+				LoadCHIP8BinaryProgramDisplay.ProgramAuthor.Status = program_authors.size() > 0 ? program_authors[0] : "";
+				LoadCHIP8BinaryProgramDisplay.ProgramAuthor.hidden = false;
+				std::ostringstream current_stream;
+				current_stream << static_cast<unsigned short>(CurrentProgram->GetVersion());
+				LoadCHIP8BinaryProgramDisplay.Version.Status = current_stream.str();
+				LoadCHIP8BinaryProgramDisplay.Version.hidden = false;
+				std::vector<CBF::ColorData> *color_configuration = CurrentProgram->GetColorConfiguration();
+				if (color_configuration != nullptr)
+				{
+					size_t color_count = color_configuration->size();
+					if (color_count > 16)
+					{
+						color_count = 16;
+					}
+					for (size_t i = 0; i < color_count; ++i)
+					{
+						CBF::ColorData &current_color_data = (*color_configuration)[i];
+						PaletteSettingsMenu.Red.value = current_color_data.r;
+						PaletteSettingsMenu.Green.value = current_color_data.g;
+						PaletteSettingsMenu.Blue.value = current_color_data.b;
+						MainRenderer->SetPaletteIndex(std::bit_cast<RGBColorData>(current_color_data), i);
+					}
+				}
+				LoadCHIP8BinaryProgramDisplay.Ok.hidden = false;
+				MainMenu.CurrentProgram.Status = LoadCHIP8BinaryProgramDisplay.ProgramName.Status;
+			}
+			else
+			{
+				LoadCHIP8BinaryProgramDisplay.LoadingCHIP8BinaryProgram.hidden = true;
+				LoadCHIP8BinaryProgramDisplay.NotAValidCHIP8BinaryProgram.hidden = false;
+				LoadCHIP8BinaryProgramDisplay.Ok.hidden = false;
+			}
+			ShowMenu(CurrentMenu);
 		}
 		SDL_Event event;
 		std::chrono::high_resolution_clock::time_point current_tp = std::chrono::high_resolution_clock::now();
@@ -532,7 +623,7 @@ Hyper_BandCHIP::Application::Application() : MainWindow(nullptr), MainRenderer(n
 											{
 												case MenuDisplay::Main:
 												{
-													MainMenu.CurrentSelectableItemId = (MainMenu.CurrentSelectableItemId == 0) ? 3 : MainMenu.CurrentSelectableItemId - 1;
+													MainMenu.CurrentSelectableItemId = (MainMenu.CurrentSelectableItemId == 0) ? 4 : MainMenu.CurrentSelectableItemId - 1;
 													break;
 												}
 												case MenuDisplay::LoadProgram:
@@ -610,6 +701,88 @@ Hyper_BandCHIP::Application::Application() : MainWindow(nullptr), MainRenderer(n
 													}
 													break;
 												}
+												case MenuDisplay::LoadCHIP8BinaryProgram:
+												{
+													if (LoadCHIP8BinaryProgramMenu.CurrentSelectableItemId == 0)
+													{
+														bool change = false;
+														if (LoadCHIP8BinaryProgramMenu.StartEntry == 0)
+														{
+															if (LoadCHIP8BinaryProgramMenu.CurrentDirectoryCount > 16)
+															{
+																LoadCHIP8BinaryProgramMenu.StartEntry = LoadCHIP8BinaryProgramMenu.CurrentDirectoryCount - 16;
+																change = true;
+															}
+															LoadCHIP8BinaryProgramMenu.CurrentSelectableItemId = (LoadCHIP8BinaryProgramMenu.CurrentDirectoryCount > 16) ? 15 : LoadCHIP8BinaryProgramMenu.CurrentDirectoryCount - 1;
+														}
+														else
+														{
+															--LoadCHIP8BinaryProgramMenu.StartEntry;
+															change = true;
+														}
+														if (change)
+														{
+															std::filesystem::path current_dir(".");
+															unsigned int current_entry = 0;
+															unsigned int start_entry = LoadCHIP8BinaryProgramMenu.StartEntry;
+															unsigned int count = 0;
+															if (LoadCHIP8BinaryProgramMenu.StartEntry == 0)
+															{
+																LoadCHIP8BinaryProgramMenu.MenuEntry[0].Type = DirEntryType::Directory;
+																LoadCHIP8BinaryProgramMenu.MenuEntry[0].Entry.Text = "..";
+																LoadCHIP8BinaryProgramMenu.MenuEntry[0].Entry.event_id = static_cast<unsigned int>(LoadCHIP8BinaryProgramMenuEvent::ChangeDirectory);
+																++count;
+															}
+															else
+															{
+																--start_entry;
+															}
+															unsigned int max_count = LoadCHIP8BinaryProgramMenu.CurrentDirectoryCount;
+															if (max_count > 16)
+															{
+																max_count = 16;
+															}
+															for (auto i : std::filesystem::directory_iterator(current_dir))
+															{
+																std::filesystem::path c_path = i.path();
+																if (current_entry >= start_entry && count < max_count)
+																{
+																	unsigned int current_event_id = 0;
+																	if (std::filesystem::is_directory(c_path))
+																	{
+																		current_event_id = static_cast<unsigned int>(LoadCHIP8BinaryProgramMenuEvent::ChangeDirectory);
+																		LoadCHIP8BinaryProgramMenu.MenuEntry[count].Type = DirEntryType::Directory;
+																	}
+																	else if (c_path.extension() == ".c8b")
+																	{
+																		current_event_id = static_cast<unsigned int>(LoadCHIP8BinaryProgramMenuEvent::Load);
+																		LoadCHIP8BinaryProgramMenu.MenuEntry[count].Type = DirEntryType::File;
+																	}
+																	else
+																	{
+																		continue;
+																	}
+																	LoadCHIP8BinaryProgramMenu.MenuEntry[count].Entry.Text = c_path.filename();
+																	LoadCHIP8BinaryProgramMenu.MenuEntry[count].Entry.event_id = current_event_id;
+																	++count;
+																}
+																if (count == max_count)
+																{
+																	break;
+																}
+																if (std::filesystem::is_directory(c_path) || c_path.extension() == ".c8b")
+																{
+																	++current_entry;
+																}
+															}
+														}
+													}
+													else
+													{
+														--LoadCHIP8BinaryProgramMenu.CurrentSelectableItemId;
+													}
+													break;
+												}
 												case MenuDisplay::Configuration:
 												{
 													ConfigurationMenu.CurrentSelectableItemId = (ConfigurationMenu.CurrentSelectableItemId == 0) ? 8 : ConfigurationMenu.CurrentSelectableItemId - 1;
@@ -626,7 +799,7 @@ Hyper_BandCHIP::Application::Application() : MainWindow(nullptr), MainRenderer(n
 													{
 														case MachineCore::BandCHIP_CHIP8:
 														{
-															BehaviorsMenu.CurrentSelectableItemId = (BehaviorsMenu.CurrentSelectableItemId == 0) ? 3 : BehaviorsMenu.CurrentSelectableItemId - 1;
+															BehaviorsMenu.CurrentSelectableItemId = (BehaviorsMenu.CurrentSelectableItemId == 0) ? 5 : BehaviorsMenu.CurrentSelectableItemId - 1;
 															break;
 														}
 														case MachineCore::BandCHIP_SuperCHIP:
@@ -677,7 +850,7 @@ Hyper_BandCHIP::Application::Application() : MainWindow(nullptr), MainRenderer(n
 											{
 												case MenuDisplay::Main:
 												{
-													MainMenu.CurrentSelectableItemId = (MainMenu.CurrentSelectableItemId == 3) ? 0 : MainMenu.CurrentSelectableItemId + 1;
+													MainMenu.CurrentSelectableItemId = (MainMenu.CurrentSelectableItemId == 4) ? 0 : MainMenu.CurrentSelectableItemId + 1;
 													break;
 												}
 												case MenuDisplay::LoadProgram:
@@ -751,6 +924,84 @@ Hyper_BandCHIP::Application::Application() : MainWindow(nullptr), MainRenderer(n
 													}
 													break;
 												}
+												case MenuDisplay::LoadCHIP8BinaryProgram:
+												{
+													unsigned int max_count = (LoadCHIP8BinaryProgramMenu.CurrentDirectoryCount > 16) ? 16 : LoadCHIP8BinaryProgramMenu.CurrentDirectoryCount;
+													if (LoadCHIP8BinaryProgramMenu.CurrentSelectableItemId == max_count - 1)
+													{
+														bool change = false;
+														if (LoadCHIP8BinaryProgramMenu.CurrentDirectoryCount - LoadCHIP8BinaryProgramMenu.StartEntry > 16)
+														{
+															++LoadCHIP8BinaryProgramMenu.StartEntry;
+															change = true;
+														}
+														else
+														{
+															if (LoadCHIP8BinaryProgramMenu.StartEntry != 0)
+															{
+																LoadCHIP8BinaryProgramMenu.StartEntry = 0;
+																change = true;
+															}
+															LoadCHIP8BinaryProgramMenu.CurrentSelectableItemId = 0;
+														}
+														if (change)
+														{
+															std::filesystem::path current_dir(".");
+															unsigned int current_entry = 0;
+															unsigned int start_entry = LoadCHIP8BinaryProgramMenu.StartEntry;
+															unsigned int count = 0;
+															if (LoadCHIP8BinaryProgramMenu.StartEntry == 0)
+															{
+																LoadCHIP8BinaryProgramMenu.MenuEntry[0].Type = DirEntryType::Directory;
+																LoadCHIP8BinaryProgramMenu.MenuEntry[0].Entry.Text = "..";
+																LoadCHIP8BinaryProgramMenu.MenuEntry[0].Entry.event_id = static_cast<unsigned int>(LoadProgramMenuEvent::ChangeDirectory);
+																++count;
+															}
+															else
+															{
+																--start_entry;
+															}
+															for (auto i : std::filesystem::directory_iterator(current_dir))
+															{
+																std::filesystem::path c_path = i.path();
+																if (current_entry >= start_entry && count < max_count)
+																{
+																	unsigned int current_event_id = 0;
+																	if (std::filesystem::is_directory(c_path))
+																	{
+																		current_event_id = static_cast<unsigned int>(LoadCHIP8BinaryProgramMenuEvent::ChangeDirectory);
+																		LoadCHIP8BinaryProgramMenu.MenuEntry[count].Type = DirEntryType::Directory;
+																	}
+																	else if (c_path.extension() == ".c8b")
+																	{
+																		current_event_id = static_cast<unsigned int>(LoadCHIP8BinaryProgramMenuEvent::Load);
+																		LoadCHIP8BinaryProgramMenu.MenuEntry[count].Type = DirEntryType::File;
+																	}
+																	else
+																	{
+																		continue;
+																	}
+																	LoadCHIP8BinaryProgramMenu.MenuEntry[count].Entry.Text = c_path.filename();
+																	LoadCHIP8BinaryProgramMenu.MenuEntry[count].Entry.event_id = current_event_id;
+																	++count;
+																}
+																if (count == max_count)
+																{
+																	break;
+																}
+																if (std::filesystem::is_directory(c_path) || c_path.extension() == ".c8b")
+																{
+																	++current_entry;
+																}
+															}
+														}
+													}
+													else
+													{
+														++LoadCHIP8BinaryProgramMenu.CurrentSelectableItemId;
+													}
+													break;
+												}
 												case MenuDisplay::Configuration:
 												{
 													ConfigurationMenu.CurrentSelectableItemId = (ConfigurationMenu.CurrentSelectableItemId == 8) ? 0 : ConfigurationMenu.CurrentSelectableItemId + 1;
@@ -767,7 +1018,7 @@ Hyper_BandCHIP::Application::Application() : MainWindow(nullptr), MainRenderer(n
 													{
 														case MachineCore::BandCHIP_CHIP8:
 														{
-															BehaviorsMenu.CurrentSelectableItemId = (BehaviorsMenu.CurrentSelectableItemId == 3) ? 0 : BehaviorsMenu.CurrentSelectableItemId + 1;
+															BehaviorsMenu.CurrentSelectableItemId = (BehaviorsMenu.CurrentSelectableItemId == 5) ? 0 : BehaviorsMenu.CurrentSelectableItemId + 1;
 															break;
 														}
 														case MachineCore::BandCHIP_SuperCHIP:
@@ -972,6 +1223,16 @@ Hyper_BandCHIP::Application::Application() : MainWindow(nullptr), MainRenderer(n
 																	BehaviorsMenu.VIP_Display_Interrupt.toggle = (BehaviorsMenu.VIP_Display_Interrupt.toggle) ? false : true;
 																	break;
 																}
+																case 3:
+																{
+																	BehaviorsMenu.VIP_Clipping.toggle = (BehaviorsMenu.VIP_Clipping.toggle) ? false : true;
+																	break;
+																}
+																case 4:
+																{
+																	BehaviorsMenu.VIP_VF_Reset.toggle = (BehaviorsMenu.VIP_VF_Reset.toggle) ? false : true;
+																	break;
+																}
 															}
 															ShowMenu(CurrentMenu);
 															break;
@@ -982,7 +1243,7 @@ Hyper_BandCHIP::Application::Application() : MainWindow(nullptr), MainRenderer(n
 															{
 																case 0:
 																{
-																	BehaviorsMenu.SuperCHIP_Version.current_option = (BehaviorsMenu.SuperCHIP_Version.current_option == 0) ? 2 : BehaviorsMenu.SuperCHIP_Version.current_option - 1;
+																	BehaviorsMenu.SuperCHIP_Version.current_option = (BehaviorsMenu.SuperCHIP_Version.current_option == 0) ? 3 : BehaviorsMenu.SuperCHIP_Version.current_option - 1;
 																	break;
 																}
 															}
@@ -1325,6 +1586,16 @@ Hyper_BandCHIP::Application::Application() : MainWindow(nullptr), MainRenderer(n
 																	BehaviorsMenu.VIP_Display_Interrupt.toggle = (BehaviorsMenu.VIP_Display_Interrupt.toggle) ? false : true;
 																	break;
 																}
+																case 3:
+																{
+																	BehaviorsMenu.VIP_Clipping.toggle = (BehaviorsMenu.VIP_Clipping.toggle) ? false : true;
+																	break;
+																}
+																case 4:
+																{
+																	BehaviorsMenu.VIP_VF_Reset.toggle = (BehaviorsMenu.VIP_VF_Reset.toggle) ? false : true;
+																	break;
+																}
 															}
 															ShowMenu(CurrentMenu);
 															break;
@@ -1335,7 +1606,7 @@ Hyper_BandCHIP::Application::Application() : MainWindow(nullptr), MainRenderer(n
 															{
 																case 0:
 																{
-																	BehaviorsMenu.SuperCHIP_Version.current_option = (BehaviorsMenu.SuperCHIP_Version.current_option == 2) ? 0 : BehaviorsMenu.SuperCHIP_Version.current_option + 1;
+																	BehaviorsMenu.SuperCHIP_Version.current_option = (BehaviorsMenu.SuperCHIP_Version.current_option == 3) ? 0 : BehaviorsMenu.SuperCHIP_Version.current_option + 1;
 																	break;
 																}
 															}
@@ -1540,10 +1811,15 @@ Hyper_BandCHIP::Application::Application() : MainWindow(nullptr), MainRenderer(n
 														}
 														case 2:
 														{
-															event_id = MainMenu.Configuration.event_id;
+															event_id = MainMenu.LoadCHIP8BinaryProgram.event_id;
 															break;
 														}
 														case 3:
+														{
+															event_id = MainMenu.Configuration.event_id;
+															break;
+														}
+														case 4:
 														{
 															event_id = MainMenu.Exit.event_id;
 															break;
@@ -1553,6 +1829,13 @@ Hyper_BandCHIP::Application::Application() : MainWindow(nullptr), MainRenderer(n
 													{
 														case MainMenuEvent::RunProgram:
 														{
+															if (CurrentProgramType == ProgramType::CHIP8BinaryProgram && !chip8_binary_program_started)
+															{
+																if (!StartCHIP8BinaryProgram())
+																{
+																	break;
+																}
+															}
 															if (CurrentMachine != nullptr)
 															{
 																if (CurrentMachine->IsOperational())
@@ -1568,6 +1851,12 @@ Hyper_BandCHIP::Application::Application() : MainWindow(nullptr), MainRenderer(n
 														case MainMenuEvent::LoadProgram:
 														{
 															CurrentMenu = MenuDisplay::LoadProgram;
+															ShowMenu(CurrentMenu);
+															break;
+														}
+														case MainMenuEvent::LoadCHIP8BinaryProgram:
+														{
+															CurrentMenu = MenuDisplay::LoadCHIP8BinaryProgram;
 															ShowMenu(CurrentMenu);
 															break;
 														}
@@ -1592,43 +1881,8 @@ Hyper_BandCHIP::Application::Application() : MainWindow(nullptr), MainRenderer(n
 													{
 														case LoadProgramMenuEvent::ChangeDirectory:
 														{
-															std::filesystem::path current_dir(CurrentItem.Entry.Text);
-															std::filesystem::current_path(current_dir);
-															LoadProgramMenu.MenuEntry[0].Type = DirEntryType::Directory;
-															LoadProgramMenu.MenuEntry[0].Entry.Text = "..";
-															LoadProgramMenu.MenuEntry[0].Entry.event_id = static_cast<unsigned int>(LoadProgramMenuEvent::ChangeDirectory);
-															LoadProgramMenu.CurrentSelectableItemId = 0;
-															LoadProgramMenu.StartEntry = 0;
-															LoadProgramMenu.CurrentDirectoryCount = 1;
-															for (unsigned int i = 0; i < 15; ++i)
-															{
-																LoadProgramMenu.MenuEntry[1 + i].Entry.hidden = true;
-															}
-															unsigned int count = 0;
-															for (auto i : std::filesystem::directory_iterator("."))
-															{
-																if (count < 15)
-																{
-																	std::filesystem::path c_path = i.path();
-																	unsigned int current_event_id = 0;
-																	if (std::filesystem::is_directory(c_path))
-																	{
-																		current_event_id = static_cast<unsigned int>(LoadProgramMenuEvent::ChangeDirectory);
-																		LoadProgramMenu.MenuEntry[1 + count].Type = DirEntryType::Directory;
-																	}
-																	else
-																	{
-																		current_event_id = static_cast<unsigned int>(LoadProgramMenuEvent::Load);
-																		LoadProgramMenu.MenuEntry[1 + count].Type = DirEntryType::File;
-																	}
-																	LoadProgramMenu.MenuEntry[1 + count].Entry.Text = c_path.filename();
-																	LoadProgramMenu.MenuEntry[1 + count].Entry.event_id = current_event_id;
-																	LoadProgramMenu.MenuEntry[1 + count].Entry.hidden = false;
-																}
-																++count;
-															}
-															LoadProgramMenu.CurrentDirectoryCount += count;
-															ShowMenu(MenuDisplay::LoadProgram);
+															ChangeDirectory(CurrentItem);
+															ShowMenu(CurrentMenu);
 															break;
 														};
 														case LoadProgramMenuEvent::Load:
@@ -1636,7 +1890,29 @@ Hyper_BandCHIP::Application::Application() : MainWindow(nullptr), MainRenderer(n
 															LoadProgramDisplay.LoadingProgram.hidden = false;
 															loading_program = true;
 															CurrentMenu = MenuDisplay::LoadProgramDisplay;
-															ShowMenu(MenuDisplay::LoadProgramDisplay);
+															ShowMenu(CurrentMenu);
+															break;
+														}
+													}
+													break;
+												}
+												case MenuDisplay::LoadCHIP8BinaryProgram:
+												{
+													DirectoryEntryData &CurrentItem = LoadCHIP8BinaryProgramMenu.MenuEntry[LoadCHIP8BinaryProgramMenu.CurrentSelectableItemId];
+													switch (static_cast<LoadCHIP8BinaryProgramMenuEvent>(CurrentItem.Entry.event_id))
+													{
+														case LoadCHIP8BinaryProgramMenuEvent::ChangeDirectory:
+														{
+															ChangeDirectory(CurrentItem);
+															ShowMenu(CurrentMenu);
+															break;
+														}
+														case LoadCHIP8BinaryProgramMenuEvent::Load:
+														{
+															LoadCHIP8BinaryProgramDisplay.LoadingCHIP8BinaryProgram.hidden = false;
+															loading_chip8_binary_program = true;
+															CurrentMenu = MenuDisplay::LoadCHIP8BinaryProgramDisplay;
+															ShowMenu(CurrentMenu);
 															break;
 														}
 													}
@@ -1789,6 +2065,20 @@ Hyper_BandCHIP::Application::Application() : MainWindow(nullptr), MainRenderer(n
 													}
 													break;
 												}
+												case MenuDisplay::LoadCHIP8BinaryProgramDisplay:
+												{
+													if (!LoadCHIP8BinaryProgramDisplay.Ok.hidden)
+													{
+														LoadCHIP8BinaryProgramDisplay.ProgramName.hidden = true;
+														LoadCHIP8BinaryProgramDisplay.ProgramAuthor.hidden = true;
+														LoadCHIP8BinaryProgramDisplay.Version.hidden = true;
+														LoadCHIP8BinaryProgramDisplay.NotAValidCHIP8BinaryProgram.hidden = true;
+														LoadCHIP8BinaryProgramDisplay.Ok.hidden = true;
+														CurrentMenu = MenuDisplay::Main;
+														ShowMenu(CurrentMenu);
+													}
+													break;
+												}
 												case MenuDisplay::CPUSettings:
 												{
 													unsigned int event_id = 0xFFFFFFFF;
@@ -1815,9 +2105,22 @@ Hyper_BandCHIP::Application::Application() : MainWindow(nullptr), MainRenderer(n
 													{
 														case CPUSettingsMenuEvent::CommitChanges:
 														{
+															if (CurrentProgramType == ProgramType::CHIP8BinaryProgram)
+															{
+																if (CurrentProgram != nullptr)
+																{
+																	if (CurrentProgram->HasPropertyType(CBF::PropertyType::DesiredExecutionSpeed))
+																	{
+																		break;
+																	}
+																}
+															}
 															if (CurrentMachine != nullptr && CPUSettingsMenu.ChangeStatus.Status == "Changed")
 															{
 																CurrentMachine->SetCyclesPerSecond(CPUSettingsMenu.CPUCycles.value);
+																std::ostringstream window_title;
+																window_title << "Hyper BandCHIP Emulator (CPF: " << CPUSettingsMenu.CPUCycles.value / 60 << ')';
+																SDL_SetWindowTitle(MainWindow.get(), window_title.str().c_str());
 																CPUSettingsMenu.ChangeStatus.Status = "Unchanged";
 																ShowMenu(CurrentMenu);
 															}
@@ -1857,6 +2160,16 @@ Hyper_BandCHIP::Application::Application() : MainWindow(nullptr), MainRenderer(n
 																}
 																case 3:
 																{
+																	BehaviorsMenu.VIP_Clipping.toggle = (BehaviorsMenu.VIP_Clipping.toggle) ? false : true;
+																	break;
+																}
+																case 4:
+																{
+																	BehaviorsMenu.VIP_VF_Reset.toggle = (BehaviorsMenu.VIP_VF_Reset.toggle) ? false : true;
+																	break;
+																}
+																case 5:
+																{
 																	CurrentMenu = MenuDisplay::Configuration;
 																	break;
 																}
@@ -1870,7 +2183,7 @@ Hyper_BandCHIP::Application::Application() : MainWindow(nullptr), MainRenderer(n
 															{
 																case 0:
 																{
-																	BehaviorsMenu.SuperCHIP_Version.current_option = (BehaviorsMenu.SuperCHIP_Version.current_option == 2) ? 0 : BehaviorsMenu.SuperCHIP_Version.current_option + 1;
+																	BehaviorsMenu.SuperCHIP_Version.current_option = (BehaviorsMenu.SuperCHIP_Version.current_option == 3) ? 0 : BehaviorsMenu.SuperCHIP_Version.current_option + 1;
 																	break;
 																}
 																case 1:
@@ -2091,6 +2404,12 @@ Hyper_BandCHIP::Application::Application() : MainWindow(nullptr), MainRenderer(n
 													break;
 												}
 												case MenuDisplay::LoadProgram:
+												{
+													CurrentMenu = MenuDisplay::Main;
+													ShowMenu(CurrentMenu);
+													break;
+												}
+												case MenuDisplay::LoadCHIP8BinaryProgram:
 												{
 													CurrentMenu = MenuDisplay::Main;
 													ShowMenu(CurrentMenu);
@@ -2481,6 +2800,48 @@ void Hyper_BandCHIP::Application::ConstructMenus()
 		++count;
 	}
 	LoadProgramMenu.CurrentDirectoryCount += count;
+	count = 0;
+	LoadCHIP8BinaryProgramMenu.MenuEntry[0].Entry = { "..", 100, 40, static_cast<unsigned int>(LoadCHIP8BinaryProgramMenuEvent::ChangeDirectory), false };
+	LoadCHIP8BinaryProgramMenu.MenuEntry[0].Type = DirEntryType::Directory;
+	for (unsigned int i = 0; i < 15; ++i)
+	{
+		LoadCHIP8BinaryProgramMenu.MenuEntry[1 + i].Entry = { "", 100, static_cast<unsigned short>(start_y + (i * 14)), 0xFFFFFFFF, true };
+	}
+	for (auto i : std::filesystem::directory_iterator(current_dir))
+	{
+		std::filesystem::path c_path = i.path();
+		if (count < 15)
+		{
+			std::filesystem::path c_path = i.path();
+			unsigned int current_event_id = 0;
+			if (std::filesystem::is_directory(c_path))
+			{
+				current_event_id = static_cast<unsigned int>(LoadCHIP8BinaryProgramMenuEvent::ChangeDirectory);
+				LoadCHIP8BinaryProgramMenu.MenuEntry[1 + count].Type = DirEntryType::Directory;
+			}
+			else if (c_path.extension() == ".c8b")
+			{
+				current_event_id = static_cast<unsigned int>(LoadCHIP8BinaryProgramMenuEvent::Load);
+				LoadCHIP8BinaryProgramMenu.MenuEntry[1 + count].Type = DirEntryType::File;
+			}
+			else
+			{
+				continue;
+			}
+			LoadCHIP8BinaryProgramMenu.MenuEntry[1 + count].Entry.Text = c_path.filename();
+			LoadCHIP8BinaryProgramMenu.MenuEntry[1 + count].Entry.event_id = current_event_id;
+			LoadCHIP8BinaryProgramMenu.MenuEntry[1 + count].Entry.hidden = false;
+			++count;
+		}
+		else
+		{
+			if (std::filesystem::is_directory(c_path) || c_path.extension() == ".c8b")
+			{
+				++count;
+			}
+		}
+	}
+	LoadCHIP8BinaryProgramMenu.CurrentDirectoryCount += count;
 	start_y = 40;
 	count = 0;
 	for (unsigned char i = 0; i < 16; ++i)
@@ -2518,20 +2879,35 @@ void Hyper_BandCHIP::Application::ShowMenu(Hyper_BandCHIP::MenuDisplay Menu)
 			DisplayItem(*MainRenderer, MainMenu.CurrentMachineStatus, 1);
 			DisplayItem(*MainRenderer, MainMenu.RunProgram, (MainMenu.CurrentSelectableItemId == 0) ? 2 : 1);
 			DisplayItem(*MainRenderer, MainMenu.LoadProgram, (MainMenu.CurrentSelectableItemId == 1) ? 2 : 1);
-			DisplayItem(*MainRenderer, MainMenu.Configuration, (MainMenu.CurrentSelectableItemId == 2) ? 2 : 1);
-			DisplayItem(*MainRenderer, MainMenu.Exit, (MainMenu.CurrentSelectableItemId == 3) ? 2 : 1);
+			DisplayItem(*MainRenderer, MainMenu.LoadCHIP8BinaryProgram, (MainMenu.CurrentSelectableItemId == 2) ? 2 : 1);
+			DisplayItem(*MainRenderer, MainMenu.Configuration, (MainMenu.CurrentSelectableItemId == 3) ? 2 : 1);
+			DisplayItem(*MainRenderer, MainMenu.Exit, (MainMenu.CurrentSelectableItemId == 4) ? 2 : 1);
 			break;
 		}
 		case MenuDisplay::LoadProgram:
 		{
 			DisplayItem(*MainRenderer, LoadProgramMenu.Title, 1);
-			for (unsigned int i = 0; i < 16; i++)
+			for (unsigned int i = 0; i < 16; ++i)
 			{
 				DirectoryEntryData &CurrentMenuEntry = LoadProgramMenu.MenuEntry[i];
 				if (!CurrentMenuEntry.Entry.hidden)
 				{
 					unsigned char unselected_color = (CurrentMenuEntry.Type == DirEntryType::File) ? 3 : 1;
 					DisplayItem(*MainRenderer, CurrentMenuEntry.Entry, (LoadProgramMenu.CurrentSelectableItemId == i) ? 2 : unselected_color);
+				}
+			}
+			break;
+		}
+		case MenuDisplay::LoadCHIP8BinaryProgram:
+		{
+			DisplayItem(*MainRenderer, LoadCHIP8BinaryProgramMenu.Title, 1);
+			for (unsigned int i = 0; i < 16; ++i)
+			{
+				DirectoryEntryData &CurrentMenuEntry = LoadCHIP8BinaryProgramMenu.MenuEntry[i];
+				if (!CurrentMenuEntry.Entry.hidden)
+				{
+					unsigned char unselected_color = (CurrentMenuEntry.Type == DirEntryType::File) ? 3 : 1;
+					DisplayItem(*MainRenderer, CurrentMenuEntry.Entry, (LoadCHIP8BinaryProgramMenu.CurrentSelectableItemId == i) ? 2 : unselected_color);
 				}
 			}
 			break;
@@ -2570,6 +2946,34 @@ void Hyper_BandCHIP::Application::ShowMenu(Hyper_BandCHIP::MenuDisplay Menu)
 			}
 			break;
 		}
+		case MenuDisplay::LoadCHIP8BinaryProgramDisplay:
+		{
+			if (!LoadCHIP8BinaryProgramDisplay.LoadingCHIP8BinaryProgram.hidden)
+			{
+				DisplayItem(*MainRenderer, LoadCHIP8BinaryProgramDisplay.LoadingCHIP8BinaryProgram, 1);
+			}
+			if (!LoadCHIP8BinaryProgramDisplay.ProgramName.hidden)
+			{
+				DisplayItem(*MainRenderer, LoadCHIP8BinaryProgramDisplay.ProgramName, 1);
+			}
+			if (!LoadCHIP8BinaryProgramDisplay.ProgramAuthor.hidden)
+			{
+				DisplayItem(*MainRenderer, LoadCHIP8BinaryProgramDisplay.ProgramAuthor, 1);
+			}
+			if (!LoadCHIP8BinaryProgramDisplay.Version.hidden)
+			{
+				DisplayItem(*MainRenderer, LoadCHIP8BinaryProgramDisplay.Version, 1);
+			}
+			if (!LoadCHIP8BinaryProgramDisplay.NotAValidCHIP8BinaryProgram.hidden)
+			{
+				DisplayItem(*MainRenderer, LoadCHIP8BinaryProgramDisplay.NotAValidCHIP8BinaryProgram, 1);
+			}
+			if (!LoadCHIP8BinaryProgramDisplay.Ok.hidden)
+			{
+				DisplayItem(*MainRenderer, LoadCHIP8BinaryProgramDisplay.Ok, 2);
+			}
+			break;
+		}
 		case MenuDisplay::CPUSettings:
 		{
 			DisplayItem(*MainRenderer, CPUSettingsMenu.Title, 1);
@@ -2591,7 +2995,9 @@ void Hyper_BandCHIP::Application::ShowMenu(Hyper_BandCHIP::MenuDisplay Menu)
 					DisplayItem(*MainRenderer, BehaviorsMenu.CHIP48_Shift, (BehaviorsMenu.CurrentSelectableItemId == 0) ? 2 : 1);
 					DisplayItem(*MainRenderer, BehaviorsMenu.CHIP48_LoadStore, (BehaviorsMenu.CurrentSelectableItemId == 1) ? 2 : 1);
 					DisplayItem(*MainRenderer, BehaviorsMenu.VIP_Display_Interrupt, (BehaviorsMenu.CurrentSelectableItemId == 2) ? 2 : 1);
-					DisplayItem(*MainRenderer, BehaviorsMenu.ReturnToConfiguration, (BehaviorsMenu.CurrentSelectableItemId == 3) ? 2 : 1);
+					DisplayItem(*MainRenderer, BehaviorsMenu.VIP_Clipping, (BehaviorsMenu.CurrentSelectableItemId == 3) ? 2 : 1);
+					DisplayItem(*MainRenderer, BehaviorsMenu.VIP_VF_Reset, (BehaviorsMenu.CurrentSelectableItemId == 4) ? 2 : 1);
+					DisplayItem(*MainRenderer, BehaviorsMenu.ReturnToConfiguration, (BehaviorsMenu.CurrentSelectableItemId == 5) ? 2 : 1);
 					break;
 				}
 				case MachineCore::BandCHIP_SuperCHIP:
@@ -2727,6 +3133,411 @@ void Hyper_BandCHIP::Application::LoadFontStyles()
 			FontSettingsMenu.HiResFontStyle.Options.push_back(i.GetName());
 		}
 	}
+}
+
+void Hyper_BandCHIP::Application::ChangeDirectory(DirectoryEntryData &DirItem)
+{
+	std::filesystem::path current_dir(DirItem.Entry.Text);
+	std::filesystem::current_path(current_dir);
+	LoadProgramMenu.MenuEntry[0].Type = DirEntryType::Directory;
+	LoadProgramMenu.MenuEntry[0].Entry.Text = "..";
+	LoadProgramMenu.MenuEntry[0].Entry.event_id = static_cast<unsigned int>(LoadProgramMenuEvent::ChangeDirectory);
+	LoadProgramMenu.CurrentSelectableItemId = 0;
+	LoadProgramMenu.StartEntry = 0;
+	LoadProgramMenu.CurrentDirectoryCount = 1;
+	for (unsigned int i = 0; i < 15; ++i)
+	{
+		LoadProgramMenu.MenuEntry[1 + i].Entry.hidden = true;
+	}
+	unsigned int count = 0;
+	for (auto i : std::filesystem::directory_iterator("."))
+	{
+		if (count < 15)
+		{
+			std::filesystem::path c_path = i.path();
+			unsigned int current_event_id = 0;
+			if (std::filesystem::is_directory(c_path))
+			{
+				current_event_id = static_cast<unsigned int>(LoadProgramMenuEvent::ChangeDirectory);
+				LoadProgramMenu.MenuEntry[1 + count].Type = DirEntryType::Directory;
+			}
+			else
+			{
+				current_event_id = static_cast<unsigned int>(LoadProgramMenuEvent::Load);
+				LoadProgramMenu.MenuEntry[1 + count].Type = DirEntryType::File;
+			}
+			LoadProgramMenu.MenuEntry[1 + count].Entry.Text = c_path.filename();
+			LoadProgramMenu.MenuEntry[1 + count].Entry.event_id = current_event_id;
+			LoadProgramMenu.MenuEntry[1 + count].Entry.hidden = false;
+		}
+		++count;
+	}
+	LoadProgramMenu.CurrentDirectoryCount += count;
+	LoadCHIP8BinaryProgramMenu.MenuEntry[0].Type = DirEntryType::Directory;
+	LoadCHIP8BinaryProgramMenu.MenuEntry[0].Entry.Text = "..";
+	LoadCHIP8BinaryProgramMenu.MenuEntry[0].Entry.event_id = static_cast<unsigned int>(LoadCHIP8BinaryProgramMenuEvent::ChangeDirectory);
+	LoadCHIP8BinaryProgramMenu.CurrentSelectableItemId = 0;
+	LoadCHIP8BinaryProgramMenu.StartEntry = 0;
+	LoadCHIP8BinaryProgramMenu.CurrentDirectoryCount = 1;
+	for (unsigned int i = 0; i < 15; ++i)
+	{
+		LoadCHIP8BinaryProgramMenu.MenuEntry[1 + i].Entry.hidden = true;
+	}
+	count = 0;
+	for (auto i : std::filesystem::directory_iterator("."))
+	{
+		std::filesystem::path c_path = i.path();
+		if (count < 15)
+		{
+			unsigned int current_event_id = 0;
+			if (std::filesystem::is_directory(c_path))
+			{
+				current_event_id = static_cast<unsigned int>(LoadCHIP8BinaryProgramMenuEvent::ChangeDirectory);
+				LoadCHIP8BinaryProgramMenu.MenuEntry[1 + count].Type = DirEntryType::Directory;
+			}
+			else if (c_path.extension() == ".c8b")
+			{
+				current_event_id = static_cast<unsigned int>(LoadCHIP8BinaryProgramMenuEvent::Load);
+				LoadCHIP8BinaryProgramMenu.MenuEntry[1 + count].Type = DirEntryType::File;
+			}
+			else
+			{
+				continue;
+			}
+			LoadCHIP8BinaryProgramMenu.MenuEntry[1 + count].Entry.Text = c_path.filename();
+			LoadCHIP8BinaryProgramMenu.MenuEntry[1 + count].Entry.event_id = current_event_id;
+			LoadCHIP8BinaryProgramMenu.MenuEntry[1 + count].Entry.hidden = false;
+			++count;
+		}
+		else
+		{
+			if (std::filesystem::is_directory(c_path) || c_path.extension() == ".c8b")
+			{
+				++count;
+			}
+		}
+	}
+	LoadCHIP8BinaryProgramMenu.CurrentDirectoryCount += count;
+}
+
+bool Hyper_BandCHIP::Application::StartCHIP8BinaryProgram()
+{
+	if (CurrentProgram == nullptr)
+	{
+		return false;
+	}
+	unsigned int desired_execution_speed = CurrentProgram->GetDesiredExecutionSpeed();
+	if (desired_execution_speed == 0 && CurrentProgram->HasPropertyType(CBF::PropertyType::DesiredExecutionSpeed))
+	{
+		desired_execution_speed = 200000;
+	}
+	CBF::PlatformType current_platform_type = CBF::PlatformType::CHIP8;
+	switch (CurrentMachineCore)
+	{
+		case MachineCore::BandCHIP_CHIP8:
+		{
+			if (BehaviorsMenu.CHIP48_Shift.toggle && BehaviorsMenu.CHIP48_LoadStore.toggle)
+			{
+				current_platform_type = CBF::PlatformType::CHIP48;
+			}
+			std::vector<unsigned char> *bytecode_data = CurrentProgram->GetBytecodeData(current_platform_type);
+			if (bytecode_data == nullptr)
+			{
+				return false;
+			}
+			CurrentMachine = std::make_unique<Machine>(CurrentMachineCore, (CurrentProgram->HasPropertyType(CBF::PropertyType::DesiredExecutionSpeed) ? desired_execution_speed * 60 : CPUSettingsMenu.CPUCycles.value), 0x1000, 64, 32, MainRenderer.get());
+			std::ostringstream window_title;
+			window_title << "Hyper BandCHIP Emulator (CPF: " << CurrentMachine->GetCyclesPerFrame() << ')';
+			SDL_SetWindowTitle(MainWindow.get(), window_title.str().c_str());
+			MainRenderer->SetupDisplay(64, 32);
+			CBF::FontData *current_font_data = CurrentProgram->GetFontData();
+			if (current_font_data == nullptr)
+			{
+				const unsigned char *lores_fonts = nullptr;
+				size_t lores_fonts_size = 0;
+				if (LoResFontStyleList.size() == 0)
+				{
+					switch (CurrentLoResFontStyle)
+					{
+						case LoResFontStyle::VIP:
+						{
+							lores_fonts = reinterpret_cast<const unsigned char *>(Fonts::VIP::LoResFonts);
+							lores_fonts_size = sizeof(Fonts::VIP::LoResFonts);
+							break;
+						}
+						case LoResFontStyle::SuperCHIP:
+						{
+							lores_fonts = reinterpret_cast<const unsigned char *>(Fonts::SuperCHIP::LoResFonts);
+							lores_fonts_size = sizeof(Fonts::SuperCHIP::LoResFonts);
+							break;
+						}
+						case LoResFontStyle::KCHIP8:
+						{
+							lores_fonts = reinterpret_cast<const unsigned char *>(Fonts::KCHIP8::LoResFonts);
+							lores_fonts_size = sizeof(Fonts::KCHIP8::LoResFonts);
+							break;
+						}
+					}
+				}
+				else
+				{
+					Fonts::FontStyle<4, 5> &CurrentLoResFontStyle = LoResFontStyleList[FontSettingsMenu.LoResFontStyle.current_option];
+					lores_fonts = CurrentLoResFontStyle.GetFontStyleData();
+					lores_fonts_size = CurrentLoResFontStyle.GetFontStyleDataSize();
+				}
+				CurrentMachine->CopyDataToInterpreterMemory(lores_fonts, 0x000, lores_fonts_size);
+			}
+			else
+			{
+				CurrentMachine->CopyDataToInterpreterMemory(current_font_data->data.data(), (current_font_data->address & 0xFFF), current_font_data->data.size());
+			}
+			bool is_chip48 = (current_platform_type == CBF::PlatformType::CHIP48);
+			CHIP8_BehaviorData CurrentBehaviorData = { (is_chip48 ? true : false), (is_chip48 ? true : false), (!is_chip48 ? BehaviorsMenu.VIP_Display_Interrupt.toggle : false), BehaviorsMenu.VIP_Clipping.toggle, (!is_chip48 ? BehaviorsMenu.VIP_VF_Reset.toggle : false) };
+			CurrentMachine->StoreBehaviorData(&CurrentBehaviorData);
+			CurrentMachine->SetSync(CPUSettingsMenu.Sync.toggle);
+			if (CurrentMachine->LoadProgram(bytecode_data->data(), 0x200, bytecode_data->size()))
+			{
+				MainMenu.CurrentMachineStatus.Status = "Operational";
+				chip8_binary_program_started = true;
+			}
+			else
+			{
+				return false;
+			}
+			break;
+		}
+		case MachineCore::BandCHIP_SuperCHIP:
+		{
+			SuperCHIPVersion current_version = SuperCHIPVersion::SuperCHIP11;
+			switch (BehaviorsMenu.SuperCHIP_Version.current_option)
+			{
+				case 2:
+				{
+					current_platform_type = CBF::PlatformType::SuperCHIP10;
+					current_version = SuperCHIPVersion::SuperCHIP10;
+					break;
+				}
+				case 3:
+				{
+					current_platform_type = CBF::PlatformType::SuperCHIP11;
+					break;
+				}
+				default:
+				{
+					return false;
+				}
+			}
+			std::vector<unsigned char> *bytecode_data = CurrentProgram->GetBytecodeData(current_platform_type);
+			if (bytecode_data == nullptr)
+			{
+				return false;
+			}
+			std::filesystem::path local_dir = std::filesystem::current_path();
+			std::filesystem::current_path(start_path);
+			CurrentMachine = std::make_unique<Machine>(CurrentMachineCore, (CurrentProgram->HasPropertyType(CBF::PropertyType::DesiredExecutionSpeed) ? desired_execution_speed * 60 : CPUSettingsMenu.CPUCycles.value), 0x1000, 128, 64, MainRenderer.get());
+			std::ostringstream window_title;
+			window_title << "Hyper BandCHIP Emulator (CPF: " << CurrentMachine->GetCyclesPerFrame() << ')';
+			SDL_SetWindowTitle(MainWindow.get(), window_title.str().c_str());
+			std::filesystem::current_path(local_dir);
+			MainRenderer->SetupDisplay(128, 64);
+			CBF::FontData *current_font_data = CurrentProgram->GetFontData();
+			if (current_font_data == nullptr)
+			{
+				const unsigned char *lores_fonts = nullptr;
+				const unsigned char *hires_fonts = nullptr;
+				size_t lores_fonts_size = 0;
+				size_t hires_fonts_size = 0;
+				if (LoResFontStyleList.size() == 0)
+				{
+					switch (CurrentLoResFontStyle)
+					{
+						case LoResFontStyle::VIP:
+						{
+							lores_fonts = reinterpret_cast<const unsigned char *>(Fonts::VIP::LoResFonts);
+							lores_fonts_size = sizeof(Fonts::VIP::LoResFonts);
+							break;
+						}
+						case LoResFontStyle::SuperCHIP:
+						{
+							lores_fonts = reinterpret_cast<const unsigned char *>(Fonts::SuperCHIP::LoResFonts);
+							lores_fonts_size = sizeof(Fonts::SuperCHIP::LoResFonts);
+							break;
+						}
+						case LoResFontStyle::KCHIP8:
+						{
+							lores_fonts = reinterpret_cast<const unsigned char *>(Fonts::KCHIP8::LoResFonts);
+							lores_fonts_size = sizeof(Fonts::KCHIP8::LoResFonts);
+							break;
+						}
+					}
+				}
+				else
+				{
+					Fonts::FontStyle<4, 5> &CurrentLoResFontStyle = LoResFontStyleList[FontSettingsMenu.LoResFontStyle.current_option];
+					lores_fonts = CurrentLoResFontStyle.GetFontStyleData();
+					lores_fonts_size = CurrentLoResFontStyle.GetFontStyleDataSize();
+				}
+				if (HiResFontStyleList.size() == 0)
+				{
+					switch (CurrentHiResFontStyle)
+					{
+						case HiResFontStyle::SuperCHIP:
+						{
+							hires_fonts = reinterpret_cast<const unsigned char *>(Fonts::SuperCHIP::HiResFonts);
+							hires_fonts_size = sizeof(Fonts::SuperCHIP::HiResFonts);
+							break;
+						}
+						case HiResFontStyle::Octo:
+						{
+							hires_fonts = reinterpret_cast<const unsigned char *>(Fonts::Octo::HiResFonts);
+							hires_fonts_size = sizeof(Fonts::Octo::HiResFonts);
+							break;
+						}
+						case HiResFontStyle::KCHIP8:
+						{
+							hires_fonts = reinterpret_cast<const unsigned char *>(Fonts::KCHIP8::HiResFonts);
+							hires_fonts_size = sizeof(Fonts::KCHIP8::HiResFonts);
+							break;
+						}
+					}
+				}
+				else
+				{
+					Fonts::FontStyle<8, 10> &CurrentHiResFontStyle = HiResFontStyleList[FontSettingsMenu.HiResFontStyle.current_option];
+					hires_fonts = CurrentHiResFontStyle.GetFontStyleData();
+					hires_fonts_size = CurrentHiResFontStyle.GetFontStyleDataSize();
+				}
+				CurrentMachine->CopyDataToInterpreterMemory(lores_fonts, 0x000, lores_fonts_size);
+				CurrentMachine->CopyDataToInterpreterMemory(hires_fonts, 0x050, hires_fonts_size);
+			}
+			else
+			{
+				CurrentMachine->CopyDataToInterpreterMemory(current_font_data->data.data(), (current_font_data->address & 0xFFF), current_font_data->data.size());
+			}
+			SuperCHIP_BehaviorData CurrentBehaviorData { current_version };
+			CurrentMachine->StoreBehaviorData(&CurrentBehaviorData);
+			CurrentMachine->SetSync(CPUSettingsMenu.Sync.toggle);
+			if (CurrentMachine->LoadProgram(bytecode_data->data(), 0x200, bytecode_data->size()))
+			{
+				MainMenu.CurrentMachineStatus.Status = "Operational";
+				chip8_binary_program_started = true;
+			}
+			else
+			{
+				return false;
+			}
+			break;
+		}
+		case MachineCore::BandCHIP_XOCHIP:
+		{
+			current_platform_type = CBF::PlatformType::XO_CHIP;
+			std::vector<unsigned char> *bytecode_data = CurrentProgram->GetBytecodeData(current_platform_type);
+			if (bytecode_data == nullptr)
+			{
+				return false;
+			}
+			std::filesystem::path local_dir = std::filesystem::current_path();
+			std::filesystem::current_path(start_path);
+			CurrentMachine = std::make_unique<Machine>(CurrentMachineCore, (CurrentProgram->HasPropertyType(CBF::PropertyType::DesiredExecutionSpeed) ? desired_execution_speed * 60 : CPUSettingsMenu.CPUCycles.value), 0x10000, 128, 64, MainRenderer.get());
+			std::ostringstream window_title;
+			window_title << "Hyper BandCHIP Emulator (CPF: " << CurrentMachine->GetCyclesPerFrame() << ')';
+			SDL_SetWindowTitle(MainWindow.get(), window_title.str().c_str());
+			std::filesystem::current_path(local_dir);
+			MainRenderer->SetupDisplay(128, 64);
+			CBF::FontData *current_font_data = CurrentProgram->GetFontData();
+			if (current_font_data == nullptr)
+			{
+				const unsigned char *lores_fonts = nullptr;
+				const unsigned char *hires_fonts = nullptr;
+				size_t lores_fonts_size = 0;
+				size_t hires_fonts_size = 0;
+				if (LoResFontStyleList.size() == 0)
+				{
+					switch (CurrentLoResFontStyle)
+					{
+						case LoResFontStyle::VIP:
+						{
+							lores_fonts = reinterpret_cast<const unsigned char *>(Fonts::VIP::LoResFonts);
+							lores_fonts_size = sizeof(Fonts::VIP::LoResFonts);
+							break;
+						}
+						case LoResFontStyle::SuperCHIP:
+						{
+							lores_fonts = reinterpret_cast<const unsigned char *>(Fonts::SuperCHIP::LoResFonts);
+							lores_fonts_size = sizeof(Fonts::SuperCHIP::LoResFonts);
+							break;
+						}
+						case LoResFontStyle::KCHIP8:
+						{
+							lores_fonts = reinterpret_cast<const unsigned char *>(Fonts::KCHIP8::LoResFonts);
+							lores_fonts_size = sizeof(Fonts::KCHIP8::LoResFonts);
+							break;
+						}
+					}
+				}
+				else
+				{
+					Fonts::FontStyle<4, 5> &CurrentLoResFontStyle = LoResFontStyleList[FontSettingsMenu.LoResFontStyle.current_option];
+					lores_fonts = CurrentLoResFontStyle.GetFontStyleData();
+					lores_fonts_size = CurrentLoResFontStyle.GetFontStyleDataSize();
+				}
+				if (HiResFontStyleList.size() == 0)
+				{
+					switch (CurrentHiResFontStyle)
+					{
+						case HiResFontStyle::SuperCHIP:
+						{
+							hires_fonts = reinterpret_cast<const unsigned char *>(Fonts::SuperCHIP::HiResFonts);
+							hires_fonts_size = sizeof(Fonts::SuperCHIP::HiResFonts);
+							break;
+						}
+						case HiResFontStyle::Octo:
+						{
+							hires_fonts = reinterpret_cast<const unsigned char *>(Fonts::Octo::HiResFonts);
+							hires_fonts_size = sizeof(Fonts::Octo::HiResFonts);
+							break;
+						}
+						case HiResFontStyle::KCHIP8:
+						{
+							hires_fonts = reinterpret_cast<const unsigned char *>(Fonts::KCHIP8::HiResFonts);
+							hires_fonts_size = sizeof(Fonts::KCHIP8::HiResFonts);
+							break;
+						}
+					}
+				}
+				else
+				{
+					Fonts::FontStyle<8, 10> &CurrentHiResFontStyle = HiResFontStyleList[FontSettingsMenu.HiResFontStyle.current_option];
+					hires_fonts = CurrentHiResFontStyle.GetFontStyleData();
+					hires_fonts_size = CurrentHiResFontStyle.GetFontStyleDataSize();
+				}
+				CurrentMachine->CopyDataToInterpreterMemory(lores_fonts, 0x000, lores_fonts_size);
+				CurrentMachine->CopyDataToInterpreterMemory(hires_fonts, 0x050, hires_fonts_size);
+			}
+			else
+			{
+				CurrentMachine->CopyDataToInterpreterMemory(current_font_data->data.data(), current_font_data->address, current_font_data->data.size());
+			}
+			XOCHIP_BehaviorData CurrentBehaviorData { BehaviorsMenu.SuperCHIP_Shift.toggle, BehaviorsMenu.SuperCHIP_LoadStore.toggle, BehaviorsMenu.Octo_LoResSprite.toggle };
+			CurrentMachine->StoreBehaviorData(&CurrentBehaviorData);
+			CurrentMachine->SetSync(CPUSettingsMenu.Sync.toggle);
+			if (CurrentMachine->LoadProgram(bytecode_data->data(), 0x200, bytecode_data->size()))
+			{
+				MainMenu.CurrentMachineStatus.Status = "Operational";
+				chip8_binary_program_started = true;
+			}
+			else
+			{
+				return false;
+			}
+			break;
+		}
+		default:
+		{
+			return false;
+		}
+	}
+	return true;
 }
 
 int main(int argc, char *argv[])

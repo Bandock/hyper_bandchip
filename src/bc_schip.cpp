@@ -1,4 +1,4 @@
-#include "../include/machine.h"
+#include "machine.h"
 #include <cstring>
 
 void Hyper_BandCHIP::InstructionData<Hyper_BandCHIP::MachineCore::BandCHIP_SuperCHIP>::operator()(Machine *TargetMachine)
@@ -43,6 +43,7 @@ void Hyper_BandCHIP::InstructionData<Hyper_BandCHIP::MachineCore::BandCHIP_Super
 								}
 								break;
 							}
+							case SuperCHIPVersion::Original_SuperCHIP10:
 							case SuperCHIPVersion::SuperCHIP10:
 							{
 								TargetMachine->PauseProgram(true);
@@ -100,6 +101,7 @@ void Hyper_BandCHIP::InstructionData<Hyper_BandCHIP::MachineCore::BandCHIP_Super
 								}
 								break;
 							}
+							case SuperCHIPVersion::Original_SuperCHIP10:
 							case SuperCHIPVersion::SuperCHIP10:
 							{
 								TargetMachine->PauseProgram(true);
@@ -129,6 +131,7 @@ void Hyper_BandCHIP::InstructionData<Hyper_BandCHIP::MachineCore::BandCHIP_Super
 								}
 								break;
 							}
+							case SuperCHIPVersion::Original_SuperCHIP10:
 							case SuperCHIPVersion::SuperCHIP10:
 							{
 								TargetMachine->PauseProgram(true);
@@ -442,8 +445,8 @@ void Hyper_BandCHIP::InstructionData<Hyper_BandCHIP::MachineCore::BandCHIP_Super
 			}
 			case 0xD:
 			{
-				unsigned char x = TargetMachine->V[((operand & 0xF00) >> 8)];
-				unsigned char y = TargetMachine->V[((operand & 0x0F0) >> 4)];
+				unsigned char x = (TargetMachine->V[((operand & 0xF00) >> 8)] & 0x7F);
+				unsigned char y = (TargetMachine->V[((operand & 0x0F0) >> 4)] & 0x3F);
 				unsigned char width = 8;
 				unsigned char height = (operand & 0x00F);
 				unsigned char scale_factor = (TargetMachine->CurrentResolutionMode == ResolutionMode::HiRes) ? 1 : 2;
@@ -644,7 +647,8 @@ void Hyper_BandCHIP::InstructionData<Hyper_BandCHIP::MachineCore::BandCHIP_Super
 					case 0x29:
 					{
 						const SuperCHIP_BehaviorData *Behavior = std::get_if<SuperCHIP_BehaviorData>(&TargetMachine->behavior_data);
-						switch (TargetMachine->V[x])
+						unsigned char font_digit = (TargetMachine->V[x] & ((Behavior->Version == SuperCHIPVersion::Original_SuperCHIP10) ? 0x1F : 0x0F));
+						switch (font_digit)
 						{
 							case 0x00:
 							{
@@ -728,82 +732,52 @@ void Hyper_BandCHIP::InstructionData<Hyper_BandCHIP::MachineCore::BandCHIP_Super
 							}
 							case 0x10:
 							{
-								if (Behavior->Version == SuperCHIPVersion::SuperCHIP10)
-								{
-									TargetMachine->I = 0x050;
-								}
+								TargetMachine->I = 0x050;
 								break;
 							}
 							case 0x11:
 							{
-								if (Behavior->Version == SuperCHIPVersion::SuperCHIP10)
-								{
-									TargetMachine->I = 0x05A;
-								}
+								TargetMachine->I = 0x05A;
 								break;
 							}
 							case 0x12:
 							{
-								if (Behavior->Version == SuperCHIPVersion::SuperCHIP10)
-								{
-									TargetMachine->I = 0x064;
-								}
+								TargetMachine->I = 0x064;
 								break;
 							}
 							case 0x13:
 							{
-								if (Behavior->Version == SuperCHIPVersion::SuperCHIP10)
-								{
-									TargetMachine->I = 0x06E;
-								}
+								TargetMachine->I = 0x06E;
 								break;
 							}
 							case 0x14:
 							{
-								if (Behavior->Version == SuperCHIPVersion::SuperCHIP10)
-								{
-									TargetMachine->I = 0x078;
-								}
+								TargetMachine->I = 0x078;
 								break;
 							}
 							case 0x15:
 							{
-								if (Behavior->Version == SuperCHIPVersion::SuperCHIP10)
-								{
-									TargetMachine->I = 0x082;
-								}
+								TargetMachine->I = 0x082;
 								break;
 							}
 							case 0x16:
 							{
-								if (Behavior->Version == SuperCHIPVersion::SuperCHIP10)
-								{
-									TargetMachine->I = 0x08C;
-								}
+								TargetMachine->I = 0x08C;
 								break;
 							}
 							case 0x17:
 							{
-								if (Behavior->Version == SuperCHIPVersion::SuperCHIP10)
-								{
-									TargetMachine->I = 0x096;
-								}
+								TargetMachine->I = 0x096;
 								break;
 							}
 							case 0x18:
 							{
-								if (Behavior->Version == SuperCHIPVersion::SuperCHIP10)
-								{
-									TargetMachine->I = 0x0A0;
-								}
+								TargetMachine->I = 0x0A0;
 								break;
 							}
 							case 0x19:
 							{
-								if (Behavior->Version == SuperCHIPVersion::SuperCHIP10)
-								{
-									TargetMachine->I = 0x0AA;
-								}
+								TargetMachine->I = 0x0AA;
 								break;
 							}
 						}
@@ -819,10 +793,11 @@ void Hyper_BandCHIP::InstructionData<Hyper_BandCHIP::MachineCore::BandCHIP_Super
 						const SuperCHIP_BehaviorData *Behavior = std::get_if<SuperCHIP_BehaviorData>(&TargetMachine->behavior_data);
 						switch (Behavior->Version)
 						{
+							case SuperCHIPVersion::SuperCHIP10:
 							case SuperCHIPVersion::Fixed_SuperCHIP11:
 							case SuperCHIPVersion::SuperCHIP11:
 							{
-								switch (TargetMachine->V[x])
+								switch (TargetMachine->V[x] & 0xF)
 								{
 									case 0x0:
 									{
@@ -912,7 +887,7 @@ void Hyper_BandCHIP::InstructionData<Hyper_BandCHIP::MachineCore::BandCHIP_Super
 								}
 								break;
 							}
-							case SuperCHIPVersion::SuperCHIP10:
+							case SuperCHIPVersion::Original_SuperCHIP10:
 							{
 								valid = false;
 								break;
@@ -954,6 +929,7 @@ void Hyper_BandCHIP::InstructionData<Hyper_BandCHIP::MachineCore::BandCHIP_Super
 								TargetMachine->I += x + 1;
 								break;
 							}
+							case SuperCHIPVersion::Original_SuperCHIP10:
 							case SuperCHIPVersion::SuperCHIP10:
 							{
 								TargetMachine->I += x;
@@ -985,6 +961,7 @@ void Hyper_BandCHIP::InstructionData<Hyper_BandCHIP::MachineCore::BandCHIP_Super
 								TargetMachine->I += x + 1;
 								break;
 							}
+							case SuperCHIPVersion::Original_SuperCHIP10:
 							case SuperCHIPVersion::SuperCHIP10:
 							{
 								TargetMachine->I += x;

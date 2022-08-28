@@ -1,4 +1,4 @@
-#include "../include/machine.h"
+#include "machine.h"
 #include <cstring>
 
 void Hyper_BandCHIP::InstructionData<Hyper_BandCHIP::MachineCore::BandCHIP_XOCHIP>::operator()(Machine *TargetMachine)
@@ -482,8 +482,8 @@ void Hyper_BandCHIP::InstructionData<Hyper_BandCHIP::MachineCore::BandCHIP_XOCHI
 			case 0xD:
 			{
 				const XOCHIP_BehaviorData *Behavior = std::get_if<XOCHIP_BehaviorData>(&TargetMachine->behavior_data);
-				unsigned char x = TargetMachine->V[((operand & 0xF00) >> 8)];
-				unsigned char y = TargetMachine->V[((operand & 0x0F0) >> 4)];
+				unsigned char x = (TargetMachine->V[((operand & 0xF00) >> 8)] & 0x7F);
+				unsigned char y = (TargetMachine->V[((operand & 0x0F0) >> 4)] & 0x3F);
 				unsigned char width = 8;
 				unsigned char height = (operand & 0x00F);
 				unsigned char scale_factor = (TargetMachine->CurrentResolutionMode == ResolutionMode::HiRes) ? 1 : 2;
@@ -498,7 +498,7 @@ void Hyper_BandCHIP::InstructionData<Hyper_BandCHIP::MachineCore::BandCHIP_XOCHI
 				}
 				unsigned char *sprite = &TargetMachine->memory[TargetMachine->I];
 				bool pixels_changed_to_unset = false;
-				for (unsigned char p = 0; p < 2; ++p)
+				for (unsigned char p = 0; p < 4; ++p)
 				{
 					if (TargetMachine->plane & (0x01 << p))
 					{
@@ -517,7 +517,7 @@ void Hyper_BandCHIP::InstructionData<Hyper_BandCHIP::MachineCore::BandCHIP_XOCHI
 						unsigned char pixel = 0;
 						for (unsigned char p = 0; p < plane_count; ++p)
 						{
-							for (; current_plane < 2; ++current_plane)
+							for (; current_plane < 4; ++current_plane)
 							{
 								if ((0x01 << current_plane) & TargetMachine->plane)
 								{
@@ -723,7 +723,7 @@ void Hyper_BandCHIP::InstructionData<Hyper_BandCHIP::MachineCore::BandCHIP_XOCHI
 					}
 					case 0x29:
 					{
-						switch (TargetMachine->V[x])
+						switch (TargetMachine->V[x] & 0xF)
 						{
 							case 0x0:
 							{
@@ -811,7 +811,7 @@ void Hyper_BandCHIP::InstructionData<Hyper_BandCHIP::MachineCore::BandCHIP_XOCHI
 					}
 					case 0x30:
 					{
-						switch (TargetMachine->V[x])
+						switch (TargetMachine->V[x] & 0xF)
 						{
 							case 0x0:
 							{

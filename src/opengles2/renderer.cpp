@@ -1,4 +1,4 @@
-#include "../../include/renderer_opengles2.h"
+#include "renderer_opengles2.h"
 #include <iostream>
 
 using std::cout;
@@ -78,6 +78,12 @@ void main()
 	};
 	font_ctrl.FontColor = 1;
 	GLContext = SDL_GL_CreateContext(Window);
+	if (GLContext == nullptr)
+	{
+		cout << "Unable to create OpenGL ES 2.0 context.\n";
+		fail = true;
+		return;
+	}
 	VertexShaderId = glCreateShader(GL_VERTEX_SHADER);
 	FragmentShaderId = glCreateShader(GL_FRAGMENT_SHADER);
 	MenuFragmentShaderId = glCreateShader(GL_FRAGMENT_SHADER);
@@ -139,6 +145,7 @@ void main()
 		glGetProgramInfoLog(MainProgramId, info_log_len, nullptr, info_log);
 		cout << info_log << endl;
 		delete [] info_log;
+		fail = true;
 		return;
 	}
 	MenuProgramId = glCreateProgram();
@@ -154,6 +161,7 @@ void main()
 		glGetProgramInfoLog(MenuProgramId, info_log_len, nullptr, info_log);
 		cout << info_log << endl;
 		delete [] info_log;
+		fail = true;
 		return;
 	}
 	PosAttribId = glGetAttribLocation(MainProgramId, "pos");
@@ -186,7 +194,7 @@ void main()
 	glBindTexture(GL_TEXTURE_2D, MenuTextureId);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 640, 320, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 1280, 640, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
 	glBindFramebuffer(GL_FRAMEBUFFER, MenuFBOId);
 	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, MenuTextureId, 0);
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
@@ -202,47 +210,50 @@ void main()
 
 Hyper_BandCHIP::Renderer::~Renderer()
 {
-	glUseProgram(0);
-	if (CurrentFramebuffer != 0)
+	if (GLContext != nullptr)
 	{
-		glBindFramebuffer(GL_FRAMEBUFFER, 0);
+		glUseProgram(0);
+		if (CurrentFramebuffer != 0)
+		{
+			glBindFramebuffer(GL_FRAMEBUFFER, 0);
+		}
+		glDeleteFramebuffers(1, &MenuFBOId);
+		glBindTexture(GL_TEXTURE_2D, 0);
+		glDeleteTextures(1, &MenuTextureId);
+		glDeleteTextures(1, &MenuFontTextureId);
+		glDeleteTextures(1, &DisplayTextureId);
+		glDisableVertexAttribArray(0);
+		glDisableVertexAttribArray(1);
+		glBindBuffer(GL_ARRAY_BUFFER, 0);
+		glDeleteBuffers(1, &VBOId);
+		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+		glDeleteBuffers(1, &IBOId);
+		glDetachShader(MenuProgramId, VertexShaderId);
+		glDetachShader(MenuProgramId, MenuFragmentShaderId);
+		if (MenuProgramId != 0)
+		{
+			glDeleteProgram(MenuProgramId);
+		}
+		glDetachShader(MainProgramId, VertexShaderId);
+		glDetachShader(MainProgramId, FragmentShaderId);
+		if (MainProgramId != 0)
+		{
+			glDeleteProgram(MainProgramId);
+		}
+		if (VertexShaderId != 0)
+		{
+			glDeleteShader(VertexShaderId);
+		}
+		if (FragmentShaderId != 0)
+		{
+			glDeleteShader(FragmentShaderId);
+		}
+		if (MenuFragmentShaderId != 0)
+		{
+			glDeleteShader(MenuFragmentShaderId);
+		}
+		SDL_GL_DeleteContext(GLContext);
 	}
-	glDeleteFramebuffers(1, &MenuFBOId);
-	glBindTexture(GL_TEXTURE_2D, 0);
-	glDeleteTextures(1, &MenuTextureId);
-	glDeleteTextures(1, &MenuFontTextureId);
-	glDeleteTextures(1, &DisplayTextureId);
-	glDisableVertexAttribArray(0);
-	glDisableVertexAttribArray(1);
-	glBindBuffer(GL_ARRAY_BUFFER, 0);
-	glDeleteBuffers(1, &VBOId);
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
-	glDeleteBuffers(1, &IBOId);
-	glDetachShader(MenuProgramId, VertexShaderId);
-	glDetachShader(MenuProgramId, MenuFragmentShaderId);
-	if (MenuProgramId != 0)
-	{
-		glDeleteProgram(MenuProgramId);
-	}
-	glDetachShader(MainProgramId, VertexShaderId);
-	glDetachShader(MainProgramId, FragmentShaderId);
-	if (MainProgramId != 0)
-	{
-		glDeleteProgram(MainProgramId);
-	}
-	if (VertexShaderId != 0)
-	{
-		glDeleteShader(VertexShaderId);
-	}
-	if (FragmentShaderId != 0)
-	{
-		glDeleteShader(FragmentShaderId);
-	}
-	if (MenuFragmentShaderId != 0)
-	{
-		glDeleteShader(MenuFragmentShaderId);
-	}
-	SDL_GL_DeleteContext(GLContext);
 }
 
 void Hyper_BandCHIP::Renderer::SetupMenuFonts(const unsigned char *src)
@@ -348,7 +359,6 @@ void Hyper_BandCHIP::Renderer::OutputStringToMenu(std::string str, unsigned shor
 		CurrentFramebuffer = MenuFBOId;
 		glBindFramebuffer(GL_FRAMEBUFFER, MenuFBOId);
 	}
-	glViewport(0, 0, 640, 320);
 	if (CurrentProgramId != MenuProgramId)
 	{
 		glUseProgram(MenuProgramId);
@@ -389,7 +399,6 @@ void Hyper_BandCHIP::Renderer::OutputStringToMenu(std::string str, unsigned shor
 	vertices[2] = {{ -1.0f, -1.0f, 0.0f, 1.0f }, { 0.0f, 0.0f }};
 	vertices[3] = {{ 1.0f, -1.0f, 0.0f, 1.0f }, { 1.0f, 0.0f }};
 	glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(vertices), vertices);
-	glViewport(0, 0, 1280, 640);
 }
 
 void Hyper_BandCHIP::Renderer::SetDisplayMode(Hyper_BandCHIP::DisplayMode mode)

@@ -46,7 +46,8 @@ namespace Hyper_BandCHIP
 	enum class SuperCHIPVersion
 	{
 		Fixed_SuperCHIP11, // Emulates SuperCHIP V1.1 with original CHIP-8 behavior. (Default)
-		SuperCHIP10, // Emulates the original SuperCHIP V1.0 behavior. (Likely needed for games and programs that were assembled for this version.)
+		Original_SuperCHIP10, // Emulates the Original SuperCHIP V1.0 behavior. (Possibly needed for games and programs that used this build of SuperCHIP V1.0.)
+		SuperCHIP10, // Emulates the SuperCHIP V1.0 behavior. (Likely needed for games and programs that were assembled for this version.)
 		SuperCHIP11 // Emulates the original SuperCHIP V1.1 behavior (with CHIP-48 shifting and load/store).
 	};
 
@@ -132,6 +133,8 @@ namespace Hyper_BandCHIP
 		bool CHIP48_Shift;
 		bool CHIP48_LoadStore;
 		bool VIP_Display_Interrupt;
+		bool VIP_Clipping;
+		bool VIP_VF_Reset;
 	};
 
 	struct SuperCHIP_BehaviorData
@@ -343,6 +346,11 @@ namespace Hyper_BandCHIP
 					}
 				}
 			}
+
+			inline unsigned int GetCyclesPerFrame() const
+			{
+				return cycles_per_second / 60;
+			}
 			
 			inline void SetDelayTimer(unsigned char delay_timer)
 			{
@@ -457,6 +465,15 @@ namespace Hyper_BandCHIP
 							Instruction.opcode = (memory[PC] >> 4);
 							Instruction.operand = ((memory[PC] & 0x0F) << 8) | (memory[((PC + 1) & 0xFFF)]);
 							Instruction(this);
+							const CHIP8_BehaviorData *Behavior = std::get_if<CHIP8_BehaviorData>(&behavior_data);
+							if (Behavior->VIP_Display_Interrupt)
+							{
+								if (display_interrupt)
+								{
+									display_interrupt = false;
+									DisplayRender();
+								}
+							}
 							break;
 						}
 						case MachineCore::BandCHIP_SuperCHIP:
@@ -536,6 +553,7 @@ namespace Hyper_BandCHIP
 			
 			void RunSoundTimer();
 			void SyncToCycle();
+			void DisplayRender();
 			friend struct InstructionData<MachineCore::BandCHIP_CHIP8>;
 			friend struct InstructionData<MachineCore::BandCHIP_SuperCHIP>;
 			friend struct InstructionData<MachineCore::BandCHIP_XOCHIP>;
