@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.10)
-project(hyper_bandchip VERSION 0.13 LANGUAGES CXX)
+project(hyper_bandchip VERSION 0.14 LANGUAGES CXX)
 
 find_package(Threads REQUIRED)
 find_package(SDL2 REQUIRED)

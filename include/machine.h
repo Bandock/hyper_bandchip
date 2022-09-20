@@ -316,7 +316,7 @@ namespace Hyper_BandCHIP
 			inline void SetSync(bool toggle)
 			{
 				sync = toggle;
-				if (sync)
+				if (sync && cycles_per_second > 0)
 				{
 					RefreshSync = { 0, cycles_per_second / 60 };
 					DelayTimerSync = { 0, cycles_per_second / 60 };
@@ -335,21 +335,27 @@ namespace Hyper_BandCHIP
 			inline void SetCyclesPerSecond(unsigned int cycles_per_second)
 			{
 				this->cycles_per_second = cycles_per_second;
-				this->cycle_rate = 1.0 / static_cast<double>(this->cycles_per_second);
-				if (sync)
+				this->cycle_rate = (this->cycles_per_second > 0) ? 1.0 / static_cast<double>(this->cycles_per_second) : 0.0;
+				if (sync && this->cycles_per_second > 0)
 				{
-					RefreshSync = { 0, this->cycles_per_second / 60 };
-					DelayTimerSync = { 0, this->cycles_per_second / 60 };
+					uint32_t previous_cycles_per_frame = RefreshSync.cycles_per_frame;
+					RefreshSync.cycles_per_frame = this->cycles_per_second / 60;
+					RefreshSync.cycle_counter = static_cast<double>(RefreshSync.cycle_counter) * (static_cast<double>(RefreshSync.cycles_per_frame) / static_cast<double>(previous_cycles_per_frame));
+					previous_cycles_per_frame = DelayTimerSync.cycles_per_frame;
+					DelayTimerSync.cycles_per_frame = this->cycles_per_second / 60;
+					DelayTimerSync.cycle_counter = static_cast<double>(DelayTimerSync.cycle_counter) * (static_cast<double>(DelayTimerSync.cycles_per_frame) / static_cast<double>(previous_cycles_per_frame));
 					for (size_t i = 0; i < 4; ++i)
 					{
-						SoundTimerSync[i] = { 0, this->cycles_per_second / 60 };
+						previous_cycles_per_frame = SoundTimerSync[i].cycles_per_frame;
+						SoundTimerSync[i].cycles_per_frame = this->cycles_per_second / 60;
+						SoundTimerSync[i].cycle_counter = static_cast<double>(SoundTimerSync[i].cycle_counter) * (static_cast<double>(SoundTimerSync[i].cycles_per_frame) / static_cast<double>(previous_cycles_per_frame));
 					}
 				}
 			}
 
 			inline unsigned int GetCyclesPerFrame() const
 			{
-				return cycles_per_second / 60;
+				return (cycles_per_second > 0) ? cycles_per_second / 60 : ((cycle_rate > 0.0) ? 1.0 / cycle_rate / 60.0 : 0);
 			}
 			
 			inline void SetDelayTimer(unsigned char delay_timer)
@@ -450,6 +456,40 @@ namespace Hyper_BandCHIP
 				}
 				cycle_accumulator += delta_time.count();
 				cycle_tp = current_tp;
+				if (cycles_per_second == 0.0)
+				{
+					if (cycle_accumulator == 0.0)
+					{
+						return;
+					}
+					uint32_t new_cycles_per_second_u32 = 30000.0 / cycle_accumulator;
+					if (new_cycles_per_second_u32 >= 60)
+					{
+						uint32_t excess_cycles = new_cycles_per_second_u32 % 60;
+						if (excess_cycles)
+						{
+							new_cycles_per_second_u32 -= excess_cycles;
+						}
+						cycle_rate = 1.0 / new_cycles_per_second_u32;
+						uint32_t previous_cycles_per_frame = RefreshSync.cycles_per_frame;
+						RefreshSync.cycles_per_frame = new_cycles_per_second_u32 / 60;
+						RefreshSync.cycle_counter = static_cast<double>(RefreshSync.cycle_counter) * (static_cast<double>(RefreshSync.cycles_per_frame) / static_cast<double>(previous_cycles_per_frame));
+						previous_cycles_per_frame = DelayTimerSync.cycles_per_frame;
+						DelayTimerSync.cycles_per_frame = new_cycles_per_second_u32 / 60;
+						DelayTimerSync.cycle_counter = static_cast<double>(DelayTimerSync.cycle_counter) * (static_cast<double>(DelayTimerSync.cycles_per_frame) / static_cast<double>(previous_cycles_per_frame));
+						for (size_t i = 0; i < 4; ++i)
+						{
+							SyncState &CurrentSoundTimer = SoundTimerSync[i];
+							previous_cycles_per_frame = CurrentSoundTimer.cycles_per_frame;
+							CurrentSoundTimer.cycles_per_frame = new_cycles_per_second_u32 / 60;
+							CurrentSoundTimer.cycle_counter = static_cast<double>(CurrentSoundTimer.cycle_counter) * (static_cast<double>(CurrentSoundTimer.cycles_per_frame) / static_cast<double>(previous_cycles_per_frame));
+						}
+					}
+					else
+					{
+						return;
+					}
+				}
 				while (cycle_accumulator >= cycle_rate && !pause)
 				{
 					cycle_accumulator -= cycle_rate;
@@ -542,7 +582,7 @@ namespace Hyper_BandCHIP
 					else
 					{
 						++DelayTimerSync.cycle_counter;
-						if (DelayTimerSync.cycle_counter == DelayTimerSync.cycles_per_frame)
+						if (DelayTimerSync.cycle_counter >= DelayTimerSync.cycles_per_frame)
 						{
 							DelayTimerSync.cycle_counter = 0;
 							--delay_timer;

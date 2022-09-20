@@ -55,7 +55,7 @@ namespace Hyper_BandCHIP
 
 	struct MainMenuData
 	{
-		const TextItem Title = { "Hyper BandCHIP V0.13", 220, 20, false };
+		const TextItem Title = { "Hyper BandCHIP V0.14", 220, 20, false };
 		const TextItem Author = { "By Joshua Moss", 250, 34, false };
 		StatusTextItem CurrentProgram = { "Current Program", 160, 60, "None", false };
 		StatusTextItem CurrentMachineStatus = { "Current Machine Status", 120, 74, "Non-Operational", false };
@@ -128,7 +128,7 @@ namespace Hyper_BandCHIP
 	{
 		const TextItem Title = { "CPU Settings", 266, 20, false };
 		StatusTextItem ChangeStatus = { "Change Status", 200, 40, "Unchanged", false };
-		AdjustableValueItem CPUCycles = { "CPU Cycles", 200, 60, 60, 12000000, ValueBaseType::Dec, 600, 0, false };
+		AdjustableValueItem CPUCycles = { "CPU Cycles", 200, 60, 0, 12000000, ValueBaseType::Dec, 600, 0, false };
 		AdjustableValueItem AdjustmentModifier { "Adjustment Modifier", 200, 74, 60, 600000, ValueBaseType::Dec, 60, 0, false };
 		ToggleItem Sync { "Sync", 200, 88, true, false };
 		const ButtonItem CommitChanges = { "Commit Changes", 200, 176, static_cast<unsigned int>(CPUSettingsMenuEvent::CommitChanges), false };
@@ -304,6 +304,8 @@ namespace Hyper_BandCHIP
 			std::unique_ptr<CBF::Program> CurrentProgram;
 			std::chrono::high_resolution_clock::time_point refresh_tp;
 			double refresh_accumulator;
+			std::chrono::high_resolution_clock::time_point cpf_tp;
+			double cpf_accumulator;
 			bool loading_program;
 			bool loading_chip8_binary_program;
 			bool chip8_binary_program_started;

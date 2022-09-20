@@ -1,5 +1,15 @@
 # Hyper BandCHIP Changelog
 
+## Version 0.14
+
+- Forgot to update the main menu's status of it's changes when a CHIP-8 Binary Program is successfully loaded.  It's fixed now.
+
+- Unlimited Speed is now possible!  To achieve this, just set the cycle rate to `0` and it will set it fast as it could.  Uses a calculation (which maybe tweaked at anytime in the future) to push even higher than the maximum possible setting avalable whenever unlimited speed is not used.
+
+- CHIP-8 Binary Programs can now truly utilize unlimited speed as a result of the upgrade.
+
+- Fixed the OpenGL 3.0 renderer as it was not rendering properly at all.  On top of that, it also failed to compile one of the shaders properly.
+
 ## Version 0.13
 
 - Upgraded the XO-CHIP core to support 16 color handling.

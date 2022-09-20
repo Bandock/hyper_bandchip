@@ -39,7 +39,7 @@ void main()
 	uvec4 color_data = texelFetch(CurrentTexture, ivec2(int(outTex.x * float(texDim.x)), int(outTex.y * float(texDim.y))), 0);
 	outColor = Palette[color_data.x];
 })";
-	const char *MenuFragmentShaderCode = R"(#version 300 es
+	const char *MenuFragmentShaderCode = R"(#version 130
 #extension GL_ARB_explicit_attrib_location : require
 #extension GL_ARB_uniform_buffer_object : require
 
@@ -56,7 +56,7 @@ layout(location = 0) out uint outColorIndex;
 void main()
 {
 	ivec2 texDim = textureSize(CurrentTexture, 0);
-	uvec4 color_data = texelFetch(CurrentTexture, ivec2(int(outTex.x * float(texDim.y)), int((outTex.y) * float(texDim.y))), 0);
+	uvec4 color_data = texelFetch(CurrentTexture, ivec2(int(outTex.x * float(texDim.x)), int((outTex.y) * float(texDim.y))), 0);
 	outColorIndex = (color_data.x == uint(1)) ? FontColor : uint(0);
 })";
 	vertices[0] = {{ -1.0f, 1.0f, 0.0f, 1.0f }, { 0.0f, 1.0f }};
@@ -204,6 +204,8 @@ void main()
 	glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), reinterpret_cast<void *>(sizeof(float) * 4));
 	glEnableVertexAttribArray(0);
 	glEnableVertexAttribArray(1);
+	glGenTextures(1, &DisplayTextureId);
+	glGenTextures(1, &MenuFontTextureId);
 	glActiveTexture(GL_TEXTURE0);
 	glBindTexture(GL_TEXTURE_2D, MenuFontTextureId);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);

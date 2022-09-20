@@ -23,7 +23,7 @@ using std::endl;
 
 using std::ifstream;
 
-Hyper_BandCHIP::Application::Application() : MainWindow(nullptr), MainRenderer(nullptr), start_path(std::filesystem::current_path()), CurrentOperationMode(OperationMode::Menu), CurrentProgramType(ProgramType::Raw), CurrentMachineCore(MachineCore::BandCHIP_CHIP8), CurrentMenu(MenuDisplay::Main), CurrentLoResFontStyle(LoResFontStyle::VIP), CurrentHiResFontStyle(HiResFontStyle::SuperCHIP), CurrentMachine(nullptr), CurrentProgram(nullptr), refresh_accumulator(0.0), loading_program(false), loading_chip8_binary_program(false), chip8_binary_program_started(false), retcode(0)
+Hyper_BandCHIP::Application::Application() : MainWindow(nullptr), MainRenderer(nullptr), start_path(std::filesystem::current_path()), CurrentOperationMode(OperationMode::Menu), CurrentProgramType(ProgramType::Raw), CurrentMachineCore(MachineCore::BandCHIP_CHIP8), CurrentMenu(MenuDisplay::Main), CurrentLoResFontStyle(LoResFontStyle::VIP), CurrentHiResFontStyle(HiResFontStyle::SuperCHIP), CurrentMachine(nullptr), CurrentProgram(nullptr), refresh_accumulator(0.0), cpf_accumulator(0.0), loading_program(false), loading_chip8_binary_program(false), chip8_binary_program_started(false), retcode(0)
 {
 	bool exit = false;
 	unsigned int flags = 0x00000000;
@@ -1844,6 +1844,8 @@ Hyper_BandCHIP::Application::Application() : MainWindow(nullptr), MainRenderer(n
 																	MainRenderer->SetDisplayMode(DisplayMode::Emulator);
 																	CurrentMachine->SetCurrentTime(current_tp);
 																	CurrentMachine->PauseProgram(false);
+																	cpf_tp = current_tp;
+																	cpf_accumulator = 0.0;
 																}
 															}
 															break;
@@ -2683,6 +2685,23 @@ Hyper_BandCHIP::Application::Application() : MainWindow(nullptr), MainRenderer(n
 				// SDL_Delay(10);
 			}
 		}
+		if (CurrentOperationMode == OperationMode::Emulator)
+		{
+			std::chrono::duration<double> delta_time = current_tp - cpf_tp;
+			if (delta_time.count() >= 0.25)
+			{
+				delta_time = std::chrono::duration<double>(0.25);
+			}
+			cpf_accumulator += delta_time.count();
+			cpf_tp = current_tp;
+			if (cpf_accumulator >= 0.1)
+			{
+				cpf_accumulator = 0.0;
+				std::ostringstream window_title;
+				window_title << "Hyper BandCHIP (CPF: " << CurrentMachine->GetCyclesPerFrame() << ')';
+				SDL_SetWindowTitle(MainWindow.get(), window_title.str().c_str());
+			}
+		}
 		if (idle)
 		{
 			SDL_Delay(1);
@@ -3227,10 +3246,6 @@ bool Hyper_BandCHIP::Application::StartCHIP8BinaryProgram()
 		return false;
 	}
 	unsigned int desired_execution_speed = CurrentProgram->GetDesiredExecutionSpeed();
-	if (desired_execution_speed == 0 && CurrentProgram->HasPropertyType(CBF::PropertyType::DesiredExecutionSpeed))
-	{
-		desired_execution_speed = 200000;
-	}
 	CBF::PlatformType current_platform_type = CBF::PlatformType::CHIP8;
 	switch (CurrentMachineCore)
 	{
@@ -3299,6 +3314,7 @@ bool Hyper_BandCHIP::Application::StartCHIP8BinaryProgram()
 			{
 				MainMenu.CurrentMachineStatus.Status = "Operational";
 				chip8_binary_program_started = true;
+				ShowMenu(CurrentMenu);
 			}
 			else
 			{
@@ -3421,6 +3437,7 @@ bool Hyper_BandCHIP::Application::StartCHIP8BinaryProgram()
 			{
 				MainMenu.CurrentMachineStatus.Status = "Operational";
 				chip8_binary_program_started = true;
+				ShowMenu(CurrentMenu);
 			}
 			else
 			{
@@ -3525,6 +3542,7 @@ bool Hyper_BandCHIP::Application::StartCHIP8BinaryProgram()
 			{
 				MainMenu.CurrentMachineStatus.Status = "Operational";
 				chip8_binary_program_started = true;
+				ShowMenu(CurrentMenu);
 			}
 			else
 			{

@@ -73,7 +73,7 @@ Hyper_BandCHIP::Machine::Machine(MachineCore Core, unsigned int cycles_per_secon
 	display = new unsigned char[this->display_width * this->display_height];
 	memset(display, 0x00, this->display_width * this->display_height);
 	memset(key_status, 0x00, 0x10);
-	cycle_rate = 1.0 / static_cast<double>(cycles_per_second);
+	cycle_rate = (cycles_per_second > 0) ? 1.0 / static_cast<double>(cycles_per_second) : 0.0;
 }
 
 Hyper_BandCHIP::Machine::~Machine()
@@ -487,7 +487,7 @@ void Hyper_BandCHIP::Machine::RunSoundTimer()
 			else
 			{
 				++SoundTimerSync[v].cycle_counter;
-				if (SoundTimerSync[v].cycle_counter == SoundTimerSync[v].cycles_per_frame)
+				if (SoundTimerSync[v].cycle_counter >= SoundTimerSync[v].cycles_per_frame)
 				{
 					SoundTimerSync[v].cycle_counter = 0;
 					--sound_timer[v];
@@ -528,7 +528,7 @@ void Hyper_BandCHIP::Machine::SyncToCycle()
 	RunDelayTimer();
 	RunSoundTimer();
 	++RefreshSync.cycle_counter;
-	if (RefreshSync.cycle_counter == RefreshSync.cycles_per_frame)
+	if (RefreshSync.cycle_counter >= RefreshSync.cycles_per_frame)
 	{
 		RefreshSync.cycle_counter = 0;
 		if (CurrentMachineCore == MachineCore::BandCHIP_CHIP8)

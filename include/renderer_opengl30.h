@@ -6,6 +6,7 @@
 #include <array>
 #include <vector>
 #include <string>
+#include <iostream>
 
 namespace Hyper_BandCHIP
 {
@@ -76,7 +77,7 @@ namespace Hyper_BandCHIP
 								break;
 							}
 						}
-						s_offset = ((59 - y - 1 % 10) + (((59 - y - 1) / 10) * (10 * 16)));
+						s_offset = ((59 - y - 1) % 10) + (((59 - y - 1) / 10) * (10 * 16));
 					}
 					glTexStorage2D(GL_TEXTURE_2D, 1, GL_R8UI, 128, 64);
 					glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 128, 64, GL_RED_INTEGER, GL_UNSIGNED_BYTE, font_data);
