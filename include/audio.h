@@ -7,6 +7,7 @@
 #include <cmath>
 #include <chrono>
 #include <thread>
+#include <atomic>
 #include <SDL.h>
 
 using namespace std::chrono;

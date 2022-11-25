@@ -70,7 +70,7 @@ void main()
 	};
 	font_ctrl.FontColor = 1;
 	GLContext = SDL_GL_CreateContext(Window);
-	if (GLContext != nullptr)
+	if (GLContext == nullptr)
 	{
 		cout << "Unable to create OpenGL 2.1 context.\n";
 		fail = true;

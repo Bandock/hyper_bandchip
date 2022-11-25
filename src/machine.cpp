@@ -13,7 +13,7 @@
 #include "renderer_opengles3.h"
 #endif
 
-Hyper_BandCHIP::Machine::Machine(MachineCore Core, unsigned int cycles_per_second, unsigned int memory_size, unsigned short display_width, unsigned short display_height, Renderer *DisplayRenderer) : CurrentMachineCore(Core), CurrentResolutionMode(ResolutionMode::LoRes), DisplayRenderer(DisplayRenderer), sync(false), display_interrupt(false), cycles_per_second(cycles_per_second), delay_timer(0), sound_timer{ 0, 0, 0, 0 }, PC(0), I(0), SP(0), memory(nullptr), display(nullptr), key_pressed(0), plane(0x01), voice(0), rng_engine(system_clock::now().time_since_epoch().count()), rng_distrib(0, 255), cycle_accumulator(0.0), dt_accumulator(0.0), st_accumulator{ 0.0, 0.0, 0.0, 0.0 } , pause(true), operational(true), wait_for_key_release(false), error_state(MachineError::NoError)
+Hyper_BandCHIP::Machine::Machine(MachineCore Core, unsigned int cycles_per_second, unsigned int memory_size, unsigned short display_width, unsigned short display_height, Renderer *DisplayRenderer) : CurrentMachineCore(Core), CurrentResolutionMode(ResolutionMode::LoRes), DisplayRenderer(DisplayRenderer), sync(false), superscalar_mode(false), display_interrupt(false), cycles_per_second(cycles_per_second), delay_timer(0), sound_timer{ 0, 0, 0, 0 }, PC(0), I(0), SP(0), memory(nullptr), display(nullptr), key_pressed(0), plane(0x01), voice(0), rng_engine(system_clock::now().time_since_epoch().count()), rng_distrib(0, 255), cycle_accumulator(0.0), dt_accumulator(0.0), st_accumulator{ 0.0, 0.0, 0.0, 0.0 } , pause(true), operational(true), wait_for_key_release(false), error_state(MachineError::NoError)
 {
 	switch (CurrentMachineCore)
 	{
@@ -95,7 +95,6 @@ void Hyper_BandCHIP::Machine::InitializeMemory()
 
 void Hyper_BandCHIP::Machine::InitializeVideo()
 {
-
 	memset(display, 0x00, display_width * display_height);
 	plane = 0x01;
 }
@@ -408,6 +407,7 @@ void Hyper_BandCHIP::Machine::PauseProgram(bool pause)
 	this->pause = pause;
 }
 
+/*
 void Hyper_BandCHIP::Machine::RunSoundTimer()
 {
 	unsigned char voice_count = 0;
@@ -522,11 +522,15 @@ void Hyper_BandCHIP::Machine::RunSoundTimer()
 		}
 	}
 }
+*/
 
 void Hyper_BandCHIP::Machine::SyncToCycle()
 {
 	RunDelayTimer();
-	RunSoundTimer();
+	RunSoundTimer<0>();
+	RunSoundTimer<1>();
+	RunSoundTimer<2>();
+	RunSoundTimer<3>();
 	++RefreshSync.cycle_counter;
 	if (RefreshSync.cycle_counter >= RefreshSync.cycles_per_frame)
 	{

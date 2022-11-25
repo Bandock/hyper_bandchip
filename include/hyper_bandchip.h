@@ -55,7 +55,7 @@ namespace Hyper_BandCHIP
 
 	struct MainMenuData
 	{
-		const TextItem Title = { "Hyper BandCHIP V0.14", 220, 20, false };
+		const TextItem Title = { "Hyper BandCHIP V0.15", 220, 20, false };
 		const TextItem Author = { "By Joshua Moss", 250, 34, false };
 		StatusTextItem CurrentProgram = { "Current Program", 160, 60, "None", false };
 		StatusTextItem CurrentMachineStatus = { "Current Machine Status", 120, 74, "Non-Operational", false };
@@ -94,7 +94,7 @@ namespace Hyper_BandCHIP
 	struct ConfigurationMenuData
 	{
 		const TextItem Title = { "Configuration", 240, 20, false };
-		MultiChoiceItem Core = { "Core", 200, 60, static_cast<unsigned int>(ConfigurationMenuEvent::ChangeCore), 0, { "CHIP-8", "SuperCHIP", "XO-CHIP", "HyperCHIP-64" }, false };
+		MultiChoiceItem Core = { "Core", 200, 60, static_cast<unsigned int>(ConfigurationMenuEvent::ChangeCore), 0, { "CHIP-8", "SuperCHIP", "XO-CHIP", "HyperCHIP-64", "Pipelined CHIP-8" }, false };
 		const ButtonItem CPUSettings = { "CPU Settings", 200, 74, static_cast<unsigned int>(ConfigurationMenuEvent::CPUSettings), false };
 		const ButtonItem Behaviors = { "Behaviors", 200, 88, static_cast<unsigned int>(ConfigurationMenuEvent::Behaviors), false };
 		const ButtonItem PaletteSettings = { "Palette Settings", 200, 102, static_cast<unsigned int>(ConfigurationMenuEvent::PaletteSettings), false };
@@ -128,9 +128,10 @@ namespace Hyper_BandCHIP
 	{
 		const TextItem Title = { "CPU Settings", 266, 20, false };
 		StatusTextItem ChangeStatus = { "Change Status", 200, 40, "Unchanged", false };
-		AdjustableValueItem CPUCycles = { "CPU Cycles", 200, 60, 0, 12000000, ValueBaseType::Dec, 600, 0, false };
+		AdjustableValueItem CPUCycles = { "CPU Cycles", 200, 60, 0, 60000000, ValueBaseType::Dec, 600, 0, false };
 		AdjustableValueItem AdjustmentModifier { "Adjustment Modifier", 200, 74, 60, 600000, ValueBaseType::Dec, 60, 0, false };
 		ToggleItem Sync { "Sync", 200, 88, true, false };
+		ToggleItem SuperscalarMode { "Superscalar Mode", 200, 102, false, false };
 		const ButtonItem CommitChanges = { "Commit Changes", 200, 176, static_cast<unsigned int>(CPUSettingsMenuEvent::CommitChanges), false };
 		const ButtonItem ReturnToConfiguration = { "Return to Configuration", 200, 190, static_cast<unsigned int>(CPUSettingsMenuEvent::ReturnToConfiguration), false };
 		unsigned int CurrentSelectableItemId = 0;
@@ -300,7 +301,11 @@ namespace Hyper_BandCHIP
 			LoadConfigurationMenuData LoadConfigurationMenu;
 			SaveConfigurationMenuData SaveConfigurationMenu;
 			ErrorDisplayData ErrorDisplay;
-			std::unique_ptr<Machine> CurrentMachine;
+			std::unique_ptr<BandCHIP::CHIP8_Machine> CurrentCHIP8Machine;
+			std::unique_ptr<BandCHIP::SuperCHIP_Machine> CurrentSuperCHIPMachine;
+			std::unique_ptr<BandCHIP::XOCHIP_Machine> CurrentXOCHIPMachine;
+			std::unique_ptr<BandCHIP::HyperCHIP64_Machine> CurrentHyperCHIP64Machine;
+			std::unique_ptr<BandCHIP::Superscalar_CHIP8_Machine> CurrentSuperscalarCHIP8Machine;
 			std::unique_ptr<CBF::Program> CurrentProgram;
 			std::chrono::high_resolution_clock::time_point refresh_tp;
 			double refresh_accumulator;

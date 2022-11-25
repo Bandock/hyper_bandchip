@@ -37,7 +37,7 @@ set(MACHINE_CORE_FILES
 	src/bc_xochip.cpp
 	src/bc_hyperchip64.cpp)
 
-add_executable(hyper_bandchip src/${CURRENT_RENDERER_SOURCE_DIR}/renderer.cpp src/cbf.cpp src/hyper_bandchip.cpp src/machine.cpp ${MACHINE_CORE_FILES} src/audio.cpp)
+add_executable(hyper_bandchip src/${CURRENT_RENDERER_SOURCE_DIR}/renderer.cpp src/cbf.cpp src/hyper_bandchip.cpp ${MACHINE_CORE_FILES} src/audio.cpp)
 add_custom_command(TARGET hyper_bandchip PRE_BUILD COMMAND ${CMAKE_COMMAND} -E copy_directory ${PROJECT_SOURCE_DIR}/fonts ${PROJECT_BINARY_DIR}/fonts)
 target_include_directories(hyper_bandchip PUBLIC "${PROJECT_SOURCE_DIR}/include" "${SDL2_INCLUDE_DIRS}")
 target_compile_definitions(hyper_bandchip PUBLIC ${CURRENT_RENDERER_DEFINE})

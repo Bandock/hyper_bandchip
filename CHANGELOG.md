@@ -1,5 +1,11 @@
 # Hyper BandCHIP Changelog
 
+## Version 0.15
+
+- Redesigned the machine handling for each core where they no longer share the same machine object class.  This resulted in a performance boost between at least 80% and 100%!
+
+- Due to the sync feature being very stable, turning it off is no longer possible.
+
 ## Version 0.14
 
 - Forgot to update the main menu's status of it's changes when a CHIP-8 Binary Program is successfully loaded.  It's fixed now.

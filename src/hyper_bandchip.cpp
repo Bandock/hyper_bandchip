@@ -23,7 +23,7 @@ using std::endl;
 
 using std::ifstream;
 
-Hyper_BandCHIP::Application::Application() : MainWindow(nullptr), MainRenderer(nullptr), start_path(std::filesystem::current_path()), CurrentOperationMode(OperationMode::Menu), CurrentProgramType(ProgramType::Raw), CurrentMachineCore(MachineCore::BandCHIP_CHIP8), CurrentMenu(MenuDisplay::Main), CurrentLoResFontStyle(LoResFontStyle::VIP), CurrentHiResFontStyle(HiResFontStyle::SuperCHIP), CurrentMachine(nullptr), CurrentProgram(nullptr), refresh_accumulator(0.0), cpf_accumulator(0.0), loading_program(false), loading_chip8_binary_program(false), chip8_binary_program_started(false), retcode(0)
+Hyper_BandCHIP::Application::Application() : MainWindow(nullptr), MainRenderer(nullptr), start_path(std::filesystem::current_path()), CurrentOperationMode(OperationMode::Menu), CurrentProgramType(ProgramType::Raw), CurrentMachineCore(MachineCore::BandCHIP_CHIP8), CurrentMenu(MenuDisplay::Main), CurrentLoResFontStyle(LoResFontStyle::VIP), CurrentHiResFontStyle(HiResFontStyle::SuperCHIP), /* CurrentMachine(nullptr),*/ CurrentCHIP8Machine(nullptr), CurrentSuperCHIPMachine(nullptr), CurrentXOCHIPMachine(nullptr), CurrentHyperCHIP64Machine(nullptr), CurrentSuperscalarCHIP8Machine(nullptr), CurrentProgram(nullptr), refresh_accumulator(0.0), cpf_accumulator(0.0), loading_program(false), loading_chip8_binary_program(false), chip8_binary_program_started(false), retcode(0)
 {
 	bool exit = false;
 	unsigned int flags = 0x00000000;
@@ -79,31 +79,63 @@ Hyper_BandCHIP::Application::Application() : MainWindow(nullptr), MainRenderer(n
 			{
 				case MachineCore::BandCHIP_CHIP8:
 				{
-					if (CurrentMachine != nullptr)
+					if (CurrentSuperCHIPMachine != nullptr)
 					{
-						if (CurrentMachine->GetMachineCore() != CurrentMachineCore)
+						CurrentSuperCHIPMachine = nullptr;
+					}
+					if (CurrentXOCHIPMachine != nullptr)
+					{
+						CurrentXOCHIPMachine = nullptr;
+					}
+					if (CurrentHyperCHIP64Machine != nullptr)
+					{
+						CurrentHyperCHIP64Machine = nullptr;
+					}
+					if (!CPUSettingsMenu.SuperscalarMode.toggle)
+					{
+						if (CurrentSuperscalarCHIP8Machine != nullptr)
 						{
-							CurrentMachine = std::make_unique<Machine>(CurrentMachineCore, CPUSettingsMenu.CPUCycles.value, 0x1000, 64, 32, MainRenderer.get());
+							CurrentSuperscalarCHIP8Machine = nullptr;
+						}
+						if (CurrentCHIP8Machine == nullptr)
+						{
+							CurrentCHIP8Machine = std::make_unique<BandCHIP::CHIP8_Machine>(CPUSettingsMenu.CPUCycles.value, MainRenderer.get());
 							std::ostringstream window_title;
-							window_title << "Hyper BandCHIP Emulator (CPF: " << CurrentMachine->GetCyclesPerFrame() << ')';
+							window_title << "Hyper BandCHIP Emulator (CPF: " << GetCyclesPerFrame(*CurrentCHIP8Machine) << ')';
 							SDL_SetWindowTitle(MainWindow.get(), window_title.str().c_str());
 						}
 						else
 						{
-							CurrentMachine->InitializeRegisters();
-							CurrentMachine->InitializeTimers();
-							CurrentMachine->InitializeStack();
-							CurrentMachine->InitializeMemory();
-							CurrentMachine->InitializeVideo();
-							CurrentMachine->InitializeKeyStatus();
+							InitializeRegisters(*CurrentCHIP8Machine);
+							InitializeTimers(*CurrentCHIP8Machine);
+							InitializeStack(*CurrentCHIP8Machine);
+							InitializeMemory(*CurrentCHIP8Machine);
+							InitializeVideo(*CurrentCHIP8Machine);
+							InitializeKeyStatus(*CurrentCHIP8Machine);
 						}
 					}
 					else
 					{
-						CurrentMachine = std::make_unique<Machine>(CurrentMachineCore, CPUSettingsMenu.CPUCycles.value, 0x1000, 64, 32, MainRenderer.get());
-						std::ostringstream window_title;
-						window_title << "Hyper BandCHIP Emulator (CPF: " << CurrentMachine->GetCyclesPerFrame() << ')';
-						SDL_SetWindowTitle(MainWindow.get(), window_title.str().c_str());
+						if (CurrentCHIP8Machine != nullptr)
+						{
+							CurrentCHIP8Machine = nullptr;
+						}
+						if (CurrentSuperscalarCHIP8Machine == nullptr)
+						{
+							CurrentSuperscalarCHIP8Machine = std::make_unique<BandCHIP::Superscalar_CHIP8_Machine>(CPUSettingsMenu.CPUCycles.value, MainRenderer.get());
+							std::ostringstream window_title;
+							window_title << "Hyper BandCHIP Emulator (CPF: " << GetCyclesPerFrame(*CurrentSuperscalarCHIP8Machine) << ')';
+							SDL_SetWindowTitle(MainWindow.get(), window_title.str().c_str());
+						}
+						else
+						{
+							InitializeRegisters(*CurrentSuperscalarCHIP8Machine);
+							InitializeTimers(*CurrentSuperscalarCHIP8Machine);
+							InitializeStack(*CurrentSuperscalarCHIP8Machine);
+							InitializeMemory(*CurrentSuperscalarCHIP8Machine);
+							InitializeVideo(*CurrentSuperscalarCHIP8Machine);
+							InitializeKeyStatus(*CurrentSuperscalarCHIP8Machine);
+						}
 					}
 					MainRenderer->SetupDisplay(64, 32);
 					const unsigned char *lores_fonts = nullptr;
@@ -138,11 +170,27 @@ Hyper_BandCHIP::Application::Application() : MainWindow(nullptr), MainRenderer(n
 						lores_fonts = CurrentLoResFontStyle.GetFontStyleData();
 						lores_fonts_size = CurrentLoResFontStyle.GetFontStyleDataSize();
 					}
-					CurrentMachine->CopyDataToInterpreterMemory(lores_fonts, 0x000, lores_fonts_size);
+					if (!CPUSettingsMenu.SuperscalarMode.toggle)
+					{
+						CopyDataToInterpreterMemory(*CurrentCHIP8Machine, lores_fonts, 0x000, lores_fonts_size);
+					}
+					else
+					{
+						CopyDataToInterpreterMemory(*CurrentSuperscalarCHIP8Machine, lores_fonts, 0x000, lores_fonts_size);
+					}
 					CHIP8_BehaviorData CurrentBehaviorData = { BehaviorsMenu.CHIP48_Shift.toggle, BehaviorsMenu.CHIP48_LoadStore.toggle, BehaviorsMenu.VIP_Display_Interrupt.toggle, BehaviorsMenu.VIP_Clipping.toggle, BehaviorsMenu.VIP_VF_Reset.toggle };
-					CurrentMachine->StoreBehaviorData(&CurrentBehaviorData);
-					CurrentMachine->SetSync(CPUSettingsMenu.Sync.toggle);
-					if (CurrentMachine->LoadProgram(program_data.data(), 0x200, program_size))
+					bool program_loaded = false;
+					if (!CPUSettingsMenu.SuperscalarMode.toggle)
+					{
+						CurrentCHIP8Machine->StoreBehaviorData(&CurrentBehaviorData);
+						program_loaded = LoadProgram(*CurrentCHIP8Machine, program_data.data(), 0x200, program_size);
+					}
+					else
+					{
+						CurrentSuperscalarCHIP8Machine->StoreBehaviorData(&CurrentBehaviorData);
+						program_loaded = LoadProgram(*CurrentSuperscalarCHIP8Machine, program_data.data(), 0x200, program_size);
+					}
+					if (program_loaded)
 					{
 						LoadProgramDisplay.LoadingProgram.hidden = true;
 						LoadProgramDisplay.LoadSuccessful.hidden = false;
@@ -162,32 +210,34 @@ Hyper_BandCHIP::Application::Application() : MainWindow(nullptr), MainRenderer(n
 				{
 					std::filesystem::path local_dir = std::filesystem::current_path();
 					std::filesystem::current_path(start_path);
-					if (CurrentMachine != nullptr)
+					if (CurrentCHIP8Machine != nullptr)
 					{
-						if (CurrentMachine->GetMachineCore() != CurrentMachineCore)
-						{
-							CurrentMachine = std::make_unique<Machine>(CurrentMachineCore, CPUSettingsMenu.CPUCycles.value, 0x1000, 128, 64, MainRenderer.get());
-							std::ostringstream window_title;
-							window_title << "Hyper BandCHIP (CPF: " << CurrentMachine->GetCyclesPerFrame() << ')';
-							SDL_SetWindowTitle(MainWindow.get(), window_title.str().c_str());
-						}
-						else
-						{
-							CurrentMachine->SetResolutionMode(ResolutionMode::LoRes);
-							CurrentMachine->InitializeRegisters();
-							CurrentMachine->InitializeTimers();
-							CurrentMachine->InitializeStack();
-							CurrentMachine->InitializeMemory();
-							CurrentMachine->InitializeVideo();
-							CurrentMachine->InitializeKeyStatus();
-						}
+						CurrentCHIP8Machine = nullptr;
+					}
+					if (CurrentXOCHIPMachine != nullptr)
+					{
+						CurrentXOCHIPMachine = nullptr;
+					}
+					if (CurrentHyperCHIP64Machine != nullptr)
+					{
+						CurrentHyperCHIP64Machine = nullptr;
+					}
+					if (CurrentSuperCHIPMachine == nullptr)
+					{
+						CurrentSuperCHIPMachine = std::make_unique<BandCHIP::SuperCHIP_Machine>(CPUSettingsMenu.CPUCycles.value, MainRenderer.get());
+						std::ostringstream window_title;
+						window_title << "Hyper BandCHIP Emulator (CPF: " << GetCyclesPerFrame(*CurrentSuperCHIPMachine) << ')';
+						SDL_SetWindowTitle(MainWindow.get(), window_title.str().c_str());
 					}
 					else
 					{
-						CurrentMachine = std::make_unique<Machine>(CurrentMachineCore, CPUSettingsMenu.CPUCycles.value, 0x1000, 128, 64, MainRenderer.get());
-						std::ostringstream window_title;
-						window_title << "Hyper BandCHIP (CPF: " << CurrentMachine->GetCyclesPerFrame() << ')';
-						SDL_SetWindowTitle(MainWindow.get(), window_title.str().c_str());
+						SetResolutionMode(*CurrentSuperCHIPMachine, ResolutionMode::LoRes);
+						InitializeRegisters(*CurrentSuperCHIPMachine);
+						InitializeTimers(*CurrentSuperCHIPMachine);
+						InitializeStack(*CurrentSuperCHIPMachine);
+						InitializeMemory(*CurrentSuperCHIPMachine);
+						InitializeVideo(*CurrentSuperCHIPMachine);
+						InitializeKeyStatus(*CurrentSuperCHIPMachine);
 					}
 					std::filesystem::current_path(local_dir);
 					MainRenderer->SetupDisplay(128, 64);
@@ -255,8 +305,8 @@ Hyper_BandCHIP::Application::Application() : MainWindow(nullptr), MainRenderer(n
 						hires_fonts = CurrentHiResFontStyle.GetFontStyleData();
 						hires_fonts_size = CurrentHiResFontStyle.GetFontStyleDataSize();
 					}
-					CurrentMachine->CopyDataToInterpreterMemory(lores_fonts, 0x000, lores_fonts_size);
-					CurrentMachine->CopyDataToInterpreterMemory(hires_fonts, 0x050, hires_fonts_size);
+					CopyDataToInterpreterMemory(*CurrentSuperCHIPMachine, lores_fonts, 0x000, lores_fonts_size);
+					CopyDataToInterpreterMemory(*CurrentSuperCHIPMachine, hires_fonts, 0x050, hires_fonts_size);
 					SuperCHIP_BehaviorData CurrentBehaviorData;
 					switch (BehaviorsMenu.SuperCHIP_Version.current_option)
 					{
@@ -281,9 +331,8 @@ Hyper_BandCHIP::Application::Application() : MainWindow(nullptr), MainRenderer(n
 							break;
 						}
 					}
-					CurrentMachine->StoreBehaviorData(&CurrentBehaviorData);
-					CurrentMachine->SetSync(CPUSettingsMenu.Sync.toggle);
-					if (CurrentMachine->LoadProgram(program_data.data(), 0x200, program_size))
+					CurrentSuperCHIPMachine->StoreBehaviorData(&CurrentBehaviorData);
+					if (LoadProgram(*CurrentSuperCHIPMachine, program_data.data(), 0x200, program_size))
 					{
 						LoadProgramDisplay.LoadingProgram.hidden = true;
 						LoadProgramDisplay.LoadSuccessful.hidden = false;
@@ -303,33 +352,35 @@ Hyper_BandCHIP::Application::Application() : MainWindow(nullptr), MainRenderer(n
 				{
 					std::filesystem::path local_dir = std::filesystem::current_path();
 					std::filesystem::current_path(start_path);
-					if (CurrentMachine != nullptr)
+					if (CurrentCHIP8Machine != nullptr)
 					{
-						if (CurrentMachine->GetMachineCore() != CurrentMachineCore)
-						{
-							CurrentMachine = std::make_unique<Machine>(CurrentMachineCore, CPUSettingsMenu.CPUCycles.value, 0x10000, 128, 64, MainRenderer.get());
-							std::ostringstream window_title;
-							window_title << "Hyper BandCHIP Emulator (CPF: " << CurrentMachine->GetCyclesPerFrame() << ')';
-							SDL_SetWindowTitle(MainWindow.get(), window_title.str().c_str());
-						}
-						else
-						{
-							CurrentMachine->SetResolutionMode(ResolutionMode::LoRes);
-							CurrentMachine->InitializeRegisters();
-							CurrentMachine->InitializeTimers();
-							CurrentMachine->InitializeStack();
-							CurrentMachine->InitializeMemory();
-							CurrentMachine->InitializeVideo();
-							CurrentMachine->InitializeAudio();
-							CurrentMachine->InitializeKeyStatus();
-						}
+						CurrentCHIP8Machine = nullptr;
+					}
+					if (CurrentSuperCHIPMachine != nullptr)
+					{
+						CurrentSuperCHIPMachine = nullptr;
+					}
+					if (CurrentHyperCHIP64Machine != nullptr)
+					{
+						CurrentHyperCHIP64Machine = nullptr;
+					}
+					if (CurrentXOCHIPMachine == nullptr)
+					{
+						CurrentXOCHIPMachine = std::make_unique<BandCHIP::XOCHIP_Machine>(CPUSettingsMenu.CPUCycles.value, MainRenderer.get());
+						std::ostringstream window_title;
+						window_title << "Hyper BandCHIP Emulator (CPF: " << GetCyclesPerFrame(*CurrentXOCHIPMachine) << ')';
+						SDL_SetWindowTitle(MainWindow.get(), window_title.str().c_str());
 					}
 					else
 					{
-						CurrentMachine = std::make_unique<Machine>(CurrentMachineCore, CPUSettingsMenu.CPUCycles.value, 0x10000, 128, 64, MainRenderer.get());
-						std::ostringstream window_title;
-						window_title << "Hyper BandCHIP Emulator (CPF: " << CurrentMachine->GetCyclesPerFrame() << ')';
-						SDL_SetWindowTitle(MainWindow.get(), window_title.str().c_str());
+						SetResolutionMode(*CurrentXOCHIPMachine, ResolutionMode::LoRes);
+						InitializeRegisters(*CurrentXOCHIPMachine);
+						InitializeTimers(*CurrentXOCHIPMachine);
+						InitializeStack(*CurrentXOCHIPMachine);
+						InitializeMemory(*CurrentXOCHIPMachine);
+						InitializeVideo(*CurrentXOCHIPMachine);
+						InitializeAudio<BandCHIP::XOCHIP_Machine, XOCHIP_Audio>(*CurrentXOCHIPMachine);
+						InitializeKeyStatus(*CurrentXOCHIPMachine);
 					}
 					std::filesystem::current_path(local_dir);
 					MainRenderer->SetupDisplay(128, 64);
@@ -397,12 +448,11 @@ Hyper_BandCHIP::Application::Application() : MainWindow(nullptr), MainRenderer(n
 						hires_fonts = CurrentHiResFontStyle.GetFontStyleData();
 						hires_fonts_size = CurrentHiResFontStyle.GetFontStyleDataSize();
 					}
-					CurrentMachine->CopyDataToInterpreterMemory(lores_fonts, 0x000, lores_fonts_size);
-					CurrentMachine->CopyDataToInterpreterMemory(hires_fonts, 0x050, hires_fonts_size);
+					CopyDataToInterpreterMemory(*CurrentXOCHIPMachine, lores_fonts, 0x000, lores_fonts_size);
+					CopyDataToInterpreterMemory(*CurrentXOCHIPMachine, hires_fonts, 0x050, hires_fonts_size);
 					XOCHIP_BehaviorData CurrentBehaviorData = { BehaviorsMenu.SuperCHIP_Shift.toggle, BehaviorsMenu.SuperCHIP_LoadStore.toggle, BehaviorsMenu.Octo_LoResSprite.toggle };
-					CurrentMachine->StoreBehaviorData(&CurrentBehaviorData);
-					CurrentMachine->SetSync(CPUSettingsMenu.Sync.toggle);
-					if (CurrentMachine->LoadProgram(program_data.data(), 0x200, program_size))
+					CurrentXOCHIPMachine->StoreBehaviorData(&CurrentBehaviorData);
+					if (LoadProgram(*CurrentXOCHIPMachine, program_data.data(), 0x200, program_size))
 					{
 						LoadProgramDisplay.LoadingProgram.hidden = true;
 						LoadProgramDisplay.LoadSuccessful.hidden = false;
@@ -422,33 +472,35 @@ Hyper_BandCHIP::Application::Application() : MainWindow(nullptr), MainRenderer(n
 				{
 					std::filesystem::path local_dir = std::filesystem::current_path();
 					std::filesystem::current_path(start_path);
-					if (CurrentMachine != nullptr)
+					if (CurrentCHIP8Machine != nullptr)
 					{
-						if (CurrentMachine->GetMachineCore() != CurrentMachineCore)
-						{
-							CurrentMachine = std::make_unique<Machine>(CurrentMachineCore, CPUSettingsMenu.CPUCycles.value, 0x10000, 128, 64, MainRenderer.get());
-							std::ostringstream window_title;
-							window_title << "Hyper BandCHIP Emulator (CPF: " << CurrentMachine->GetCyclesPerFrame() << ')';
-							SDL_SetWindowTitle(MainWindow.get(), window_title.str().c_str());
-						}
-						else
-						{
-							CurrentMachine->SetResolutionMode(ResolutionMode::LoRes);
-							CurrentMachine->InitializeRegisters();
-							CurrentMachine->InitializeTimers();
-							CurrentMachine->InitializeStack();
-							CurrentMachine->InitializeMemory();
-							CurrentMachine->InitializeVideo();
-							CurrentMachine->InitializeAudio();
-							CurrentMachine->InitializeKeyStatus();
-						}
+						CurrentCHIP8Machine = nullptr;
+					}
+					if (CurrentSuperCHIPMachine != nullptr)
+					{
+						CurrentSuperCHIPMachine = nullptr;
+					}
+					if (CurrentXOCHIPMachine != nullptr)
+					{
+						CurrentXOCHIPMachine = nullptr;
+					}
+					if (CurrentHyperCHIP64Machine == nullptr)
+					{
+						CurrentHyperCHIP64Machine = std::make_unique<BandCHIP::HyperCHIP64_Machine>(CPUSettingsMenu.CPUCycles.value, MainRenderer.get());
+						std::ostringstream window_title;
+						window_title << "Hyper BandCHIP Emulator (CPF: " << GetCyclesPerFrame(*CurrentHyperCHIP64Machine) << ')';
+						SDL_SetWindowTitle(MainWindow.get(), window_title.str().c_str());
 					}
 					else
 					{
-						CurrentMachine = std::make_unique<Machine>(CurrentMachineCore, CPUSettingsMenu.CPUCycles.value, 0x10000, 128, 64, MainRenderer.get());
-						std::ostringstream window_title;
-						window_title << "Hyper BandCHIP Emulator (CPF: " << CurrentMachine->GetCyclesPerFrame() << ')';
-						SDL_SetWindowTitle(MainWindow.get(), window_title.str().c_str());
+						SetResolutionMode(*CurrentHyperCHIP64Machine, ResolutionMode::LoRes);
+						InitializeRegisters(*CurrentHyperCHIP64Machine);
+						InitializeTimers<BandCHIP::HyperCHIP64_Machine, HyperCHIP64_Audio>(*CurrentHyperCHIP64Machine);
+						InitializeStack(*CurrentHyperCHIP64Machine);
+						InitializeMemory(*CurrentHyperCHIP64Machine);
+						InitializeVideo(*CurrentHyperCHIP64Machine);
+						InitializeAudio<BandCHIP::HyperCHIP64_Machine, HyperCHIP64_Audio>(*CurrentHyperCHIP64Machine);
+						InitializeKeyStatus(*CurrentHyperCHIP64Machine);
 					}
 					std::filesystem::current_path(local_dir);
 					MainRenderer->SetupDisplay(128, 64);
@@ -516,10 +568,9 @@ Hyper_BandCHIP::Application::Application() : MainWindow(nullptr), MainRenderer(n
 						hires_fonts = CurrentHiResFontStyle.GetFontStyleData();
 						hires_fonts_size = CurrentHiResFontStyle.GetFontStyleDataSize();
 					}
-					CurrentMachine->CopyDataToInterpreterMemory(lores_fonts, 0x000, lores_fonts_size);
-					CurrentMachine->CopyDataToInterpreterMemory(hires_fonts, 0x050, hires_fonts_size);
-					CurrentMachine->SetSync(CPUSettingsMenu.Sync.toggle);
-					if (CurrentMachine->LoadProgram(program_data.data(), 0x200, program_size))
+					CopyDataToInterpreterMemory(*CurrentHyperCHIP64Machine, lores_fonts, 0x000, lores_fonts_size);
+					CopyDataToInterpreterMemory(*CurrentHyperCHIP64Machine, hires_fonts, 0x050, hires_fonts_size);
+					if (LoadProgram(*CurrentHyperCHIP64Machine, program_data.data(), 0x200, program_size))
 					{
 						LoadProgramDisplay.LoadingProgram.hidden = true;
 						LoadProgramDisplay.LoadSuccessful.hidden = false;
@@ -790,7 +841,7 @@ Hyper_BandCHIP::Application::Application() : MainWindow(nullptr), MainRenderer(n
 												}
 												case MenuDisplay::CPUSettings:
 												{
-													CPUSettingsMenu.CurrentSelectableItemId = (CPUSettingsMenu.CurrentSelectableItemId == 0) ? 4 : CPUSettingsMenu.CurrentSelectableItemId - 1;
+													CPUSettingsMenu.CurrentSelectableItemId = (CPUSettingsMenu.CurrentSelectableItemId == 0) ? 5 : CPUSettingsMenu.CurrentSelectableItemId - 1;
 													break;
 												}
 												case MenuDisplay::Behaviors:
@@ -798,6 +849,7 @@ Hyper_BandCHIP::Application::Application() : MainWindow(nullptr), MainRenderer(n
 													switch (CurrentMachineCore)
 													{
 														case MachineCore::BandCHIP_CHIP8:
+														case MachineCore::BandCHIP_Pipelined_CHIP8:
 														{
 															BehaviorsMenu.CurrentSelectableItemId = (BehaviorsMenu.CurrentSelectableItemId == 0) ? 5 : BehaviorsMenu.CurrentSelectableItemId - 1;
 															break;
@@ -1009,7 +1061,7 @@ Hyper_BandCHIP::Application::Application() : MainWindow(nullptr), MainRenderer(n
 												}
 												case MenuDisplay::CPUSettings:
 												{
-													CPUSettingsMenu.CurrentSelectableItemId = (CPUSettingsMenu.CurrentSelectableItemId == 4) ? 0 : CPUSettingsMenu.CurrentSelectableItemId + 1;
+													CPUSettingsMenu.CurrentSelectableItemId = (CPUSettingsMenu.CurrentSelectableItemId == 5) ? 0 : CPUSettingsMenu.CurrentSelectableItemId + 1;
 													break;
 												}
 												case MenuDisplay::Behaviors:
@@ -1017,6 +1069,7 @@ Hyper_BandCHIP::Application::Application() : MainWindow(nullptr), MainRenderer(n
 													switch (CurrentMachineCore)
 													{
 														case MachineCore::BandCHIP_CHIP8:
+														case MachineCore::BandCHIP_Pipelined_CHIP8:
 														{
 															BehaviorsMenu.CurrentSelectableItemId = (BehaviorsMenu.CurrentSelectableItemId == 5) ? 0 : BehaviorsMenu.CurrentSelectableItemId + 1;
 															break;
@@ -1126,8 +1179,8 @@ Hyper_BandCHIP::Application::Application() : MainWindow(nullptr), MainRenderer(n
 															{
 																case MachineCore::BandCHIP_CHIP8:
 																{
-																	CurrentMachineCore = MachineCore::BandCHIP_HyperCHIP64;
-																	ConfigurationMenu.Core.current_option = 3;
+																	CurrentMachineCore = MachineCore::BandCHIP_Pipelined_CHIP8;
+																	ConfigurationMenu.Core.current_option = 4;
 																	break;
 																}
 																case MachineCore::BandCHIP_SuperCHIP:
@@ -1154,6 +1207,12 @@ Hyper_BandCHIP::Application::Application() : MainWindow(nullptr), MainRenderer(n
 																	BehaviorsMenu.Octo_LoResSprite.toggle = true;
 																	break;
 																}
+																case MachineCore::BandCHIP_Pipelined_CHIP8:
+																{
+																	CurrentMachineCore = MachineCore::BandCHIP_HyperCHIP64;
+																	ConfigurationMenu.Core.current_option = 3;
+																	break;
+																}
 															}
 															BehaviorsMenu.CurrentSelectableItemId = 0;
 															ShowMenu(CurrentMenu);
@@ -1175,9 +1234,44 @@ Hyper_BandCHIP::Application::Application() : MainWindow(nullptr), MainRenderer(n
 																cycles = CPUSettingsMenu.CPUCycles.min;
 															}
 															CPUSettingsMenu.CPUCycles.value = cycles;
-															if (CurrentMachine != nullptr)
+															switch (CurrentMachineCore)
 															{
-																CPUSettingsMenu.ChangeStatus.Status = "Changed";
+																case MachineCore::BandCHIP_CHIP8:
+																{
+																	if ((!CPUSettingsMenu.SuperscalarMode.toggle && CurrentCHIP8Machine != nullptr) || CurrentSuperscalarCHIP8Machine != nullptr)
+																	{
+																		CPUSettingsMenu.ChangeStatus.Status = "Changed";
+																	}
+																	break;
+																}
+																case MachineCore::BandCHIP_SuperCHIP:
+																{
+																	if (CurrentSuperCHIPMachine != nullptr)
+																	{
+																		CPUSettingsMenu.ChangeStatus.Status = "Changed";
+																	}
+																	break;
+																}
+																case MachineCore::BandCHIP_XOCHIP:
+																{
+																	if (CurrentXOCHIPMachine != nullptr)
+																	{
+																		CPUSettingsMenu.ChangeStatus.Status = "Changed";
+																	}
+																	break;
+																}
+																case MachineCore::BandCHIP_HyperCHIP64:
+																{
+																	if (CurrentHyperCHIP64Machine != nullptr)
+																	{
+																		CPUSettingsMenu.ChangeStatus.Status = "Changed";
+																	}
+																	break;
+																}
+																case MachineCore::BandCHIP_Pipelined_CHIP8:
+																{
+																	break;
+																}
 															}
 															ShowMenu(CurrentMenu);
 															break;
@@ -1197,6 +1291,12 @@ Hyper_BandCHIP::Application::Application() : MainWindow(nullptr), MainRenderer(n
 															ShowMenu(CurrentMenu);
 															break;
 														}
+														case 3:
+														{
+															CPUSettingsMenu.SuperscalarMode.toggle = (CPUSettingsMenu.SuperscalarMode.toggle) ? false : true;
+															ShowMenu(CurrentMenu);
+															break;
+														}
 													}
 													break;
 												}
@@ -1205,6 +1305,7 @@ Hyper_BandCHIP::Application::Application() : MainWindow(nullptr), MainRenderer(n
 													switch (CurrentMachineCore)
 													{
 														case MachineCore::BandCHIP_CHIP8:
+														case MachineCore::BandCHIP_Pipelined_CHIP8:
 														{
 															switch (BehaviorsMenu.CurrentSelectableItemId)
 															{
@@ -1511,11 +1612,17 @@ Hyper_BandCHIP::Application::Application() : MainWindow(nullptr), MainRenderer(n
 																}
 																case MachineCore::BandCHIP_HyperCHIP64:
 																{
-																	CurrentMachineCore = MachineCore::BandCHIP_CHIP8;
-																	ConfigurationMenu.Core.current_option = 0;
+																	CurrentMachineCore = MachineCore::BandCHIP_Pipelined_CHIP8;
+																	ConfigurationMenu.Core.current_option = 4;
 																	BehaviorsMenu.CHIP48_Shift.toggle = false;
 																	BehaviorsMenu.CHIP48_LoadStore.toggle = false;
 																	BehaviorsMenu.VIP_Display_Interrupt.toggle = false;
+																	break;
+																}
+																case MachineCore::BandCHIP_Pipelined_CHIP8:
+																{
+																	CurrentMachineCore = MachineCore::BandCHIP_CHIP8;
+																	ConfigurationMenu.Core.current_option = 0;
 																	break;
 																}
 															}
@@ -1538,9 +1645,44 @@ Hyper_BandCHIP::Application::Application() : MainWindow(nullptr), MainRenderer(n
 																cycles = CPUSettingsMenu.CPUCycles.max;
 															}
 															CPUSettingsMenu.CPUCycles.value = cycles;
-															if (CurrentMachine != nullptr)
+															switch (CurrentMachineCore)
 															{
-																CPUSettingsMenu.ChangeStatus.Status = "Changed";
+																case MachineCore::BandCHIP_CHIP8:
+																{
+																	if ((!CPUSettingsMenu.SuperscalarMode.toggle && CurrentCHIP8Machine != nullptr) || CurrentSuperscalarCHIP8Machine != nullptr)
+																	{
+																		CPUSettingsMenu.ChangeStatus.Status = "Changed";
+																	}
+																	break;
+																}
+																case MachineCore::BandCHIP_SuperCHIP:
+																{
+																	if (CurrentSuperCHIPMachine != nullptr)
+																	{
+																		CPUSettingsMenu.ChangeStatus.Status = "Changed";
+																	}
+																	break;
+																}
+																case MachineCore::BandCHIP_XOCHIP:
+																{
+																	if (CurrentXOCHIPMachine != nullptr)
+																	{
+																		CPUSettingsMenu.ChangeStatus.Status = "Changed";
+																	}
+																	break;
+																}
+																case MachineCore::BandCHIP_HyperCHIP64:
+																{
+																	if (CurrentHyperCHIP64Machine != nullptr)
+																	{
+																		CPUSettingsMenu.ChangeStatus.Status = "Changed";
+																	}
+																	break;
+																}
+																case MachineCore::BandCHIP_Pipelined_CHIP8:
+																{
+																	break;
+																}
 															}
 															ShowMenu(CurrentMenu);
 															break;
@@ -1560,6 +1702,12 @@ Hyper_BandCHIP::Application::Application() : MainWindow(nullptr), MainRenderer(n
 															ShowMenu(CurrentMenu);
 															break;
 														}
+														case 3:
+														{
+															CPUSettingsMenu.SuperscalarMode.toggle = (CPUSettingsMenu.SuperscalarMode.toggle) ? false : true;
+															ShowMenu(CurrentMenu);
+															break;
+														}
 													}
 													break;
 												}
@@ -1568,6 +1716,7 @@ Hyper_BandCHIP::Application::Application() : MainWindow(nullptr), MainRenderer(n
 													switch (CurrentMachineCore)
 													{
 														case MachineCore::BandCHIP_CHIP8:
+														case MachineCore::BandCHIP_Pipelined_CHIP8:
 														{
 															switch (BehaviorsMenu.CurrentSelectableItemId)
 															{
@@ -1836,16 +1985,87 @@ Hyper_BandCHIP::Application::Application() : MainWindow(nullptr), MainRenderer(n
 																	break;
 																}
 															}
-															if (CurrentMachine != nullptr)
+															switch (CurrentMachineCore)
 															{
-																if (CurrentMachine->IsOperational())
+																case MachineCore::BandCHIP_CHIP8:
 																{
-																	CurrentOperationMode = OperationMode::Emulator;
-																	MainRenderer->SetDisplayMode(DisplayMode::Emulator);
-																	CurrentMachine->SetCurrentTime(current_tp);
-																	CurrentMachine->PauseProgram(false);
-																	cpf_tp = current_tp;
-																	cpf_accumulator = 0.0;
+																	if (!CPUSettingsMenu.SuperscalarMode.toggle && CurrentCHIP8Machine != nullptr)
+																	{
+																		if (IsOperational(*CurrentCHIP8Machine))
+																		{
+																			CurrentOperationMode = OperationMode::Emulator;
+																			MainRenderer->SetDisplayMode(DisplayMode::Emulator);
+																			SetCurrentTime(*CurrentCHIP8Machine, current_tp);
+																			PauseProgram(*CurrentCHIP8Machine, false);
+																			cpf_tp = current_tp;
+																			cpf_accumulator = 0.0;
+																		}
+																	}
+																	else if (CurrentSuperscalarCHIP8Machine != nullptr)
+																	{
+																		if (IsOperational(*CurrentSuperscalarCHIP8Machine))
+																		{
+																			CurrentOperationMode = OperationMode::Emulator;
+																			MainRenderer->SetDisplayMode(DisplayMode::Emulator);
+																			SetCurrentTime(*CurrentSuperscalarCHIP8Machine, current_tp);
+																			PauseProgram(*CurrentSuperscalarCHIP8Machine, false);
+																			cpf_tp = current_tp;
+																			cpf_accumulator = 0.0;
+																		}
+																	}
+																	break;
+																}
+																case MachineCore::BandCHIP_SuperCHIP:
+																{
+																	if (CurrentSuperCHIPMachine != nullptr)
+																	{
+																		if (IsOperational(*CurrentSuperCHIPMachine))
+																		{
+																			CurrentOperationMode = OperationMode::Emulator;
+																			MainRenderer->SetDisplayMode(DisplayMode::Emulator);
+																			SetCurrentTime(*CurrentSuperCHIPMachine, current_tp);
+																			PauseProgram(*CurrentSuperCHIPMachine, false);
+																			cpf_tp = current_tp;
+																			cpf_accumulator = 0.0;
+																		}
+																	}
+																	break;
+																}
+																case MachineCore::BandCHIP_XOCHIP:
+																{
+																	if (CurrentXOCHIPMachine != nullptr)
+																	{
+																		if (IsOperational(*CurrentXOCHIPMachine))
+																		{
+																			CurrentOperationMode = OperationMode::Emulator;
+																			MainRenderer->SetDisplayMode(DisplayMode::Emulator);
+																			SetCurrentTime(*CurrentXOCHIPMachine, current_tp);
+																			PauseProgram<BandCHIP::XOCHIP_Machine, XOCHIP_Audio>(*CurrentXOCHIPMachine, false);
+																			cpf_tp = current_tp;
+																			cpf_accumulator = 0.0;
+																		}
+																	}
+																	break;
+																}
+																case MachineCore::BandCHIP_HyperCHIP64:
+																{
+																	if (CurrentHyperCHIP64Machine != nullptr)
+																	{
+																		if (IsOperational(*CurrentHyperCHIP64Machine))
+																		{
+																			CurrentOperationMode = OperationMode::Emulator;
+																			MainRenderer->SetDisplayMode(DisplayMode::Emulator);
+																			SetCurrentTime(*CurrentHyperCHIP64Machine, current_tp);
+																			PauseProgram<BandCHIP::HyperCHIP64_Machine, HyperCHIP64_Audio>(*CurrentHyperCHIP64Machine, false);
+																			cpf_tp = current_tp;
+																			cpf_accumulator = 0.0;
+																		}
+																	}
+																	break;
+																}
+																case MachineCore::BandCHIP_Pipelined_CHIP8:
+																{
+																	break;
 																}
 															}
 															break;
@@ -1998,11 +2218,17 @@ Hyper_BandCHIP::Application::Application() : MainWindow(nullptr), MainRenderer(n
 																}
 																case MachineCore::BandCHIP_HyperCHIP64:
 																{
-																	CurrentMachineCore = MachineCore::BandCHIP_CHIP8;
-																	ConfigurationMenu.Core.current_option = 0;
+																	CurrentMachineCore = MachineCore::BandCHIP_Pipelined_CHIP8;
+																	ConfigurationMenu.Core.current_option = 4;
 																	BehaviorsMenu.CHIP48_Shift.toggle = false;
 																	BehaviorsMenu.CHIP48_LoadStore.toggle = false;
 																	BehaviorsMenu.VIP_Display_Interrupt.toggle = false;
+																	break;
+																}
+																case MachineCore::BandCHIP_Pipelined_CHIP8:
+																{
+																	CurrentMachineCore = MachineCore::BandCHIP_CHIP8;
+																	ConfigurationMenu.Core.current_option = 0;
 																	break;
 																}
 															}
@@ -2094,10 +2320,16 @@ Hyper_BandCHIP::Application::Application() : MainWindow(nullptr), MainRenderer(n
 														}
 														case 3:
 														{
-															event_id = CPUSettingsMenu.CommitChanges.event_id;
+															CPUSettingsMenu.SuperscalarMode.toggle = (CPUSettingsMenu.SuperscalarMode.toggle) ? false : true;
+															ShowMenu(CurrentMenu);
 															break;
 														}
 														case 4:
+														{
+															event_id = CPUSettingsMenu.CommitChanges.event_id;
+															break;
+														}
+														case 5:
 														{
 															event_id = CPUSettingsMenu.ReturnToConfiguration.event_id;
 															break;
@@ -2117,14 +2349,79 @@ Hyper_BandCHIP::Application::Application() : MainWindow(nullptr), MainRenderer(n
 																	}
 																}
 															}
-															if (CurrentMachine != nullptr && CPUSettingsMenu.ChangeStatus.Status == "Changed")
+															switch (CurrentMachineCore)
 															{
-																CurrentMachine->SetCyclesPerSecond(CPUSettingsMenu.CPUCycles.value);
-																std::ostringstream window_title;
-																window_title << "Hyper BandCHIP Emulator (CPF: " << CPUSettingsMenu.CPUCycles.value / 60 << ')';
-																SDL_SetWindowTitle(MainWindow.get(), window_title.str().c_str());
-																CPUSettingsMenu.ChangeStatus.Status = "Unchanged";
-																ShowMenu(CurrentMenu);
+																case MachineCore::BandCHIP_CHIP8:
+																{
+																	if (!CPUSettingsMenu.SuperscalarMode.toggle)
+																	{
+																		if (CurrentCHIP8Machine != nullptr && CPUSettingsMenu.ChangeStatus.Status == "Changed")
+																		{
+																			SetCyclesPerSecond(*CurrentCHIP8Machine, CPUSettingsMenu.CPUCycles.value);
+																			std::ostringstream window_title;
+																			window_title << "Hyper BandCHIP Emulator (CPF: " << CPUSettingsMenu.CPUCycles.value / 60 << ')';
+																			SDL_SetWindowTitle(MainWindow.get(), window_title.str().c_str());
+																			CPUSettingsMenu.ChangeStatus.Status = "Unchanged";
+																			ShowMenu(CurrentMenu);
+																		}
+																	}
+																	else
+																	{
+																		if (CurrentSuperscalarCHIP8Machine != nullptr && CPUSettingsMenu.ChangeStatus.Status == "Changed")
+																		{
+																			SetCyclesPerSecond(*CurrentSuperscalarCHIP8Machine, CPUSettingsMenu.CPUCycles.value);
+																			std::ostringstream window_title;
+																			window_title << "Hyper BandCHIP Emulator (CPF: " << CPUSettingsMenu.CPUCycles.value / 60 << ')';
+																			SDL_SetWindowTitle(MainWindow.get(), window_title.str().c_str());
+																			CPUSettingsMenu.ChangeStatus.Status = "Unchanged";
+																			ShowMenu(CurrentMenu);
+																		}
+																	}
+																	break;
+																}
+																case MachineCore::BandCHIP_SuperCHIP:
+																{
+																	if (CurrentSuperCHIPMachine != nullptr && CPUSettingsMenu.ChangeStatus.Status == "Changed")
+																	{
+																		SetCyclesPerSecond(*CurrentSuperCHIPMachine, CPUSettingsMenu.CPUCycles.value);
+																		std::ostringstream window_title;
+																		window_title << "Hyper BandCHIP Emulator (CPF: " << CPUSettingsMenu.CPUCycles.value / 60 << ')';
+																		SDL_SetWindowTitle(MainWindow.get(), window_title.str().c_str());
+																		CPUSettingsMenu.ChangeStatus.Status = "Unchanged";
+																		ShowMenu(CurrentMenu);
+																	}
+																	break;
+																}
+																case MachineCore::BandCHIP_XOCHIP:
+																{
+																	if (CurrentXOCHIPMachine != nullptr && CPUSettingsMenu.ChangeStatus.Status == "Changed")
+																	{
+																		SetCyclesPerSecond(*CurrentXOCHIPMachine, CPUSettingsMenu.CPUCycles.value);
+																		std::ostringstream window_title;
+																		window_title << "Hyper BandCHIP Emulator (CPF: " << CPUSettingsMenu.CPUCycles.value / 60 << ')';
+																		SDL_SetWindowTitle(MainWindow.get(), window_title.str().c_str());
+																		CPUSettingsMenu.ChangeStatus.Status = "Unchanged";
+																		ShowMenu(CurrentMenu);
+																	}
+																	break;
+																}
+																case MachineCore::BandCHIP_HyperCHIP64:
+																{
+																	if (CurrentHyperCHIP64Machine != nullptr && CPUSettingsMenu.ChangeStatus.Status == "Changed")
+																	{
+																		SetCyclesPerSecond<BandCHIP::HyperCHIP64_Machine, HyperCHIP64_Audio>(*CurrentHyperCHIP64Machine, CPUSettingsMenu.CPUCycles.value);
+																		std::ostringstream window_title;
+																		window_title << "Hyper BandCHIP Emulator (CPF: " << CPUSettingsMenu.CPUCycles.value / 60 << ')';
+																		SDL_SetWindowTitle(MainWindow.get(), window_title.str().c_str());
+																		CPUSettingsMenu.ChangeStatus.Status = "Unchanged";
+																		ShowMenu(CurrentMenu);
+																	}
+																	break;
+																}
+																case MachineCore::BandCHIP_Pipelined_CHIP8:
+																{
+																	break;
+																}
 															}
 															break;
 														}
@@ -2142,6 +2439,7 @@ Hyper_BandCHIP::Application::Application() : MainWindow(nullptr), MainRenderer(n
 													switch (CurrentMachineCore)
 													{
 														case MachineCore::BandCHIP_CHIP8:
+														case MachineCore::BandCHIP_Pipelined_CHIP8:
 														{
 															switch (BehaviorsMenu.CurrentSelectableItemId)
 															{
@@ -2529,7 +2827,40 @@ Hyper_BandCHIP::Application::Application() : MainWindow(nullptr), MainRenderer(n
 							{
 								if (i == scancode)
 								{
-									CurrentMachine->SetKeyStatus(static_cast<unsigned char>(key), true);
+									switch (CurrentMachineCore)
+									{
+										case MachineCore::BandCHIP_CHIP8:
+										{
+											if (!CPUSettingsMenu.SuperscalarMode.toggle)
+											{
+												SetKeyStatus(*CurrentCHIP8Machine, static_cast<uint8_t>(key), true);
+											}
+											else
+											{
+												SetKeyStatus(*CurrentSuperscalarCHIP8Machine, static_cast<uint8_t>(key), true);
+											}
+											break;
+										}
+										case MachineCore::BandCHIP_SuperCHIP:
+										{
+											SetKeyStatus(*CurrentSuperCHIPMachine, static_cast<uint8_t>(key), true);
+											break;
+										}
+										case MachineCore::BandCHIP_XOCHIP:
+										{
+											SetKeyStatus(*CurrentXOCHIPMachine, static_cast<uint8_t>(key), true);
+											break;
+										}
+										case MachineCore::BandCHIP_HyperCHIP64:
+										{
+											SetKeyStatus(*CurrentHyperCHIP64Machine, static_cast<uint8_t>(key), true);
+											break;
+										}
+										case MachineCore::BandCHIP_Pipelined_CHIP8:
+										{
+											break;
+										}
+									}
 									key_found = true;
 									break;
 								}
@@ -2538,8 +2869,45 @@ Hyper_BandCHIP::Application::Application() : MainWindow(nullptr), MainRenderer(n
 							{
 								if (scancode == SDL_SCANCODE_ESCAPE)
 								{
-									CurrentMachine->SetCurrentTime(current_tp);
-									CurrentMachine->PauseProgram(true);
+									switch (CurrentMachineCore)
+									{
+										case MachineCore::BandCHIP_CHIP8:
+										{
+											if (!CPUSettingsMenu.SuperscalarMode.toggle)
+											{
+												SetCurrentTime(*CurrentCHIP8Machine, current_tp);
+												PauseProgram(*CurrentCHIP8Machine, true);
+											}
+											else
+											{
+												SetCurrentTime(*CurrentSuperscalarCHIP8Machine, current_tp);
+												PauseProgram(*CurrentSuperscalarCHIP8Machine, true);
+											}
+											break;
+										}
+										case MachineCore::BandCHIP_SuperCHIP:
+										{
+											SetCurrentTime(*CurrentSuperCHIPMachine, current_tp);
+											PauseProgram(*CurrentSuperCHIPMachine, true);
+											break;
+										}
+										case MachineCore::BandCHIP_XOCHIP:
+										{
+											SetCurrentTime(*CurrentXOCHIPMachine, current_tp);
+											PauseProgram<BandCHIP::XOCHIP_Machine, XOCHIP_Audio>(*CurrentXOCHIPMachine, true);
+											break;
+										}
+										case MachineCore::BandCHIP_HyperCHIP64:
+										{
+											SetCurrentTime(*CurrentHyperCHIP64Machine, current_tp);
+											PauseProgram<BandCHIP::HyperCHIP64_Machine, HyperCHIP64_Audio>(*CurrentHyperCHIP64Machine, true);
+											break;
+										}
+										case MachineCore::BandCHIP_Pipelined_CHIP8:
+										{
+											break;
+										}
+									}
 									CurrentOperationMode = OperationMode::Menu;
 									MainRenderer->SetDisplayMode(DisplayMode::Menu);
 								}
@@ -2564,7 +2932,40 @@ Hyper_BandCHIP::Application::Application() : MainWindow(nullptr), MainRenderer(n
 							{
 								if (CHIP8_KeyMap[static_cast<CHIP8Key>(i)] == scancode)
 								{
-									CurrentMachine->SetKeyStatus(i, false);
+									switch (CurrentMachineCore)
+									{
+										case MachineCore::BandCHIP_CHIP8:
+										{
+											if (!CPUSettingsMenu.SuperscalarMode.toggle)
+											{
+												SetKeyStatus(*CurrentCHIP8Machine, i, false);
+											}
+											else
+											{
+												SetKeyStatus(*CurrentSuperscalarCHIP8Machine, i, false);
+											}
+											break;
+										}
+										case MachineCore::BandCHIP_SuperCHIP:
+										{
+											SetKeyStatus(*CurrentSuperCHIPMachine, i, false);
+											break;
+										}
+										case MachineCore::BandCHIP_XOCHIP:
+										{
+											SetKeyStatus(*CurrentXOCHIPMachine, i, false);
+											break;
+										}
+										case MachineCore::BandCHIP_HyperCHIP64:
+										{
+											SetKeyStatus(*CurrentHyperCHIP64Machine, i, false);
+											break;
+										}
+										case MachineCore::BandCHIP_Pipelined_CHIP8:
+										{
+											break;
+										}
+									}
 								}
 							}
 							break;
@@ -2580,84 +2981,364 @@ Hyper_BandCHIP::Application::Application() : MainWindow(nullptr), MainRenderer(n
 			}
 		}
 		bool sync = false;
-		if (CurrentMachine != nullptr)
+		switch (CurrentMachineCore)
 		{
-			sync = CurrentMachine->GetSync();
-			if (!CurrentMachine->IsPaused())
+			case MachineCore::BandCHIP_CHIP8:
 			{
-				if (idle)
+				if (!CPUSettingsMenu.SuperscalarMode.toggle)
 				{
-					idle = false;
-				}
-				CurrentMachine->SetCurrentTime(current_tp);
-				if (!sync)
-				{
-					CurrentMachine->RunDelayTimer();
-					CurrentMachine->RunSoundTimer();
-				}
-				CurrentMachine->ExecuteInstructions();
-				if (!sync)
-				{
-					unsigned char *display = nullptr;
-					unsigned short display_width = 0;
-					unsigned short display_height = 0;
-					CurrentMachine->GetDisplay(&display, &display_width, &display_height);
-					MainRenderer->WriteToDisplay(display, display_width, display_height);
-				}
-				MachineError Error = CurrentMachine->GetErrorState();
-				if (Error != MachineError::NoError)
-				{
-					MachineState State = CurrentMachine->GetMachineState();
-					switch (Error)
+					if (CurrentCHIP8Machine != nullptr)
 					{
-						case MachineError::InvalidInstruction:
+						if (!IsPaused(*CurrentCHIP8Machine))
 						{
-							ErrorDisplay.Error.Status = "Invalid Instruction";
-							break;
-						}
-						case MachineError::StackOverflow:
-						{
-							ErrorDisplay.Error.Status = "Stack Overflow";
-							break;
-						}
-						case MachineError::StackUnderflow:
-						{
-							ErrorDisplay.Error.Status = "Stack Underflow";
-							break;
-						}
-						case MachineError::MachineInstructionsUnsupported:
-						{
-							ErrorDisplay.Error.Status = "Machine Instructions Unsupported";
-							break;
+							if (idle)
+							{
+								idle = false;
+							}
+							SetCurrentTime(*CurrentCHIP8Machine, current_tp);
+							CurrentCHIP8Machine->ExecuteInstructions();
+							MachineError Error = GetErrorState(*CurrentCHIP8Machine);
+							if (Error != MachineError::NoError)
+							{
+								MachineState State = GetMachineState(*CurrentCHIP8Machine);
+								switch (Error)
+								{
+									case MachineError::InvalidInstruction:
+									{
+										ErrorDisplay.Error.Status = "Invalid Instruction";
+										break;
+									}
+									case MachineError::StackOverflow:
+									{
+										ErrorDisplay.Error.Status = "Stack Overflow";
+										break;
+									}
+									case MachineError::StackUnderflow:
+									{
+										ErrorDisplay.Error.Status = "Stack Underflow";
+										break;
+									}
+									case MachineError::MachineInstructionsUnsupported:
+									{
+										ErrorDisplay.Error.Status = "Machine Instructions Unsupported";
+										break;
+									}
+								}
+								for (unsigned char i = 0x00; i < 0x10; ++i)
+								{
+									ErrorDisplay.RegisterValue[i].value = State.V[i];
+								}
+								ErrorDisplay.ProgramCounterValue.value = State.PC;
+								ErrorDisplay.AddressRegisterValue.value = State.I;
+								ErrorDisplay.DelayTimerValue.value = State.DT;
+								for (uint8_t i = 0; i < 4; ++i)
+								{
+									ErrorDisplay.SoundTimerValue[i].value = State.ST[i];
+								}
+								CurrentOperationMode = OperationMode::Menu;
+								CurrentMenu = MenuDisplay::ErrorDisplay;
+								MainRenderer->SetDisplayMode(DisplayMode::Menu);
+								ShowMenu(CurrentMenu);
+							}
+							else if (!IsOperational(*CurrentCHIP8Machine))
+							{
+								CurrentOperationMode = OperationMode::Menu;
+								CurrentMenu = MenuDisplay::Main;
+								MainRenderer->SetDisplayMode(DisplayMode::Menu);
+								MainMenu.CurrentMachineStatus.Status = "Non-Operational";
+								ShowMenu(CurrentMenu);
+							}
 						}
 					}
-					for (unsigned char i = 0x00; i < 0x10; ++i)
-					{
-						ErrorDisplay.RegisterValue[i].value = State.V[i];
-					}
-					ErrorDisplay.ProgramCounterValue.value = State.PC;
-					ErrorDisplay.AddressRegisterValue.value = State.I;
-					ErrorDisplay.DelayTimerValue.value = State.DT;
-					for (unsigned char i = 0; i < 4; ++i)
-					{
-						ErrorDisplay.SoundTimerValue[i].value = State.ST[i];
-					}
-					CurrentOperationMode = OperationMode::Menu;
-					CurrentMenu = MenuDisplay::ErrorDisplay;
-					MainRenderer->SetDisplayMode(DisplayMode::Menu);
-					ShowMenu(CurrentMenu);
 				}
-				else if (!CurrentMachine->IsOperational())
+				else
 				{
-					CurrentOperationMode = OperationMode::Menu;
-					CurrentMenu = MenuDisplay::Main;
-					MainRenderer->SetDisplayMode(DisplayMode::Menu);
-					MainMenu.CurrentMachineStatus.Status = "Non-Operational";
-					ShowMenu(CurrentMenu);
+					if (CurrentSuperscalarCHIP8Machine != nullptr)
+					{
+						if (!IsPaused(*CurrentSuperscalarCHIP8Machine))
+						{
+							if (idle)
+							{
+								idle = false;
+							}
+							SetCurrentTime(*CurrentSuperscalarCHIP8Machine, current_tp);
+							if (!sync)
+							{
+								RunDelayTimer(*CurrentSuperscalarCHIP8Machine);
+								RunSoundTimer(*CurrentSuperscalarCHIP8Machine);
+							}
+							CurrentSuperscalarCHIP8Machine->ExecuteInstructions();
+							if (!sync)
+							{
+								uint8_t *display = nullptr;
+								uint16_t display_width = 0;
+								uint16_t display_height = 0;
+								GetDisplay(*CurrentSuperscalarCHIP8Machine, &display, &display_width, &display_height);
+								MainRenderer->WriteToDisplay(display, display_width, display_height);
+							}
+							MachineError Error = GetErrorState(*CurrentSuperscalarCHIP8Machine);
+							if (Error != MachineError::NoError)
+							{
+								MachineState State = GetMachineState(*CurrentSuperscalarCHIP8Machine);
+								switch (Error)
+								{
+									case MachineError::InvalidInstruction:
+									{
+										ErrorDisplay.Error.Status = "Invalid Instruction";
+										break;
+									}
+									case MachineError::StackOverflow:
+									{
+										ErrorDisplay.Error.Status = "Stack Overflow";
+										break;
+									}
+									case MachineError::StackUnderflow:
+									{
+										ErrorDisplay.Error.Status = "Stack Underflow";
+										break;
+									}
+									case MachineError::MachineInstructionsUnsupported:
+									{
+										ErrorDisplay.Error.Status = "Machine Instructions Unsupported";
+										break;
+									}
+								}
+								for (unsigned char i = 0x00; i < 0x10; ++i)
+								{
+									ErrorDisplay.RegisterValue[i].value = State.V[i];
+								}
+								ErrorDisplay.ProgramCounterValue.value = State.PC;
+								ErrorDisplay.AddressRegisterValue.value = State.I;
+								ErrorDisplay.DelayTimerValue.value = State.DT;
+								for (uint8_t i = 0; i < 4; ++i)
+								{
+									ErrorDisplay.SoundTimerValue[i].value = State.ST[i];
+								}
+								CurrentOperationMode = OperationMode::Menu;
+								CurrentMenu = MenuDisplay::ErrorDisplay;
+								MainRenderer->SetDisplayMode(DisplayMode::Menu);
+								ShowMenu(CurrentMenu);
+							}
+							else if (!IsOperational(*CurrentSuperscalarCHIP8Machine))
+							{
+								CurrentOperationMode = OperationMode::Menu;
+								CurrentMenu = MenuDisplay::Main;
+								MainRenderer->SetDisplayMode(DisplayMode::Menu);
+								MainMenu.CurrentMachineStatus.Status = "Non-Operational";
+								ShowMenu(CurrentMenu);
+							}
+						}
+					}
 				}
+				break;
+			}
+			case MachineCore::BandCHIP_SuperCHIP:
+			{
+				if (CurrentSuperCHIPMachine != nullptr)
+				{
+					if (!IsPaused(*CurrentSuperCHIPMachine))
+					{
+						if (idle)
+						{
+							idle = false;
+						}
+						SetCurrentTime(*CurrentSuperCHIPMachine, current_tp);
+						CurrentSuperCHIPMachine->ExecuteInstructions();
+						MachineError Error = GetErrorState(*CurrentSuperCHIPMachine);
+						if (Error != MachineError::NoError)
+						{
+							MachineState State = GetMachineState(*CurrentSuperCHIPMachine);
+							switch (Error)
+							{
+								case MachineError::InvalidInstruction:
+								{
+									ErrorDisplay.Error.Status = "Invalid Instruction";
+									break;
+								}
+								case MachineError::StackOverflow:
+								{
+									ErrorDisplay.Error.Status = "Stack Overflow";
+									break;
+								}
+								case MachineError::StackUnderflow:
+								{
+									ErrorDisplay.Error.Status = "Stack Underflow";
+									break;
+								}
+								case MachineError::MachineInstructionsUnsupported:
+								{
+									ErrorDisplay.Error.Status = "Machine Instructions Unsupported";
+									break;
+								}
+							}
+							for (uint8_t i = 0x00; i < 0x10; ++i)
+							{
+								ErrorDisplay.RegisterValue[i].value = State.V[i];
+							}
+							ErrorDisplay.ProgramCounterValue.value = State.PC;
+							ErrorDisplay.AddressRegisterValue.value = State.I;
+							ErrorDisplay.DelayTimerValue.value = State.DT;
+							for (uint8_t i = 0; i < 4; ++i)
+							{
+								ErrorDisplay.SoundTimerValue[i].value = State.ST[i];
+							}
+							CurrentOperationMode = OperationMode::Menu;
+							CurrentMenu = MenuDisplay::ErrorDisplay;
+							MainRenderer->SetDisplayMode(DisplayMode::Menu);
+							ShowMenu(CurrentMenu);
+						}
+						else if (!IsOperational(*CurrentSuperCHIPMachine))
+						{
+							CurrentOperationMode = OperationMode::Menu;
+							CurrentMenu = MenuDisplay::Main;
+							MainRenderer->SetDisplayMode(DisplayMode::Menu);
+							MainMenu.CurrentMachineStatus.Status = "Non-Operational";
+							ShowMenu(CurrentMenu);
+						}
+					}
+				}
+				break;
+			}
+			case MachineCore::BandCHIP_XOCHIP:
+			{
+				if (CurrentXOCHIPMachine != nullptr)
+				{
+					if (!IsPaused(*CurrentXOCHIPMachine))
+					{
+						if (idle)
+						{
+							idle = false;
+						}
+						SetCurrentTime(*CurrentXOCHIPMachine, current_tp);
+						CurrentXOCHIPMachine->ExecuteInstructions();
+						MachineError Error = GetErrorState(*CurrentXOCHIPMachine);
+						if (Error != MachineError::NoError)
+						{
+							MachineState State = GetMachineState(*CurrentXOCHIPMachine);
+							switch (Error)
+							{
+								case MachineError::InvalidInstruction:
+								{
+									ErrorDisplay.Error.Status = "Invalid Instruction";
+									break;
+								}
+								case MachineError::StackOverflow:
+								{
+									ErrorDisplay.Error.Status = "Stack Overflow";
+									break;
+								}
+								case MachineError::StackUnderflow:
+								{
+									ErrorDisplay.Error.Status = "Stack Underflow";
+									break;
+								}
+								case MachineError::MachineInstructionsUnsupported:
+								{
+									ErrorDisplay.Error.Status = "Machine Instructions Unsupported";
+									break;
+								}
+							}
+							for (uint8_t i = 0x00; i < 0x10; ++i)
+							{
+								ErrorDisplay.RegisterValue[i].value = State.V[i];
+							}
+							ErrorDisplay.ProgramCounterValue.value = State.PC;
+							ErrorDisplay.AddressRegisterValue.value = State.I;
+							ErrorDisplay.DelayTimerValue.value = State.DT;
+							for (uint8_t i = 0; i < 4; ++i)
+							{
+								ErrorDisplay.SoundTimerValue[i].value = State.ST[i];
+							}
+							CurrentOperationMode = OperationMode::Menu;
+							CurrentMenu = MenuDisplay::ErrorDisplay;
+							MainRenderer->SetDisplayMode(DisplayMode::Menu);
+							ShowMenu(CurrentMenu);
+						}
+						else if (!IsOperational(*CurrentXOCHIPMachine))
+						{
+							CurrentOperationMode = OperationMode::Menu;
+							CurrentMenu = MenuDisplay::Main;
+							MainRenderer->SetDisplayMode(DisplayMode::Menu);
+							MainMenu.CurrentMachineStatus.Status = "Non-Operational";
+							ShowMenu(CurrentMenu);
+						}
+					}
+				}
+				break;
+			}
+			case MachineCore::BandCHIP_HyperCHIP64:
+			{
+				if (CurrentHyperCHIP64Machine != nullptr)
+				{
+					if (!IsPaused(*CurrentHyperCHIP64Machine))
+					{
+						if (idle)
+						{
+							idle = false;
+						}
+						SetCurrentTime(*CurrentHyperCHIP64Machine, current_tp);
+						CurrentHyperCHIP64Machine->ExecuteInstructions();
+						MachineError Error = GetErrorState(*CurrentHyperCHIP64Machine);
+						if (Error != MachineError::NoError)
+						{
+							MachineState State = GetMachineState<BandCHIP::HyperCHIP64_Machine, HyperCHIP64_Audio>(*CurrentHyperCHIP64Machine);
+							switch (Error)
+							{
+								case MachineError::InvalidInstruction:
+								{
+									ErrorDisplay.Error.Status = "Invalid Instruction";
+									break;
+								}
+								case MachineError::StackOverflow:
+								{
+									ErrorDisplay.Error.Status = "Stack Overflow";
+									break;
+								}
+								case MachineError::StackUnderflow:
+								{
+									ErrorDisplay.Error.Status = "Stack Underflow";
+									break;
+								}
+								case MachineError::MachineInstructionsUnsupported:
+								{
+									ErrorDisplay.Error.Status = "Machine Instructions Unsupported";
+									break;
+								}
+							}
+							for (uint8_t i = 0x00; i < 0x10; ++i)
+							{
+								ErrorDisplay.RegisterValue[i].value = State.V[i];
+							}
+							ErrorDisplay.ProgramCounterValue.value = State.PC;
+							ErrorDisplay.AddressRegisterValue.value = State.I;
+							ErrorDisplay.DelayTimerValue.value = State.DT;
+							for (uint8_t i = 0; i < 4; ++i)
+							{
+								ErrorDisplay.SoundTimerValue[i].value = State.ST[i];
+							}
+							CurrentOperationMode = OperationMode::Menu;
+							CurrentMenu = MenuDisplay::ErrorDisplay;
+							MainRenderer->SetDisplayMode(DisplayMode::Menu);
+							ShowMenu(CurrentMenu);
+						}
+						else if (!IsOperational(*CurrentHyperCHIP64Machine))
+						{
+							CurrentOperationMode = OperationMode::Menu;
+							CurrentMenu = MenuDisplay::Main;
+							MainRenderer->SetDisplayMode(DisplayMode::Menu);
+							MainMenu.CurrentMachineStatus.Status = "Non-Operational";
+							ShowMenu(CurrentMenu);
+						}
+					}
+				}
+				break;
+			}
+			case MachineCore::BandCHIP_Pipelined_CHIP8:
+			{
+				break;
 			}
 		}
-		if (!sync || CurrentOperationMode == OperationMode::Menu)
+		if (CurrentOperationMode == OperationMode::Menu)
 		{
 			std::chrono::duration<double> delta_time = current_tp - refresh_tp;
 			if (delta_time.count() > 0.25)
@@ -2698,7 +3379,33 @@ Hyper_BandCHIP::Application::Application() : MainWindow(nullptr), MainRenderer(n
 			{
 				cpf_accumulator = 0.0;
 				std::ostringstream window_title;
-				window_title << "Hyper BandCHIP (CPF: " << CurrentMachine->GetCyclesPerFrame() << ')';
+				switch (CurrentMachineCore)
+				{
+					case MachineCore::BandCHIP_CHIP8:
+					{
+						window_title << "Hyper BandCHIP Emulator (CPF: " << (!CPUSettingsMenu.SuperscalarMode.toggle ? GetCyclesPerFrame(*CurrentCHIP8Machine) : GetCyclesPerFrame(*CurrentSuperscalarCHIP8Machine)) << ')';
+						break;
+					}
+					case MachineCore::BandCHIP_SuperCHIP:
+					{
+						window_title << "Hyper BandCHIP Emulator (CPF: " << GetCyclesPerFrame(*CurrentSuperCHIPMachine) << ')';
+						break;
+					}
+					case MachineCore::BandCHIP_XOCHIP:
+					{
+						window_title << "Hyper BandCHIP Emulator (CPF: " << GetCyclesPerFrame(*CurrentXOCHIPMachine) << ')';
+						break;
+					}
+					case MachineCore::BandCHIP_HyperCHIP64:
+					{
+						window_title << "Hyper BandCHIP Emulator (CPF: " << GetCyclesPerFrame(*CurrentHyperCHIP64Machine) << ')';
+						break;
+					}
+					case MachineCore::BandCHIP_Pipelined_CHIP8:
+					{
+						break;
+					}
+				}
 				SDL_SetWindowTitle(MainWindow.get(), window_title.str().c_str());
 			}
 		}
@@ -3000,8 +3707,9 @@ void Hyper_BandCHIP::Application::ShowMenu(Hyper_BandCHIP::MenuDisplay Menu)
 			DisplayItem(*MainRenderer, CPUSettingsMenu.CPUCycles, (CPUSettingsMenu.CurrentSelectableItemId == 0) ? 2 : 1);
 			DisplayItem(*MainRenderer, CPUSettingsMenu.AdjustmentModifier, (CPUSettingsMenu.CurrentSelectableItemId == 1) ? 2 : 1);
 			DisplayItem(*MainRenderer, CPUSettingsMenu.Sync, (CPUSettingsMenu.CurrentSelectableItemId == 2) ? 2 : 1);
-			DisplayItem(*MainRenderer, CPUSettingsMenu.CommitChanges, (CPUSettingsMenu.CurrentSelectableItemId == 3) ? 2 : 1);
-			DisplayItem(*MainRenderer, CPUSettingsMenu.ReturnToConfiguration, (CPUSettingsMenu.CurrentSelectableItemId == 4) ? 2 : 1);
+			DisplayItem(*MainRenderer, CPUSettingsMenu.SuperscalarMode, (CPUSettingsMenu.CurrentSelectableItemId == 3) ? 2 : 1);
+			DisplayItem(*MainRenderer, CPUSettingsMenu.CommitChanges, (CPUSettingsMenu.CurrentSelectableItemId == 4) ? 2 : 1);
+			DisplayItem(*MainRenderer, CPUSettingsMenu.ReturnToConfiguration, (CPUSettingsMenu.CurrentSelectableItemId == 5) ? 2 : 1);
 			break;
 		}
 		case MenuDisplay::Behaviors:
@@ -3010,6 +3718,7 @@ void Hyper_BandCHIP::Application::ShowMenu(Hyper_BandCHIP::MenuDisplay Menu)
 			switch (CurrentMachineCore)
 			{
 				case MachineCore::BandCHIP_CHIP8:
+				case MachineCore::BandCHIP_Pipelined_CHIP8:
 				{
 					DisplayItem(*MainRenderer, BehaviorsMenu.CHIP48_Shift, (BehaviorsMenu.CurrentSelectableItemId == 0) ? 2 : 1);
 					DisplayItem(*MainRenderer, BehaviorsMenu.CHIP48_LoadStore, (BehaviorsMenu.CurrentSelectableItemId == 1) ? 2 : 1);
@@ -3260,9 +3969,38 @@ bool Hyper_BandCHIP::Application::StartCHIP8BinaryProgram()
 			{
 				return false;
 			}
-			CurrentMachine = std::make_unique<Machine>(CurrentMachineCore, (CurrentProgram->HasPropertyType(CBF::PropertyType::DesiredExecutionSpeed) ? desired_execution_speed * 60 : CPUSettingsMenu.CPUCycles.value), 0x1000, 64, 32, MainRenderer.get());
+			if (CurrentSuperCHIPMachine != nullptr)
+			{
+				CurrentSuperCHIPMachine = nullptr;
+			}
+			if (CurrentXOCHIPMachine != nullptr)
+			{
+				CurrentXOCHIPMachine = nullptr;
+			}
+			if (CurrentHyperCHIP64Machine != nullptr)
+			{
+				CurrentHyperCHIP64Machine = nullptr;
+			}
+			if (CurrentCHIP8Machine == nullptr)
+			{
+				CurrentCHIP8Machine = std::make_unique<BandCHIP::CHIP8_Machine>((CurrentProgram->HasPropertyType(CBF::PropertyType::DesiredExecutionSpeed) ? desired_execution_speed * 60 : CPUSettingsMenu.CPUCycles.value), MainRenderer.get());
+			}
+			else
+			{
+
+				InitializeRegisters(*CurrentCHIP8Machine);
+				InitializeTimers(*CurrentCHIP8Machine);
+				InitializeStack(*CurrentCHIP8Machine);
+				InitializeMemory(*CurrentCHIP8Machine);
+				InitializeVideo(*CurrentCHIP8Machine);
+				InitializeKeyStatus(*CurrentCHIP8Machine);
+				if (CurrentProgram->HasPropertyType(CBF::PropertyType::DesiredExecutionSpeed))
+				{
+					SetCyclesPerSecond(*CurrentCHIP8Machine, desired_execution_speed * 60);
+				}
+			}
 			std::ostringstream window_title;
-			window_title << "Hyper BandCHIP Emulator (CPF: " << CurrentMachine->GetCyclesPerFrame() << ')';
+			window_title << "Hyper BandCHIP Emulator (CPF: " << GetCyclesPerFrame(*CurrentCHIP8Machine) << ')';
 			SDL_SetWindowTitle(MainWindow.get(), window_title.str().c_str());
 			MainRenderer->SetupDisplay(64, 32);
 			CBF::FontData *current_font_data = CurrentProgram->GetFontData();
@@ -3300,17 +4038,16 @@ bool Hyper_BandCHIP::Application::StartCHIP8BinaryProgram()
 					lores_fonts = CurrentLoResFontStyle.GetFontStyleData();
 					lores_fonts_size = CurrentLoResFontStyle.GetFontStyleDataSize();
 				}
-				CurrentMachine->CopyDataToInterpreterMemory(lores_fonts, 0x000, lores_fonts_size);
+				CopyDataToInterpreterMemory(*CurrentCHIP8Machine, lores_fonts, 0x000, lores_fonts_size);
 			}
 			else
 			{
-				CurrentMachine->CopyDataToInterpreterMemory(current_font_data->data.data(), (current_font_data->address & 0xFFF), current_font_data->data.size());
+				CopyDataToInterpreterMemory(*CurrentCHIP8Machine, current_font_data->data.data(), (current_font_data->address & 0xFFF), current_font_data->data.size());
 			}
 			bool is_chip48 = (current_platform_type == CBF::PlatformType::CHIP48);
 			CHIP8_BehaviorData CurrentBehaviorData = { (is_chip48 ? true : false), (is_chip48 ? true : false), (!is_chip48 ? BehaviorsMenu.VIP_Display_Interrupt.toggle : false), BehaviorsMenu.VIP_Clipping.toggle, (!is_chip48 ? BehaviorsMenu.VIP_VF_Reset.toggle : false) };
-			CurrentMachine->StoreBehaviorData(&CurrentBehaviorData);
-			CurrentMachine->SetSync(CPUSettingsMenu.Sync.toggle);
-			if (CurrentMachine->LoadProgram(bytecode_data->data(), 0x200, bytecode_data->size()))
+			CurrentCHIP8Machine->StoreBehaviorData(&CurrentBehaviorData);
+			if (LoadProgram(*CurrentCHIP8Machine, bytecode_data->data(), 0x200, bytecode_data->size()))
 			{
 				MainMenu.CurrentMachineStatus.Status = "Operational";
 				chip8_binary_program_started = true;
@@ -3350,9 +4087,38 @@ bool Hyper_BandCHIP::Application::StartCHIP8BinaryProgram()
 			}
 			std::filesystem::path local_dir = std::filesystem::current_path();
 			std::filesystem::current_path(start_path);
-			CurrentMachine = std::make_unique<Machine>(CurrentMachineCore, (CurrentProgram->HasPropertyType(CBF::PropertyType::DesiredExecutionSpeed) ? desired_execution_speed * 60 : CPUSettingsMenu.CPUCycles.value), 0x1000, 128, 64, MainRenderer.get());
+			if (CurrentCHIP8Machine != nullptr)
+			{
+				CurrentCHIP8Machine = nullptr;
+			}
+			if (CurrentXOCHIPMachine != nullptr)
+			{
+				CurrentXOCHIPMachine = nullptr;
+			}
+			if (CurrentHyperCHIP64Machine != nullptr)
+			{
+				CurrentHyperCHIP64Machine = nullptr;
+			}
+			if (CurrentSuperCHIPMachine == nullptr)
+			{
+				CurrentSuperCHIPMachine = std::make_unique<BandCHIP::SuperCHIP_Machine>((CurrentProgram->HasPropertyType(CBF::PropertyType::DesiredExecutionSpeed) ? desired_execution_speed * 60 : CPUSettingsMenu.CPUCycles.value), MainRenderer.get());
+			}
+			else
+			{
+				SetResolutionMode(*CurrentSuperCHIPMachine, ResolutionMode::LoRes);
+				InitializeRegisters(*CurrentSuperCHIPMachine);
+				InitializeTimers(*CurrentSuperCHIPMachine);
+				InitializeStack(*CurrentSuperCHIPMachine);
+				InitializeMemory(*CurrentSuperCHIPMachine);
+				InitializeVideo(*CurrentSuperCHIPMachine);
+				InitializeKeyStatus(*CurrentSuperCHIPMachine);
+				if (CurrentProgram->HasPropertyType(CBF::PropertyType::DesiredExecutionSpeed))
+				{
+					SetCyclesPerSecond(*CurrentSuperCHIPMachine, desired_execution_speed * 60);
+				}
+			}
 			std::ostringstream window_title;
-			window_title << "Hyper BandCHIP Emulator (CPF: " << CurrentMachine->GetCyclesPerFrame() << ')';
+			window_title << "Hyper BandCHIP Emulator (CPF: " << GetCyclesPerFrame(*CurrentSuperCHIPMachine) << ')';
 			SDL_SetWindowTitle(MainWindow.get(), window_title.str().c_str());
 			std::filesystem::current_path(local_dir);
 			MainRenderer->SetupDisplay(128, 64);
@@ -3423,17 +4189,16 @@ bool Hyper_BandCHIP::Application::StartCHIP8BinaryProgram()
 					hires_fonts = CurrentHiResFontStyle.GetFontStyleData();
 					hires_fonts_size = CurrentHiResFontStyle.GetFontStyleDataSize();
 				}
-				CurrentMachine->CopyDataToInterpreterMemory(lores_fonts, 0x000, lores_fonts_size);
-				CurrentMachine->CopyDataToInterpreterMemory(hires_fonts, 0x050, hires_fonts_size);
+				CopyDataToInterpreterMemory(*CurrentSuperCHIPMachine, lores_fonts, 0x000, lores_fonts_size);
+				CopyDataToInterpreterMemory(*CurrentSuperCHIPMachine, hires_fonts, 0x050, hires_fonts_size);
 			}
 			else
 			{
-				CurrentMachine->CopyDataToInterpreterMemory(current_font_data->data.data(), (current_font_data->address & 0xFFF), current_font_data->data.size());
+				CopyDataToInterpreterMemory(*CurrentSuperCHIPMachine, current_font_data->data.data(), (current_font_data->address & 0xFFF), current_font_data->data.size());
 			}
 			SuperCHIP_BehaviorData CurrentBehaviorData { current_version };
-			CurrentMachine->StoreBehaviorData(&CurrentBehaviorData);
-			CurrentMachine->SetSync(CPUSettingsMenu.Sync.toggle);
-			if (CurrentMachine->LoadProgram(bytecode_data->data(), 0x200, bytecode_data->size()))
+			CurrentSuperCHIPMachine->StoreBehaviorData(&CurrentBehaviorData);
+			if (LoadProgram(*CurrentSuperCHIPMachine, bytecode_data->data(), 0x200, bytecode_data->size()))
 			{
 				MainMenu.CurrentMachineStatus.Status = "Operational";
 				chip8_binary_program_started = true;
@@ -3455,9 +4220,35 @@ bool Hyper_BandCHIP::Application::StartCHIP8BinaryProgram()
 			}
 			std::filesystem::path local_dir = std::filesystem::current_path();
 			std::filesystem::current_path(start_path);
-			CurrentMachine = std::make_unique<Machine>(CurrentMachineCore, (CurrentProgram->HasPropertyType(CBF::PropertyType::DesiredExecutionSpeed) ? desired_execution_speed * 60 : CPUSettingsMenu.CPUCycles.value), 0x10000, 128, 64, MainRenderer.get());
+			if (CurrentCHIP8Machine != nullptr)
+			{
+				CurrentCHIP8Machine = nullptr;
+			}
+			if (CurrentSuperCHIPMachine != nullptr)
+			{
+				CurrentSuperCHIPMachine = nullptr;
+			}
+			if (CurrentXOCHIPMachine == nullptr)
+			{
+				CurrentXOCHIPMachine = std::make_unique<BandCHIP::XOCHIP_Machine>((CurrentProgram->HasPropertyType(CBF::PropertyType::DesiredExecutionSpeed) ? desired_execution_speed * 60 : CPUSettingsMenu.CPUCycles.value), MainRenderer.get());
+			}
+			else
+			{
+				SetResolutionMode(*CurrentXOCHIPMachine, ResolutionMode::LoRes);
+				InitializeRegisters(*CurrentXOCHIPMachine);
+				InitializeTimers(*CurrentXOCHIPMachine);
+				InitializeStack(*CurrentXOCHIPMachine);
+				InitializeMemory(*CurrentXOCHIPMachine);
+				InitializeVideo(*CurrentXOCHIPMachine);
+				InitializeAudio<BandCHIP::XOCHIP_Machine, XOCHIP_Audio>(*CurrentXOCHIPMachine);
+				InitializeKeyStatus(*CurrentXOCHIPMachine);
+				if (CurrentProgram->HasPropertyType(CBF::PropertyType::DesiredExecutionSpeed))
+				{
+					SetCyclesPerSecond(*CurrentXOCHIPMachine, desired_execution_speed * 60);
+				}
+			}
 			std::ostringstream window_title;
-			window_title << "Hyper BandCHIP Emulator (CPF: " << CurrentMachine->GetCyclesPerFrame() << ')';
+			window_title << "Hyper BandCHIP Emulator (CPF: " << GetCyclesPerFrame(*CurrentXOCHIPMachine) << ')';
 			SDL_SetWindowTitle(MainWindow.get(), window_title.str().c_str());
 			std::filesystem::current_path(local_dir);
 			MainRenderer->SetupDisplay(128, 64);
@@ -3528,17 +4319,16 @@ bool Hyper_BandCHIP::Application::StartCHIP8BinaryProgram()
 					hires_fonts = CurrentHiResFontStyle.GetFontStyleData();
 					hires_fonts_size = CurrentHiResFontStyle.GetFontStyleDataSize();
 				}
-				CurrentMachine->CopyDataToInterpreterMemory(lores_fonts, 0x000, lores_fonts_size);
-				CurrentMachine->CopyDataToInterpreterMemory(hires_fonts, 0x050, hires_fonts_size);
+				CopyDataToInterpreterMemory(*CurrentXOCHIPMachine, lores_fonts, 0x000, lores_fonts_size);
+				CopyDataToInterpreterMemory(*CurrentXOCHIPMachine, hires_fonts, 0x050, hires_fonts_size);
 			}
 			else
 			{
-				CurrentMachine->CopyDataToInterpreterMemory(current_font_data->data.data(), current_font_data->address, current_font_data->data.size());
+				CopyDataToInterpreterMemory(*CurrentXOCHIPMachine, current_font_data->data.data(), current_font_data->address, current_font_data->data.size());
 			}
 			XOCHIP_BehaviorData CurrentBehaviorData { BehaviorsMenu.SuperCHIP_Shift.toggle, BehaviorsMenu.SuperCHIP_LoadStore.toggle, BehaviorsMenu.Octo_LoResSprite.toggle };
-			CurrentMachine->StoreBehaviorData(&CurrentBehaviorData);
-			CurrentMachine->SetSync(CPUSettingsMenu.Sync.toggle);
-			if (CurrentMachine->LoadProgram(bytecode_data->data(), 0x200, bytecode_data->size()))
+			CurrentXOCHIPMachine->StoreBehaviorData(&CurrentBehaviorData);
+			if (LoadProgram(*CurrentXOCHIPMachine, bytecode_data->data(), 0x200, bytecode_data->size()))
 			{
 				MainMenu.CurrentMachineStatus.Status = "Operational";
 				chip8_binary_program_started = true;
